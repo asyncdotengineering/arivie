@@ -9,6 +9,7 @@ import { ThreadList } from "@/components/thread-list";
 import { Button } from "@/components/ui/button";
 import { type Artifact, detectArtifact } from "@/lib/artifacts";
 import { authClient } from "@/lib/auth-client";
+import { cn } from "@/lib/utils";
 
 export function ChatShell({
   userId,
@@ -38,6 +39,7 @@ export function ChatShell({
   const [input, setInput] = useState("");
   const [demoArtifacts, setDemoArtifacts] = useState<Artifact[]>([]);
   const [paneOpen, setPaneOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // Aggregate artifacts from (a) data-artifact-* stream parts the server
@@ -99,6 +101,7 @@ export function ChatShell({
     setThreadId(
       `chat-${new Date().toISOString().replace(/[:.]/g, "").slice(0, 17)}`,
     );
+    setSidebarOpen(false);
   }, []);
 
   const handleSignOut = useCallback(async () => {
@@ -163,51 +166,114 @@ export function ChatShell({
       },
     ]);
     setPaneOpen(true);
+    setSidebarOpen(false);
   }, []);
 
-  return (
-    <div className="flex h-screen bg-background text-foreground">
-      <aside className="w-64 border-r border-border bg-muted/30 p-3 flex flex-col gap-2">
-        <div className="px-2 pt-2 pb-3">
+  const sidebar = (
+    <aside
+      className={cn(
+        "border-r border-border p-3 flex flex-col gap-2",
+        // Mobile: fixed overlay drawer with solid bg, slides in from left
+        "fixed inset-y-0 left-0 z-40 w-72 bg-background transition-transform",
+        sidebarOpen ? "translate-x-0" : "-translate-x-full",
+        // md+: static column with subtle bg, always visible
+        "md:static md:translate-x-0 md:w-64 md:z-0 md:bg-muted/30",
+      )}
+    >
+      <div className="px-2 pt-2 pb-3 flex items-center justify-between">
+        <div>
           <div className="text-sm font-semibold">Arivie</div>
           <div className="text-xs text-muted-foreground">analytics chat</div>
         </div>
-        <Button onClick={onNewChat} className="w-full" variant="default">
-          + New chat
-        </Button>
-        <ThreadList
-          activeThreadId={threadId}
-          onSelect={(t) => setThreadId(t)}
-        />
         <Button
-          onClick={triggerDemoArtifacts}
+          onClick={() => setSidebarOpen(false)}
           variant="ghost"
           size="sm"
-          className="w-full justify-start text-xs"
+          className="md:hidden"
+          aria-label="Close menu"
         >
-          Demo artifacts
+          ×
         </Button>
-        <div className="mt-auto px-2 pt-2 border-t border-border space-y-1">
-          <div className="text-xs text-muted-foreground truncate">
-            {userEmail}
-          </div>
+      </div>
+      <Button onClick={onNewChat} className="w-full" variant="default">
+        + New chat
+      </Button>
+      <ThreadList
+        activeThreadId={threadId}
+        onSelect={(t) => {
+          setThreadId(t);
+          setSidebarOpen(false);
+        }}
+      />
+      <Button
+        onClick={triggerDemoArtifacts}
+        variant="ghost"
+        size="sm"
+        className="w-full justify-start text-xs"
+      >
+        Demo artifacts
+      </Button>
+      <div className="mt-auto px-2 pt-2 border-t border-border space-y-1">
+        <div className="text-xs text-muted-foreground truncate">
+          {userEmail}
+        </div>
+        <Button
+          onClick={handleSignOut}
+          variant="ghost"
+          size="sm"
+          className="w-full justify-start"
+        >
+          Sign out
+        </Button>
+      </div>
+    </aside>
+  );
+
+  return (
+    <div className="flex h-dvh bg-background text-foreground overflow-hidden">
+      {/* Backdrop for mobile drawer */}
+      {sidebarOpen && (
+        <button
+          type="button"
+          aria-label="Close menu backdrop"
+          onClick={() => setSidebarOpen(false)}
+          className="fixed inset-0 z-30 bg-black/40 md:hidden"
+        />
+      )}
+      {sidebar}
+      <main className="flex-1 flex flex-col min-w-0">
+        {/* Mobile top bar — hamburger + title; hidden on md+ */}
+        <header className="md:hidden flex items-center gap-2 border-b border-border px-3 py-2">
           <Button
-            onClick={handleSignOut}
+            onClick={() => setSidebarOpen(true)}
             variant="ghost"
             size="sm"
-            className="w-full justify-start"
+            aria-label="Open menu"
+            className="px-2"
           >
-            Sign out
+            ☰
           </Button>
-        </div>
-      </aside>
-      <main className="flex-1 flex flex-col">
-        <div ref={scrollRef} className="flex-1 overflow-y-auto px-6 py-8">
+          <div className="text-sm font-semibold">Arivie</div>
+          {artifacts.length > 0 && (
+            <Button
+              onClick={() => setPaneOpen(true)}
+              variant="ghost"
+              size="sm"
+              className="ml-auto text-xs"
+            >
+              {artifacts.length} artifact{artifacts.length === 1 ? "" : "s"}
+            </Button>
+          )}
+        </header>
+        <div
+          ref={scrollRef}
+          className="flex-1 overflow-y-auto px-4 py-6 sm:px-6 sm:py-8"
+        >
           <div className="max-w-3xl mx-auto space-y-6">
             {messages.length === 0 && (
-              <div className="text-center py-20 text-muted-foreground">
+              <div className="text-center py-12 sm:py-20 text-muted-foreground">
                 <div className="text-2xl mb-2">🦉</div>
-                <h1 className="text-xl font-semibold mb-2 text-foreground">
+                <h1 className="text-lg sm:text-xl font-semibold mb-2 text-foreground">
                   Ask Arivie about your data
                 </h1>
                 <p className="text-sm">
@@ -223,7 +289,7 @@ export function ChatShell({
                 <div className="text-xs text-muted-foreground">
                   {m.role === "user" ? "you" : "arivie"}
                 </div>
-                <div className="prose prose-sm dark:prose-invert max-w-none">
+                <div className="prose prose-sm dark:prose-invert max-w-none break-words">
                   {m.parts.map((p, i) => {
                     const partKey = `${m.id}-${i}-${p.type}`;
                     if (p.type === "text") {
@@ -256,20 +322,22 @@ export function ChatShell({
             )}
           </div>
         </div>
-        <form onSubmit={onSubmit} className="border-t border-border p-4">
+        <form onSubmit={onSubmit} className="border-t border-border p-3 sm:p-4">
           <div className="max-w-3xl mx-auto flex gap-2">
             <input
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder="Ask about your data…"
-              className="flex-1 px-3 py-2 bg-background border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+              className="flex-1 min-w-0 px-3 py-2 bg-background border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
               disabled={status === "streaming" || status === "submitted"}
             />
+            {/* Desktop-only artifact badge (mobile shows it in the header) */}
             {artifacts.length > 0 && !paneOpen && (
               <Button
                 type="button"
                 variant="ghost"
                 onClick={() => setPaneOpen(true)}
+                className="hidden md:inline-flex"
               >
                 {artifacts.length} artifact{artifacts.length === 1 ? "" : "s"}
               </Button>

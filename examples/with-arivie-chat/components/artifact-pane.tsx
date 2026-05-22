@@ -30,7 +30,14 @@ export function ArtifactPane({
   const active = artifacts.find((a) => a.id === activeId) ?? artifacts[0];
 
   return (
-    <aside className="w-[480px] border-l border-border bg-background flex flex-col">
+    <aside
+      className={cn(
+        // Mobile: full-screen overlay above everything
+        "fixed inset-0 z-50 bg-background flex flex-col",
+        // md+: static side panel
+        "md:static md:inset-auto md:z-0 md:w-[480px] md:border-l md:border-border",
+      )}
+    >
       <header className="flex items-center justify-between px-4 py-2 border-b border-border">
         <div className="flex gap-1 overflow-x-auto">
           {artifacts.map((a) => (
