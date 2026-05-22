@@ -29,7 +29,14 @@ import type { LanguageModel } from "ai";
 
 const SEMANTIC_PATH = resolve(process.cwd(), "semantic");
 const SKILLS_PATH = resolve(process.cwd(), "skills");
-const WORKSPACE_ROOT = resolve(process.cwd(), ".arivie/workspace");
+// Vercel / serverless filesystems are read-only outside /tmp. Prefer the
+// caller's explicit WORKSPACE_PATH; otherwise pick /tmp on Vercel and the
+// in-repo path locally.
+const WORKSPACE_ROOT =
+  process.env.WORKSPACE_PATH ??
+  (process.env.VERCEL === "1"
+    ? "/tmp/arivie/workspace"
+    : resolve(process.cwd(), ".arivie/workspace"));
 
 function resolveModel(): {
   model: LanguageModel;
