@@ -2,7 +2,9 @@
 import type { MCPServerConfig, SourceConfigEntry } from "./types.js";
 
 /**
- * One-line MCP source factory.
+ * One-line MCP source factory. Every source carries a `description`
+ * (required) so the agent knows what's behind the connection, and an
+ * optional `useWhen` to disambiguate against other sources.
  *
  * ```ts
  * import { defineArivie, mcpSource } from "@arivie/core";
@@ -10,6 +12,8 @@ import type { MCPServerConfig, SourceConfigEntry } from "./types.js";
  * await defineArivie({
  *   sources: {
  *     linear: mcpSource({
+ *       description: "Linear issue tracker — projects, issues, comments",
+ *       useWhen: "any project status / ticket / engineering-progress question",
  *       command: "linear-mcp-server",
  *       env: { LINEAR_API_KEY: process.env.LINEAR_API_KEY! },
  *     }),
@@ -17,12 +21,14 @@ import type { MCPServerConfig, SourceConfigEntry } from "./types.js";
  *   ...,
  * });
  * ```
- *
- * Equivalent to writing `{ mcp: { command, env, ... } }` inline, but
- * reads as a single named factory at the call site — and makes the
- * `mcp:` discriminator a Mastra-internal detail rather than something
- * the user has to remember.
  */
-export function mcpSource(config: MCPServerConfig): SourceConfigEntry {
-  return { mcp: config };
+export function mcpSource(
+  config: MCPServerConfig & { description: string; useWhen?: string },
+): SourceConfigEntry {
+  const { description, useWhen, ...mcp } = config;
+  return {
+    mcp,
+    description,
+    ...(useWhen !== undefined ? { useWhen } : {}),
+  };
 }

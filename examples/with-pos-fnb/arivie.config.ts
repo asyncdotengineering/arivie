@@ -47,10 +47,16 @@ const config: ArivieConfig = {
   skills: skillsPath,
   skillsMode: "auto",
   sources: {
-    postgres: postgresAdapter({
-      url: requireDatabaseUrl(),
-      readOnlyRole: "arivie_reader",
-    }),
+    postgres: {
+      adapter: postgresAdapter({
+        url: requireDatabaseUrl(),
+        readOnlyRole: "arivie_reader",
+      }),
+      description:
+        "Lumière F&B operational Postgres — orders, outlets, customers, products, payments, shifts. ~50k rows of synthetic restaurant chain data.",
+      useWhen:
+        "any revenue, orders, menu performance, outlet comparison, customer behaviour, or staff-shift question",
+    },
   },
   workspace: localWorkspace({ at: workspaceRoot, bash: true }),
   compileMetric: true,

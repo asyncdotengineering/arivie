@@ -178,7 +178,9 @@ export async function defineArivie(
     throw err;
   }
 
-  const { sources, mcpTools } = await resolveSources(parsed.sources);
+  const { sources, mcpTools, metadata: sourceMetadata } = await resolveSources(
+    parsed.sources,
+  );
   const postgres = postgresAdapterFromSources(sources);
 
   const semantic =
@@ -227,6 +229,7 @@ export async function defineArivie(
     semantic,
     contextMode,
     sources,
+    sourceMetadata,
     mcpTools: mcpTools as Record<string, Tool>,
     workspace,
     skillsProcessor,

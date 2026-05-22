@@ -32,6 +32,16 @@ export interface MakeAgentOptions {
   semantic: SemanticLayer;
   contextMode: ContextMode;
   sources: Record<string, SourceAdapter<unknown>>;
+  /**
+   * Per-source metadata (description + optional useWhen) rendered into
+   * the system prompt so the agent can pick the right `execute_<name>`
+   * tool. Must align by name with the keys of `sources`.
+   */
+  sourceMetadata: ReadonlyArray<{
+    name: string;
+    description: string;
+    useWhen?: string;
+  }>;
   workspace: Workspace;
   skillsProcessor?: SkillsProcessor | SkillSearchProcessor;
   vector?: import("@mastra/core/vector").MastraVector;
@@ -348,7 +358,7 @@ export function makeAgent(opts: MakeAgentOptions): Agent {
       mode: opts.contextMode,
       semantic: opts.semantic,
       compileMetricEnabled: compileMetric,
-      sources: sourceNames,
+      sources: opts.sourceMetadata,
       hasFinalizeReport: registerFinalizeReport,
       skillsMode: opts.skillsMode ?? "none",
     }),

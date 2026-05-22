@@ -106,10 +106,19 @@ export function getArivie(): Promise<ArivieInstance> {
         mode: "preload",
       },
       sources: {
-        postgres: postgresAdapter({
-          url: databaseUrl,
-          readOnlyRole: process.env.ARIVIE_DB_ROLE ?? "arivie_reader",
-        }),
+        // Key must be `postgres` — Mastra storage pulls the connection
+        // string from sources.postgres specifically. See
+        // postgresAdapterFromSources in @arivie/core.
+        postgres: {
+          adapter: postgresAdapter({
+            url: databaseUrl,
+            readOnlyRole: process.env.ARIVIE_DB_ROLE ?? "arivie_reader",
+          }),
+          description:
+            "Synthetic e-commerce Postgres bundled with this starter — customers, products, orders, order_items. ~120 fake rows. Ships seeded by `pnpm setup`. Replace with your real DB to ship.",
+          useWhen:
+            "any revenue, orders, customer, product, AOV, or basket question",
+        },
       },
       workspace: localWorkspace({ at: WORKSPACE_ROOT, bash: false }),
       compileMetric: true,

@@ -1,0 +1,46 @@
+name: products
+description: |
+  Catalog SKUs. Each product has one category. List-price is in
+  `price`; the price actually charged on an order is captured per-line
+  in order_items.unit_price (may differ if a promo was applied — none
+  in the seed data, but reserve the column for it).
+
+grain: one row per SKU
+primary_key: id
+
+measures:
+  - name: product_count
+    description: Distinct products.
+    sql: "COUNT(DISTINCT id)"
+
+  - name: avg_list_price
+    description: Average list price across the catalog.
+    sql: "AVG(price)"
+
+dimensions:
+  - name: id
+    sql: id
+    type: text
+
+  - name: name
+    sql: name
+    type: text
+
+  - name: category
+    sql: category
+    type: text
+    description: One of `apparel`, `electronics`, `home`, `books`.
+
+  - name: price
+    sql: price
+    type: numeric
+    description: List price in USD.
+
+  - name: created_at
+    sql: created_at
+    type: timestamp
+
+joins:
+  - to: order_items
+    on: "order_items.product_id = products.id"
+    type: one_to_many

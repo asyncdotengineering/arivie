@@ -138,10 +138,34 @@ const mcpServerConfigSchema = z
   })
   .strict();
 
+// Every source must carry a `description` (one-sentence what's in it) and
+// optionally a `useWhen` (when to pick it over another source). The model
+// reads these from the system prompt to choose the right `execute_<name>`.
 const sourceEntrySchema = z.union([
-  sourceAdapterSchema,
-  z.object({ adapter: sourceAdapterSchema }).strict(),
-  z.object({ mcp: mcpServerConfigSchema }).strict(),
+  z
+    .object({
+      adapter: sourceAdapterSchema,
+      description: z
+        .string()
+        .min(
+          1,
+          "sources.<name>.description is required — one sentence on what's in this source so the agent knows when to query it",
+        ),
+      useWhen: z.string().optional(),
+    })
+    .strict(),
+  z
+    .object({
+      mcp: mcpServerConfigSchema,
+      description: z
+        .string()
+        .min(
+          1,
+          "sources.<name>.description is required — one sentence on what's in this source so the agent knows when to query it",
+        ),
+      useWhen: z.string().optional(),
+    })
+    .strict(),
 ]);
 
 const sourcesSchema = z

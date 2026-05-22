@@ -1,0 +1,89 @@
+name: orders
+description: |
+  Order headers. Revenue and order-count KPIs come from this table.
+  Canonical definition: revenue = SUM(total_amount) FILTER (WHERE status = 'completed').
+  Pending and cancelled orders are EXCLUDED from revenue. Refunded
+  orders show in revenue but the refund itself is not modelled in the
+  starter — treat refund counts as the headline indicator instead.
+
+grain: one row per order
+primary_key: id
+
+hints:
+  - "Revenue uses status = 'completed'. If the user asks 'how many orders' without specifying status, include all four statuses AND state in Assumptions that you included all statuses."
+  - "Time bracketing should use created_at — there is no separate fulfilled_at column in the starter schema."
+
+measures:
+  - name: revenue
+    description: Completed-order revenue in USD. Excludes pending, cancelled.
+    sql: "SUM(total_amount) FILTER (WHERE status = 'completed')"
+
+  - name: gross_revenue
+    description: All orders regardless of status. Use only for top-line trend; not for accounting.
+    sql: "SUM(total_amount)"
+
+  - name: order_count
+    description: Number of orders (all statuses).
+    sql: "COUNT(*)"
+
+  - name: completed_order_count
+    description: Orders with status = 'completed'.
+    sql: "COUNT(*) FILTER (WHERE status = 'completed')"
+
+  - name: cancelled_order_count
+    description: Orders with status = 'cancelled'.
+    sql: "COUNT(*) FILTER (WHERE status = 'cancelled')"
+
+  - name: refunded_order_count
+    description: Orders with status = 'refunded'.
+    sql: "COUNT(*) FILTER (WHERE status = 'refunded')"
+
+  - name: aov
+    description: Average order value over completed orders. KPI; trend weekly not daily.
+    sql: "AVG(total_amount) FILTER (WHERE status = 'completed')"
+
+  - name: cancellation_rate
+    description: Percent of orders that were cancelled. Investigate if >5%.
+    sql: "ROUND(100.0 * COUNT(*) FILTER (WHERE status = 'cancelled') / NULLIF(COUNT(*), 0), 2)"
+
+dimensions:
+  - name: id
+    sql: id
+    type: text
+
+  - name: customer_id
+    sql: customer_id
+    type: text
+    description: Foreign key to customers.
+
+  - name: status
+    sql: status
+    type: text
+    description: One of `pending`, `completed`, `cancelled`, `refunded`.
+
+  - name: total_amount
+    sql: total_amount
+    type: numeric
+
+  - name: created_at
+    sql: created_at
+    type: timestamp
+    description: When the order was placed. Use this for all time bracketing.
+
+joins:
+  - to: customers
+    on: "orders.customer_id = customers.id"
+    type: many_to_one
+  - to: order_items
+    on: "order_items.order_id = orders.id"
+    type: one_to_many
+
+segments:
+  - name: last_7_days
+    sql: "created_at >= now() - INTERVAL '7 days'"
+  - name: last_30_days
+    sql: "created_at >= now() - INTERVAL '30 days'"
+  - name: last_90_days
+    sql: "created_at >= now() - INTERVAL '90 days'"
+  - name: completed_only
+    sql: "status = 'completed'"

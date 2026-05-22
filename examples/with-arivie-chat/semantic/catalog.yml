@@ -1,0 +1,21 @@
+# Default semantic layer for the Arivie chat starter.
+# Maps the synthetic e-commerce schema in seed/ to entities the agent
+# can ground SQL against. Replace this catalog (plus the entity files
+# in ./entities/) when you point the starter at your real data.
+
+entities:
+  - name: customers
+    description: People who have placed at least one order. Joined via orders.customer_id.
+    keywords: [customers, users, buyers, accounts]
+
+  - name: products
+    description: Catalog SKUs. Each product belongs to one category.
+    keywords: [products, skus, items, catalog]
+
+  - name: orders
+    description: Order headers. Status is one of pending / completed / cancelled / refunded. Revenue uses status='completed'.
+    keywords: [orders, sales, revenue, transactions]
+
+  - name: order_items
+    description: Line items on orders. One row per (order, product) pair. Use for product-mix / basket questions.
+    keywords: [order_items, line_items, basket, mix]

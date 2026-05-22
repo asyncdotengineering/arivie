@@ -46,6 +46,7 @@ export type {
   SourceAdapterExecuteOpts,
   SourceAdapterExecuteResult,
   SourceConfigEntry,
+  SourceMetadata,
   SourcesConfig,
   ToolCallEvent,
   ToolCallTrace,

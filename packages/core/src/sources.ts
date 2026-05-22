@@ -6,17 +6,17 @@ import type {
   MCPServerConfig,
   SourceAdapter,
   SourceConfigEntry,
+  SourceMetadata,
   SourcesConfig,
 } from "./types.js";
 
 function isMcpEntry(
   entry: SourceConfigEntry,
-): entry is { mcp: MCPServerConfig } {
+): entry is { mcp: MCPServerConfig; description: string; useWhen?: string } {
   return (
     entry != null &&
     typeof entry === "object" &&
     "mcp" in entry &&
-    !("execute" in entry) &&
     !("adapter" in entry)
   );
 }
@@ -30,22 +30,33 @@ export function unwrapSourceEntry(entry: SourceConfigEntry): SourceAdapter<unkno
   ) {
     return entry.adapter;
   }
-  if (
-    entry != null &&
-    typeof entry === "object" &&
-    "execute" in entry &&
-    typeof entry.execute === "function"
-  ) {
-    return entry as SourceAdapter<unknown>;
-  }
   if (isMcpEntry(entry)) {
     throw new ArivieConfigError(
       "MCP source entries must be resolved via resolveSources() — use await resolveSources(config.sources)",
     );
   }
   throw new ArivieConfigError(
-    "Invalid source entry — expected SourceAdapter, { adapter }, or { mcp }",
+    "Invalid source entry — expected { adapter, description } or { mcp, description }",
   );
+}
+
+/** Pull description + useWhen off a source entry for prompt assembly. */
+export function readSourceMetadata(
+  name: string,
+  entry: SourceConfigEntry,
+): SourceMetadata {
+  if (entry == null || typeof entry !== "object" || !("description" in entry)) {
+    throw new ArivieConfigError(
+      `sources.${name}: missing required "description" — one sentence on what's in this source`,
+    );
+  }
+  return {
+    name,
+    description: entry.description,
+    ...(typeof (entry as { useWhen?: string }).useWhen === "string"
+      ? { useWhen: (entry as { useWhen?: string }).useWhen }
+      : {}),
+  };
 }
 
 function mcpEntryToServerConfig(mcp: MCPServerConfig): MastraMCPServerDefinition {
@@ -106,6 +117,7 @@ async function resolveMcpEntry(
 export interface ResolvedSources {
   sources: Record<string, SourceAdapter<unknown>>;
   mcpTools: Record<string, unknown>;
+  metadata: SourceMetadata[];
 }
 
 export async function resolveSources(
@@ -113,7 +125,9 @@ export async function resolveSources(
 ): Promise<ResolvedSources> {
   const out: Record<string, SourceAdapter<unknown>> = {};
   const mcpTools: Record<string, unknown> = {};
+  const metadata: SourceMetadata[] = [];
   for (const [name, entry] of Object.entries(sources)) {
+    metadata.push(readSourceMetadata(name, entry));
     if (isMcpEntry(entry)) {
       const resolved = await resolveMcpEntry(name, entry);
       out[name] = resolved.adapter;
@@ -122,7 +136,7 @@ export async function resolveSources(
       out[name] = unwrapSourceEntry(entry);
     }
   }
-  return { sources: out, mcpTools };
+  return { sources: out, mcpTools, metadata };
 }
 
 /** @deprecated Use {@link resolveSources} for configs that may include `{ mcp }` entries. */

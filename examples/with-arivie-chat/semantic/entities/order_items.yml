@@ -1,0 +1,61 @@
+name: order_items
+description: |
+  One row per (order, product) pair. Use for product-mix questions
+  ("top SKUs by units"), category mix ("which category drove revenue"),
+  and basket questions ("avg items per order"). For revenue questions,
+  prefer the `orders.revenue` measure unless the user explicitly asked
+  for line-item revenue (then SUM(subtotal) here, joined to orders to
+  filter status='completed').
+
+grain: one row per order line
+primary_key: id
+
+measures:
+  - name: units_sold
+    description: Total units across all line items.
+    sql: "SUM(quantity)"
+
+  - name: line_revenue
+    description: Sum of line subtotals across all statuses. Join to orders + filter status='completed' for revenue parity with orders.revenue.
+    sql: "SUM(subtotal)"
+
+  - name: avg_basket_size
+    description: Average units per order. Counted at the line-item level then averaged per order via subquery — for compile_metric use units_sold ÷ orders.order_count manually.
+    sql: "AVG(quantity)"
+
+dimensions:
+  - name: id
+    sql: id
+    type: text
+
+  - name: order_id
+    sql: order_id
+    type: text
+    description: Foreign key to orders.
+
+  - name: product_id
+    sql: product_id
+    type: text
+    description: Foreign key to products.
+
+  - name: quantity
+    sql: quantity
+    type: numeric
+
+  - name: unit_price
+    sql: unit_price
+    type: numeric
+    description: Price actually charged on this line. May differ from products.price if a promo was applied.
+
+  - name: subtotal
+    sql: subtotal
+    type: numeric
+    description: unit_price * quantity, precomputed.
+
+joins:
+  - to: orders
+    on: "order_items.order_id = orders.id"
+    type: many_to_one
+  - to: products
+    on: "order_items.product_id = products.id"
+    type: many_to_one

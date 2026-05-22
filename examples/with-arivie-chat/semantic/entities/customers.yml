@@ -1,0 +1,46 @@
+name: customers
+description: |
+  Registered buyers. One row per person. Joined to orders via
+  orders.customer_id = customers.id.
+
+grain: one row per customer
+primary_key: id
+
+measures:
+  - name: customer_count
+    description: Distinct customers.
+    sql: "COUNT(DISTINCT id)"
+
+  - name: new_customer_count
+    description: Customers whose created_at falls in the queried window. Use the time dimension to bracket.
+    sql: "COUNT(*)"
+
+dimensions:
+  - name: id
+    sql: id
+    type: text
+
+  - name: email
+    sql: email
+    type: text
+    description: Email address (PII — do not include in unaggregated output).
+
+  - name: name
+    sql: name
+    type: text
+    description: Display name (PII).
+
+  - name: country
+    sql: country
+    type: text
+    description: ISO country code (US, GB, CA, AU, DE in the seed data).
+
+  - name: created_at
+    sql: created_at
+    type: timestamp
+    description: When the account was created.
+
+joins:
+  - to: orders
+    on: "orders.customer_id = customers.id"
+    type: one_to_many

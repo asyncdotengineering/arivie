@@ -43,13 +43,43 @@ export type MCPServerConfig = {
   url?: string;
 };
 
+/**
+ * Source entry shape. Every source MUST carry a `description` and SHOULD
+ * carry a `useWhen` — both are surfaced in the agent's system prompt so
+ * the model can pick the right source for a question. Just like tools and
+ * agents, sources are picked from a menu, and the menu items need labels.
+ *
+ *   - `description` — one sentence: what's *in* this source (tables,
+ *     business domain, freshness). The model reads this to know what it
+ *     can answer.
+ *   - `useWhen` — one phrase: when to reach for this source over another.
+ *     Especially useful with 2+ sources to disambiguate ("orders questions"
+ *     vs "user-behavior questions").
+ */
 export type SourceConfigEntry =
-  | SourceAdapter<unknown>
-  | { adapter: SourceAdapter<unknown> }
-  | { mcp: MCPServerConfig };
+  | {
+      adapter: SourceAdapter<unknown>;
+      description: string;
+      useWhen?: string;
+    }
+  | {
+      mcp: MCPServerConfig;
+      description: string;
+      useWhen?: string;
+    };
 
 /** Multi-adapter declaration slot (RFC-003 v2 REQ-44). */
 export type SourcesConfig = Record<string, SourceConfigEntry>;
+
+/**
+ * Source metadata pulled off a {@link SourceConfigEntry} — emitted by
+ * `resolveSources` for the system-prompt builder.
+ */
+export interface SourceMetadata {
+  name: string;
+  description: string;
+  useWhen?: string;
+}
 
 /**
  * Configuration for `defineArivie`. Hoists the high-traffic ergonomics

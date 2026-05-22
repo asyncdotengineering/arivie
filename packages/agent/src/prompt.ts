@@ -23,9 +23,20 @@ export type ContextMode = "preload" | "indexed";
  */
 export type SkillsMode = "none" | "eager" | "on-demand";
 
+/**
+ * Per-source metadata surfaced in the system prompt. Mirrors
+ * `@arivie/core`'s `SourceMetadata` — duplicated here to keep
+ * @arivie/agent dependency-free from core.
+ */
+export interface SourceDescriptor {
+  name: string;
+  description: string;
+  useWhen?: string;
+}
+
 export interface BuildSystemPromptIndexedOptions {
   compileMetricEnabled: boolean;
-  sources: readonly string[];
+  sources: readonly SourceDescriptor[];
   hasFinalizeReport: boolean;
 }
 
@@ -33,7 +44,7 @@ export interface BuildSystemPromptOptions {
   mode: ContextMode;
   semantic: SemanticLayer;
   compileMetricEnabled: boolean;
-  sources?: readonly string[];
+  sources?: readonly SourceDescriptor[];
   hasFinalizeReport?: boolean;
   skillsMode?: SkillsMode;
 }
@@ -198,12 +209,17 @@ export function buildSystemPromptIndexed({
 
   if (sources.length > 0) {
     sections.push("", "## Declared sources");
-    for (const name of [...sources].sort((a, b) => a.localeCompare(b))) {
-      sections.push(
+    for (const s of [...sources].sort((a, b) => a.name.localeCompare(b.name))) {
+      const lines = [
         "",
-        `### execute_${name}`,
-        `Run read-only SQL (SELECT or WITH only) against the \`${name}\` source via \`execute_${name}\`.`,
-      );
+        `### execute_${s.name}`,
+        `${s.description}`,
+        `Run read-only SQL (SELECT or WITH only) against the \`${s.name}\` source via \`execute_${s.name}\`.`,
+      ];
+      if (s.useWhen) {
+        lines.splice(3, 0, `**Use when:** ${s.useWhen}`);
+      }
+      sections.push(...lines);
     }
   }
 
@@ -307,7 +323,7 @@ export function buildSystemPrompt({
 
 function toolsSection(
   mode: ContextMode,
-  sources: readonly string[],
+  sources: readonly SourceDescriptor[],
 ): string {
   if (mode === "preload") {
     return [
@@ -326,10 +342,10 @@ function toolsSection(
   const executeLines =
     sources.length > 0
       ? sources
-          .map(
-            (name) =>
-              `- \`execute_${name}\` — read-only SQL against the \`${name}\` source`,
-          )
+          .map((s) => {
+            const useWhen = s.useWhen ? ` Use when: ${s.useWhen}` : "";
+            return `- \`execute_${s.name}\` — ${s.description}${useWhen}`;
+          })
           .sort((a, b) => a.localeCompare(b))
           .join("\n")
       : "- `execute_<sourceName>` — read-only SQL against a declared source";
