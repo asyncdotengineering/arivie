@@ -150,5 +150,50 @@ export function detectArtifact(
     };
   }
 
+  // 4) finalize_report → report artifact. This is the agent's terminal
+  // tool — it ends the stream, so without lifting it into an artifact
+  // the user sees a collapsed tool-call row and nothing else. The tool
+  // args carry { narrative, sql, csvResults } which we render as a
+  // markdown report with the SQL fenced and the CSV table formatted.
+  if (toolName === "finalize_report") {
+    const narrative = typeof o.narrative === "string" ? o.narrative : null;
+    const sql = typeof o.sql === "string" ? o.sql : null;
+    const csv = typeof o.csvResults === "string" ? o.csvResults : null;
+    if (narrative || sql || csv) {
+      const parts: string[] = [];
+      if (narrative) parts.push(narrative);
+      if (csv) parts.push("\n## Results\n\n" + csvToMarkdown(csv));
+      if (sql) parts.push("\n## SQL\n\n```sql\n" + sql + "\n```");
+      return {
+        kind: "report",
+        id: idGen(),
+        title: typeof o.title === "string" ? o.title : "Report",
+        markdown: parts.join("\n"),
+      };
+    }
+  }
+
   return null;
+}
+
+/**
+ * Render a CSV-shaped string as a markdown table. Best-effort — falls
+ * back to a fenced code block if parsing produces an uneven row.
+ */
+function csvToMarkdown(csv: string): string {
+  const rows = csv
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => line.split(","));
+  if (rows.length === 0) return "```\n" + csv + "\n```";
+  const header = rows[0];
+  const widths = header.length;
+  if (rows.some((r) => r.length !== widths)) {
+    return "```\n" + csv + "\n```";
+  }
+  const sep = header.map(() => "---");
+  return [header, sep, ...rows.slice(1)]
+    .map((r) => `| ${r.join(" | ")} |`)
+    .join("\n");
 }

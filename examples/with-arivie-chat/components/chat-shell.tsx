@@ -62,11 +62,19 @@ export function ChatShell({
             seen.set(data.id, data);
           }
         }
-        // (b) tool-<name> part → detect from output
+        // (b) tool-<name> part → detect from output (or input for
+        // terminal tools like `finalize_report` whose payload lives in
+        // the call args, not the return value).
         if (p.type.startsWith("tool-")) {
-          const tp = p as unknown as { type: string; output?: unknown };
+          const tp = p as unknown as {
+            type: string;
+            input?: unknown;
+            output?: unknown;
+          };
           const toolName = tp.type.replace(/^tool-/, "");
-          const a = detectArtifact(toolName, tp.output, nextId);
+          const a =
+            detectArtifact(toolName, tp.output, nextId) ??
+            detectArtifact(toolName, tp.input, nextId);
           if (a && !seen.has(a.id)) seen.set(a.id, a);
         }
       }
@@ -85,6 +93,21 @@ export function ChatShell({
       behavior: "smooth",
     });
   }, [messages]);
+
+  // Auto-open the artifact pane the first time a real artifact arrives
+  // from the assistant (so terminal-tool reports don't get hidden behind
+  // a collapsed tool-call row). Only opens once per artifact-count tick.
+  const lastArtifactCount = useRef(0);
+  useEffect(() => {
+    const fromAssistant = artifacts.filter((a) => !a.id.startsWith("demo-"));
+    if (
+      fromAssistant.length > lastArtifactCount.current &&
+      fromAssistant.length > 0
+    ) {
+      setPaneOpen(true);
+    }
+    lastArtifactCount.current = fromAssistant.length;
+  }, [artifacts]);
 
   const onSubmit = useCallback(
     (e: React.FormEvent) => {
@@ -297,10 +320,26 @@ export function ChatShell({
                     }
                     if (p.type.startsWith("tool-")) {
                       const tp: any = p;
+                      const toolName = tp.type.replace(/^tool-/, "");
+                      // finalize_report is the terminal tool; lift it
+                      // to a visible "Report ready" CTA so the user
+                      // notices the deliverable.
+                      if (toolName === "finalize_report") {
+                        return (
+                          <button
+                            key={partKey}
+                            type="button"
+                            onClick={() => setPaneOpen(true)}
+                            className="my-2 inline-flex items-center gap-2 px-3 py-1.5 text-sm rounded-md bg-primary/10 text-foreground hover:bg-primary/20 transition-colors"
+                          >
+                            📄 Report ready — open →
+                          </button>
+                        );
+                      }
                       return (
                         <details key={partKey} className="my-2 text-xs">
                           <summary className="cursor-pointer text-muted-foreground hover:text-foreground">
-                            {tp.type.replace(/^tool-/, "🔧 ")}
+                            🔧 {toolName}
                           </summary>
                           <pre className="mt-1 p-2 bg-muted rounded overflow-x-auto">
                             {JSON.stringify(

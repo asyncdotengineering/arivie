@@ -25,23 +25,75 @@ const randInt = (lo: number, hi: number) =>
   lo + Math.floor(rand() * (hi - lo + 1));
 
 const FIRST_NAMES = [
-  "Ava", "Liam", "Noah", "Mia", "Zoe", "Ethan", "Iris", "Kai", "Jade", "Leo",
-  "Maya", "Sage", "Finn", "Luna", "Owen", "Ruby", "Theo", "Eden", "Nora", "Reid",
-  "Hugo", "Cleo", "Asha", "Niko", "Vera", "Otis", "Hana", "Quinn", "Sana", "Yuki",
+  "Ava",
+  "Liam",
+  "Noah",
+  "Mia",
+  "Zoe",
+  "Ethan",
+  "Iris",
+  "Kai",
+  "Jade",
+  "Leo",
+  "Maya",
+  "Sage",
+  "Finn",
+  "Luna",
+  "Owen",
+  "Ruby",
+  "Theo",
+  "Eden",
+  "Nora",
+  "Reid",
+  "Hugo",
+  "Cleo",
+  "Asha",
+  "Niko",
+  "Vera",
+  "Otis",
+  "Hana",
+  "Quinn",
+  "Sana",
+  "Yuki",
 ];
 const LAST_NAMES = [
-  "Kim", "Patel", "Müller", "Costa", "Walsh", "Sato", "Reyes", "Nguyen", "Cohen",
-  "Wright", "Abara", "Yates", "Holt", "Mensah", "Ito", "Park", "Singh", "Ng",
-  "Diaz", "Khan", "Roy", "Lin", "Bauer", "Adams", "Yoon", "Tran", "Beck", "Akel",
+  "Kim",
+  "Patel",
+  "Müller",
+  "Costa",
+  "Walsh",
+  "Sato",
+  "Reyes",
+  "Nguyen",
+  "Cohen",
+  "Wright",
+  "Abara",
+  "Yates",
+  "Holt",
+  "Mensah",
+  "Ito",
+  "Park",
+  "Singh",
+  "Ng",
+  "Diaz",
+  "Khan",
+  "Roy",
+  "Lin",
+  "Bauer",
+  "Adams",
+  "Yoon",
+  "Tran",
+  "Beck",
+  "Akel",
 ];
 const COUNTRIES = ["US", "GB", "CA", "AU", "DE"];
-const COUNTRY_WEIGHTS = [0.45, 0.18, 0.12, 0.10, 0.15];
+const COUNTRY_WEIGHTS = [0.45, 0.18, 0.12, 0.1, 0.15];
 
 const PRODUCTS: { name: string; category: string; price: number }[] = [
   { name: "Bamboo throw blanket", category: "home", price: 64.0 },
   { name: "Linen apron", category: "home", price: 38.0 },
   { name: "Ceramic pour-over", category: "home", price: 52.0 },
-  { name: "Cast iron skillet 10\"", category: "home", price: 89.0 },
+  { name: 'Cast iron skillet 10"', category: "home", price: 89.0 },
   { name: "Walnut cutting board", category: "home", price: 72.0 },
   { name: "Merino crewneck", category: "apparel", price: 145.0 },
   { name: "Selvedge denim", category: "apparel", price: 198.0 },
@@ -103,7 +155,15 @@ const products = PRODUCTS.map((p, i) => ({
 }));
 
 // 80 orders — spread across the past 90 days, status mostly completed
-const STATUSES = ["completed", "completed", "completed", "completed", "pending", "cancelled", "refunded"];
+const STATUSES = [
+  "completed",
+  "completed",
+  "completed",
+  "completed",
+  "pending",
+  "cancelled",
+  "refunded",
+];
 const orders = Array.from({ length: 80 }, (_, i) => {
   const customer = pick(customers);
   return {
@@ -153,7 +213,10 @@ for (const order of orders) {
 // Compute orders.total_amount from items
 const orderTotals = new Map<string, number>();
 for (const it of items) {
-  orderTotals.set(it.order_id, (orderTotals.get(it.order_id) ?? 0) + it.subtotal);
+  orderTotals.set(
+    it.order_id,
+    (orderTotals.get(it.order_id) ?? 0) + it.subtotal,
+  );
 }
 
 const esc = (s: string) => s.replace(/'/g, "''");
