@@ -10,6 +10,9 @@ export { defineArivie } from "./define.js";
 export { localWorkspace } from "./local-workspace.js";
 export type { LocalWorkspaceOptions } from "./local-workspace.js";
 export { mcpSource } from "./sources-factory.js";
+// Convenience re-exports — author entities in TS without a second import.
+export { composeSemantic, defineEntity } from "@arivie/semantic";
+export type { ComposeSemanticOptions, Entity } from "@arivie/semantic";
 export {
   getCurrentUserContext,
   runWithUserContext,

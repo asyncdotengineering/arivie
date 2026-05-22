@@ -59,6 +59,8 @@ Read [`./docs/`](./docs/) for the live site. Quickstart below gets you a streame
 
 ## Quickstart
 
+### 1. Install
+
 ```bash
 mkdir my-agent && cd my-agent
 pnpm init
@@ -69,17 +71,105 @@ pnpm dlx @arivie/cli init   # scaffolds arivie.config.ts + semantic/ + skills/
 pnpm dlx @arivie/cli setup  # creates arivie_reader DB role, runs Mastra Memory migrations
 ```
 
-Then in `scripts/ask.ts`:
+### 2. Author your first entity — the semantic layer
+
+**The semantic layer is the single biggest determinant of answer quality.** Invest 80% of your effort here. An entity is a YAML or TS declaration of what the agent can query: the table name, the measures (aggregations like `revenue`), the dimensions you can group by, the segments (named time/status filters), and the joins that walk to related entities.
+
+Two ways to author — both produce the same runtime shape, pick whichever your team prefers.
+
+**Option A — YAML (canonical, non-engineers can edit):**
+
+```yaml
+# semantic/entities/orders.yml
+name: orders
+description: |
+  Orders placed by customers. One row per order.
+  IMPORTANT: total_amount is AFTER discounts but BEFORE shipping fees.
+  For revenue, always filter status = 'completed'.
+grain: one row per order
+primary_key: id
+
+measures:
+  - name: revenue
+    description: Net revenue (completed orders only, excludes shipping)
+    sql: "SUM(total_amount) FILTER (WHERE status = 'completed')"
+  - name: order_count
+    description: Count of orders (excludes cancelled)
+    sql: "COUNT(*) FILTER (WHERE status != 'cancelled')"
+
+dimensions:
+  - name: status
+    sql: status
+    values: [pending, completed, refunded, cancelled]
+    description: "'completed' = fulfilled and paid. Use for revenue."
+  - name: created_at
+    sql: created_at
+    type: timestamp
+
+segments:
+  - name: current_quarter
+    sql: "created_at >= date_trunc('quarter', CURRENT_DATE)"
+  - name: last_30_days
+    sql: "created_at >= CURRENT_DATE - INTERVAL '30 days'"
+```
+
+**Option B — TypeScript (typed, lives next to your code):**
 
 ```ts
+import { defineEntity, composeSemantic } from "@arivie/core";
+
+export const orders = defineEntity({
+  name: "orders",
+  description: "Customer orders. One row per order.",
+  grain: "one row per order",
+  primary_key: "id",
+  measures: [
+    { name: "revenue", description: "Net revenue (completed only)",
+      sql: "SUM(total_amount) FILTER (WHERE status = 'completed')" },
+    { name: "order_count", description: "Count (excludes cancelled)",
+      sql: "COUNT(*) FILTER (WHERE status != 'cancelled')" },
+  ],
+  dimensions: [
+    { name: "status", sql: "status", values: ["pending", "completed", "refunded", "cancelled"] },
+    { name: "created_at", sql: "created_at", type: "timestamp" },
+  ],
+  segments: [
+    { name: "current_quarter", sql: "created_at >= date_trunc('quarter', CURRENT_DATE)" },
+    { name: "last_30_days", sql: "created_at >= CURRENT_DATE - INTERVAL '30 days'" },
+  ],
+});
+
+// Compose multiple TS-authored entities into a SemanticLayer:
+export const semantic = composeSemantic({ entities: [orders /*, customers, products */] });
+```
+
+**What goes where:**
+- **measures** — aggregations the agent can name (`revenue`, `avg_order_value`, `prime_cost_pct`). Each ships canonical SQL so the agent doesn't reinvent it across turns.
+- **dimensions** — columns you can group by or filter on. `values: [...]` enables enum-aware narrowing for the agent.
+- **segments** — named filters (time ranges, status sets) the agent can reference instead of hand-rolling. `last_30_days` is a segment.
+- **joins** — `joins: [{ to: "customers", on: "orders.customer_id = customers.id", type: "many_to_one" }]` — walk to related entities for cross-entity queries.
+- **hints** — free-form prose the agent reads before composing SQL (`hints: ["Always filter status = 'completed' for revenue."]`).
+- **description** — read by the agent for entity selection. Make it rich; this is what determines whether the agent picks `orders` for "what did we sell?"
+
+### 3. Wire `defineArivie` and ask
+
+```ts
+// scripts/ask.ts
 import { defineArivie, localWorkspace } from "@arivie/core";
 import { postgresAdapter } from "@arivie/db-postgres";
 import { openai } from "@ai-sdk/openai";
 
+// If using YAML (Option A above), point at the directory:
+const semanticConfig = { path: "./semantic", mode: "preload" as const };
+
+// If using TS (Option B above), pass the composed layer:
+// import { semantic } from "./semantic";
+// const semanticConfig = { layer: semantic, mode: "preload" as const, path: "" };
+
 const instance = await defineArivie({
   owner: { id: "acme", name: "Acme" },
   model: openai("gpt-5-mini"),
-  semantic: { path: "./semantic", mode: "preload" },
+  semantic: semanticConfig,
   skills: "./skills",
   sources: {
     postgres: postgresAdapter({ url: process.env.DATABASE_URL! }),
@@ -106,33 +196,17 @@ console.log(result.artifacts);   // files the agent wrote
 
 That's everything. One agent, one turn, SQL + workspace tools attached. Zero `as any`.
 
+> 💡 **Tip:** As your semantic layer grows, run `pnpm dlx arivie types` to generate `.arivie/types.ts` — typed handles for every entity/measure/dimension/segment/skill. Then `compile_metric` calls narrow to the exact measures you've declared. The Drizzle move for analytics.
+
 ---
 
-## A 30-second tour of the surface
+## A 30-second tour of the multi-source surface
 
 ```ts
 import { defineArivie, localWorkspace, mcpSource } from "@arivie/core";
 import { postgresAdapter } from "@arivie/db-postgres";
-import { defineEntity } from "@arivie/semantic";
 
-// 1. Define an entity in TypeScript (or use YAML + `arivie types` codegen).
-const orders = defineEntity({
-  name: "orders",
-  description: "Customer orders.",
-  grain: "one row per order",
-  primary_key: "id",
-  measures: [
-    { name: "revenue", description: "Total revenue", sql: "SUM(total_amount)" },
-  ],
-  dimensions: [
-    { name: "status", sql: "status", values: ["pending", "completed", "refunded"] },
-  ],
-  segments: [
-    { name: "current_quarter", sql: "created_at >= date_trunc('quarter', CURRENT_DATE)" },
-  ],
-});
-
-// 2. Compose multi-source: SQL + MCP + workspace tools in one config.
+// Multi-source: SQL + arbitrary MCP servers + workspace tools, one config.
 const instance = await defineArivie({
   owner: { id: "acme", name: "Acme" },
   model: openai("gpt-5-mini"),
@@ -148,9 +222,9 @@ const instance = await defineArivie({
   resolveUser: ({ req }) => myAuth.resolve(req),
 });
 
-// 3. Or expose Arivie AS an MCP server (Claude Desktop, Cursor, etc. can connect):
-//    $ arivie mcp              # stdio
-//    $ arivie mcp --http --port 8181
+// Or expose Arivie AS an MCP server (Claude Desktop, Cursor, etc. can connect):
+//   $ arivie mcp              # stdio
+//   $ arivie mcp --http --port 8181
 ```
 
 ---

@@ -26,6 +26,8 @@ export type {
 } from "./types.js";
 export { parseEntity, type Result } from "./parse.js";
 export { defineEntity } from "./define.js";
+export { composeSemantic } from "./compose.js";
+export type { ComposeSemanticOptions } from "./compose.js";
 export { loadSemanticLayer, loadSemanticLayerSync } from "./load.js";
 export { estimateTokens, formatLintReport, lint } from "./lint.js";
 export { codegen } from "./codegen.js";
