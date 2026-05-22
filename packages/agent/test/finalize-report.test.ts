@@ -124,10 +124,18 @@ describe("finalizeReportTool", () => {
     expect(parsed).toEqual(FINALIZE_INPUT);
   });
 
-  it("execute echoes sql, csvResults, and narrative", async () => {
+  it("execute returns sql, csvResults, narrative, and a workspace path", async () => {
     const tool = finalizeReportTool();
-    const result = await tool.execute!(FINALIZE_INPUT, {});
-    expect(result).toEqual(FINALIZE_INPUT);
+    const result = (await tool.execute!(FINALIZE_INPUT, {})) as {
+      sql: string;
+      csvResults: string;
+      narrative: string;
+      path: string;
+    };
+    expect(result.sql).toBe(FINALIZE_INPUT.sql);
+    expect(result.csvResults).toBe(FINALIZE_INPUT.csvResults);
+    expect(result.narrative).toBe(FINALIZE_INPUT.narrative);
+    expect(result.path).toMatch(/^reports\/.+\.md$/);
   });
 });
 
@@ -270,7 +278,8 @@ describe("finalize_report stream termination (stopWhen)", () => {
     const finalizeResult = toolResults.find(
       (result) => result.payload.toolName === "finalize_report",
     );
-    expect(finalizeResult?.payload.result).toEqual(FINALIZE_INPUT);
+    expect(finalizeResult?.payload.result).toMatchObject(FINALIZE_INPUT);
+    expect(finalizeResult?.payload.result).toHaveProperty("path");
   }, 30_000);
 });
 
@@ -324,6 +333,7 @@ describe("finalize_report generate termination (stopWhen)", () => {
     const finalizeResult = steps
       .flatMap((step) => step.toolResults ?? [])
       .find((entry) => entry.payload.toolName === "finalize_report");
-    expect(finalizeResult?.payload.result).toEqual(FINALIZE_INPUT);
+    expect(finalizeResult?.payload.result).toMatchObject(FINALIZE_INPUT);
+    expect(finalizeResult?.payload.result).toHaveProperty("path");
   }, 30_000);
 });

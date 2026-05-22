@@ -119,8 +119,9 @@ describe("defineArivie sandboxed workspace (v02-S2-04)", () => {
           finalizeReport: true,
         },
         skills: skillsPackagePath,
+        storage: mockPostgres(),
         sources: {
-          postgres: { adapter: mockPostgres(), description: "Test source." },
+          postgres: { kind: "adapter", adapter: mockPostgres(), description: "Test source." },
         },
         semantic: { path: sem5FixturePath, mode: "preload" },
         resolveUser: async () => ({
@@ -165,8 +166,9 @@ describe("defineArivie sandboxed workspace (v02-S2-04)", () => {
           finalizeReport: true,
           bash: true,
         },
+        storage: mockPostgres(),
         sources: {
-          postgres: { adapter: mockPostgres(), description: "Test source." },
+          postgres: { kind: "adapter", adapter: mockPostgres(), description: "Test source." },
         },
         semantic: { path: sem5FixturePath, mode: "preload" },
         resolveUser: async () => ({
@@ -217,8 +219,9 @@ describe.skipIf(!hasVercelBenchCreds())(
           finalizeReport: true,
         },
         skills: skillsPackagePath,
+        storage: mockPostgres(),
         sources: {
-          postgres: { adapter: mockPostgres(), description: "Test source." },
+          postgres: { kind: "adapter", adapter: mockPostgres(), description: "Test source." },
         },
         semantic: { path: sem5FixturePath, mode: "preload" },
         resolveUser: async () => ({

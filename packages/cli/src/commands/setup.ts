@@ -139,7 +139,7 @@ export const setupCommand = defineCommand({
   meta: {
     name: "setup",
     description:
-      "Create DB role, run Mastra Memory migrations, optional RAG index, owner smoke test",
+      "Create DB role, run Mastra Memory migrations, optional RAG index, owner smoke test. Idempotent.",
   },
   args: {
     config: {
@@ -147,10 +147,22 @@ export const setupCommand = defineCommand({
       description: "Path to arivie.config.ts",
       default: "./arivie.config.ts",
     },
+    url: {
+      type: "string",
+      description:
+        "Postgres URL — when set, skip loading arivie.config.ts and run setup against this URL directly (useful for first-time installs / CI bootstrap).",
+    },
+    owner: {
+      type: "string",
+      description:
+        "Owner id to write to arivie_owner_identity. Required when --url is set; otherwise read from arivie.config.ts.",
+    },
   },
   async run({ args }) {
     try {
-      const config = await loadArivieConfig(args.config);
+      const config = args.url
+        ? await configFromUrl(args.url, args.owner)
+        : await loadArivieConfig(args.config);
       const result = await runSetup(config);
       console.log(result.roleMessage);
       console.log(result.mastraMessage);
@@ -165,3 +177,33 @@ export const setupCommand = defineCommand({
     }
   },
 });
+
+async function configFromUrl(
+  url: string,
+  owner: string | undefined,
+): Promise<ArivieConfig> {
+  if (!owner) {
+    throw new Error("--owner is required when --url is supplied");
+  }
+  const { postgresAdapter } = await import("@arivie/db-postgres");
+  const pg = postgresAdapter({ url });
+  return {
+    owner: { id: owner, name: owner },
+    storage: pg,
+    model: {} as never,
+    workspace: { rootDir: "./semantic" },
+    sources: {
+      postgres: {
+        kind: "adapter",
+        adapter: pg,
+        description: "First-call provisioning source.",
+      },
+    },
+    semantic: { path: "./semantic", mode: "preload" },
+    resolveUser: async () => ({
+      userId: "cli",
+      permissions: [],
+      dbRole: READER_ROLE,
+    }),
+  };
+}

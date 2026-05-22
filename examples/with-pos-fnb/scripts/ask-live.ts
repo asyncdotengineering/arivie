@@ -130,6 +130,11 @@ async function main(): Promise<void> {
 
   const { model, provider, modelId } = resolveModel();
 
+  const pg = postgresAdapter({
+    url: databaseUrl,
+    readOnlyRole: "arivie_reader",
+  });
+
   const instance = await defineArivie({
     owner: {
       id: process.env.ARIVIE_OWNER_ID ?? "lumiere-chain",
@@ -139,12 +144,11 @@ async function main(): Promise<void> {
     semantic: { path: semanticPath, mode: "preload" },
     skills: skillsPath,
     skillsMode: "auto",
+    storage: pg,
     sources: {
       postgres: {
-        adapter: postgresAdapter({
-          url: databaseUrl,
-          readOnlyRole: "arivie_reader",
-        }),
+        kind: "adapter",
+        adapter: pg,
         description:
           "Lumière F&B operational Postgres — orders, outlets, customers, products, payments, shifts.",
         useWhen:

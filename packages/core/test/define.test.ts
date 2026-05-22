@@ -119,15 +119,14 @@ describeIntegration.sequential("@arivie/core defineArivie integration", () => {
     await mkdir(join(semanticPath, "entities"), { recursive: true });
     await writeFile(join(semanticPath, "entities", ".gitkeep"), "");
 
+    const pg = postgresAdapter({ url: connectionUrl });
     const warmup = await defineArivie({
       owner: { id: "test-owner", name: "Test" },
       model: stubModel,
       workspace: { rootDir: semanticPath },
+      storage: pg,
       sources: {
-        postgres: {
-          adapter: postgresAdapter({ url: connectionUrl }),
-          description: "Test source.",
-        },
+        postgres: { kind: "adapter", adapter: pg, description: "Test source." },
       },
       semantic: { path: semanticPath, mode: "auto" as const },
       resolveUser: async () => ({
@@ -228,8 +227,9 @@ describeIntegration.sequential("@arivie/core defineArivie integration", () => {
       owner: { id: ownerId, name: "Test" },
       model: stubModel,
       workspace: { rootDir: semanticPath },
+      storage: postgres,
       sources: {
-        postgres: { adapter: postgres, description: "Test source." },
+        postgres: { kind: "adapter", adapter: postgres, description: "Test source." },
       },
       semantic: { path: semanticPath, mode: "auto" as const },
       resolveUser: async () => ({
@@ -389,8 +389,9 @@ describeIntegration.sequential("@arivie/core defineArivie integration", () => {
         owner: { id: "test-owner", name: "Test" },
         model: stubModel,
         workspace: { rootDir: semanticPath },
+        storage: flakyDb,
         sources: {
-          postgres: { adapter: flakyDb, description: "Flaky test source." },
+          postgres: { kind: "adapter", adapter: flakyDb, description: "Flaky test source." },
         },
         semantic: { path: semanticPath, mode: "auto" as const },
         resolveUser: async () => ({
@@ -438,8 +439,9 @@ describeIntegration.sequential("@arivie/core defineArivie integration", () => {
         owner: { id: "test-owner", name: "Test" },
         model: stubModel,
         workspace: { rootDir: semanticPath },
+        storage: countingDb,
         sources: {
-          postgres: { adapter: countingDb, description: "Counting test source." },
+          postgres: { kind: "adapter", adapter: countingDb, description: "Counting test source." },
         },
         semantic: { path: semanticPath, mode: "auto" as const },
         resolveUser: async () => ({

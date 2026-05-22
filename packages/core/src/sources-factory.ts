@@ -27,8 +27,43 @@ export function mcpSource(
 ): SourceConfigEntry {
   const { description, useWhen, ...mcp } = config;
   return {
+    kind: "mcp",
     mcp,
     description,
     ...(useWhen !== undefined ? { useWhen } : {}),
+  };
+}
+
+/**
+ * One-line factory for an adapter-backed source entry. Wraps a
+ * `SourceAdapter` (typically from `postgresAdapter`) with the required
+ * description so the agent's system prompt can advertise it correctly.
+ *
+ * ```ts
+ * import { defineArivie, adapterSource } from "@arivie/core";
+ * import { postgresAdapter } from "@arivie/db-postgres";
+ *
+ * await defineArivie({
+ *   sources: {
+ *     commerce: adapterSource({
+ *       adapter: postgresAdapter({ url, readOnlyRole }),
+ *       description: "Commerce DB — customers, orders, products",
+ *       useWhen: "any revenue / orders / customer / product question",
+ *     }),
+ *   },
+ *   ...,
+ * });
+ * ```
+ */
+export function adapterSource<TQuery = unknown>(opts: {
+  adapter: import("./types.js").SourceAdapter<TQuery>;
+  description: string;
+  useWhen?: string;
+}): SourceConfigEntry {
+  return {
+    kind: "adapter",
+    adapter: opts.adapter as import("./types.js").SourceAdapter<unknown>,
+    description: opts.description,
+    ...(opts.useWhen !== undefined ? { useWhen: opts.useWhen } : {}),
   };
 }

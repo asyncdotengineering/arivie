@@ -541,13 +541,16 @@ async function main(): Promise<void> {
         skills: skillsPackagePath,
         skillsMode: "auto",
       },
+      storage: postgres,
       sources: {
         postgres: {
+          kind: "adapter",
           adapter: postgres,
           description: "Demo operational Postgres for this cross-source skill demo.",
           useWhen: "any operational entity (customers, orders) question",
         },
         mixpanel: {
+          kind: "adapter",
           adapter: mixpanel,
           description: "Mixpanel JQL for product-event analytics in this demo.",
           useWhen: "any user-behavior, funnel, or product-event question",

@@ -405,8 +405,10 @@ async function main(): Promise<void> {
     
     model,
     workspace: { rootDir: semanticPath },
+    storage: postgres,
     sources: {
       postgres: {
+        kind: "adapter",
         adapter: postgres,
         description: "Demo Postgres for this example script.",
       },

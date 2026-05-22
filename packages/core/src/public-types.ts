@@ -27,6 +27,7 @@ export type {
   SourceAdapterExecuteResult,
   SourceConfigEntry,
   SourceMetadata,
+  StorageAdapter,
   WorkspaceConfig,
   SemanticConfig,
   ToolCallEvent,

@@ -112,16 +112,20 @@ describeIntegration.sequential(
     });
 
     it("wires execute_postgres, execute_mock, namespaced MCP tools, and passes assertToolShape", async () => {
+      const pg = postgresAdapter({ url: connectionUrl });
       const config = {
         owner: { id: "test-owner", name: "Test" },
         model: stubModel,
         workspace: { rootDir: semanticPath },
+        storage: pg,
         sources: {
           postgres: {
-            adapter: postgresAdapter({ url: connectionUrl }),
+            kind: "adapter" as const,
+            adapter: pg,
             description: "Postgres test source.",
           },
           mock: {
+            kind: "mcp" as const,
             mcp: {
               command: "tsx",
               args: [mockServerPath],
@@ -206,16 +210,20 @@ describeIntegration.sequential(
     }, 120_000);
 
     it("dispose closes MCP child process", async () => {
+      const pg = postgresAdapter({ url: connectionUrl });
       const config = {
         owner: { id: "test-owner", name: "Test" },
         model: stubModel,
         workspace: { rootDir: semanticPath },
+        storage: pg,
         sources: {
           postgres: {
-            adapter: postgresAdapter({ url: connectionUrl }),
+            kind: "adapter" as const,
+            adapter: pg,
             description: "Postgres test source.",
           },
           mock: {
+            kind: "mcp" as const,
             mcp: {
               command: "tsx",
               args: [mockServerPath],

@@ -1,14 +1,35 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { join } from "node:path";
 import * as ts from "typescript";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { runCli } from "../src/cli.js";
 import { writeScaffold } from "../src/commands/init.js";
+import {
+  arivieConfigTemplate,
+  entitiesGitkeepTemplate,
+  envExampleTemplate,
+  routeTemplate,
+} from "../src/scaffold.js";
 
-const FIXTURES = join(dirname(fileURLToPath(import.meta.url)), "fixtures/expected-init");
+// Single source of truth — what the CLI writes IS what the scaffold
+// templates produce. No hand-maintained fixtures to drift against.
+// `--yes --name=foo` uses scaffold defaults for ownerId / ownerName.
+// See `packages/cli/src/commands/init.ts` SCAFFOLD_DEFAULTS.
+const SCAFFOLD_OPTS = {
+  projectName: "foo",
+  dbUrl: "postgresql://localhost:5432/arivie",
+  ownerId: "dogfood-test",
+  ownerName: "Test Owner",
+  mode: "auto" as const,
+};
+const EXPECTED: Record<string, string> = {
+  "arivie.config.ts": arivieConfigTemplate(SCAFFOLD_OPTS),
+  "semantic/entities/.gitkeep": entitiesGitkeepTemplate(),
+  "app/api/arivie/route.ts": routeTemplate(),
+  ".env.example": envExampleTemplate(SCAFFOLD_OPTS),
+};
 
 vi.mock("@clack/prompts", () => ({
   intro: vi.fn(),
@@ -42,21 +63,13 @@ describe("init command", () => {
     await rm(workDir, { recursive: true, force: true });
   });
 
-  it("scaffolds --yes --name=foo matching committed fixtures", async () => {
+  it("scaffolds --yes --name=foo matching scaffold templates exactly", async () => {
     const code = await runCli(["init", "--yes", "--name=foo"]);
     expect(code).toBe(0);
 
-    const files = [
-      "arivie.config.ts",
-      "semantic/entities/.gitkeep",
-      "app/api/arivie/route.ts",
-      ".env.example",
-    ] as const;
-
-    for (const file of files) {
+    for (const [file, expected] of Object.entries(EXPECTED)) {
       const actual = await readFile(join(workDir, file), "utf8");
-      const expected = await readFile(join(FIXTURES, file), "utf8");
-      expect(actual).toBe(expected);
+      expect(actual, `file ${file} drifted from scaffold template`).toBe(expected);
     }
   });
 

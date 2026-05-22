@@ -1,6 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 import type { MastraMCPServerDefinition } from "@mastra/mcp";
-import type { PostgresAdapter } from "@arivie/db-postgres";
 import { ArivieConfigError } from "./errors.js";
 import type {
   MCPServerConfig,
@@ -12,22 +11,22 @@ import type {
 
 function isMcpEntry(
   entry: SourceConfigEntry,
-): entry is { mcp: MCPServerConfig; description: string; useWhen?: string } {
+): entry is Extract<SourceConfigEntry, { kind: "mcp" }> {
+  return entry != null && typeof entry === "object" && entry.kind === "mcp";
+}
+
+function isAdapterEntry(
+  entry: SourceConfigEntry,
+): entry is Extract<SourceConfigEntry, { kind: "adapter" }> {
   return (
-    entry != null &&
-    typeof entry === "object" &&
-    "mcp" in entry &&
-    !("adapter" in entry)
+    entry != null && typeof entry === "object" && entry.kind === "adapter"
   );
 }
 
-export function unwrapSourceEntry(entry: SourceConfigEntry): SourceAdapter<unknown> {
-  if (
-    entry != null &&
-    typeof entry === "object" &&
-    "adapter" in entry &&
-    entry.adapter != null
-  ) {
+export function unwrapSourceEntry(
+  entry: SourceConfigEntry,
+): SourceAdapter<unknown> {
+  if (isAdapterEntry(entry)) {
     return entry.adapter;
   }
   if (isMcpEntry(entry)) {
@@ -36,7 +35,7 @@ export function unwrapSourceEntry(entry: SourceConfigEntry): SourceAdapter<unkno
     );
   }
   throw new ArivieConfigError(
-    "Invalid source entry — expected { adapter, description } or { mcp, description }",
+    'Invalid source entry — expected { kind: "adapter", adapter, description } or { kind: "mcp", mcp, description }',
   );
 }
 
@@ -59,7 +58,9 @@ export function readSourceMetadata(
   };
 }
 
-function mcpEntryToServerConfig(mcp: MCPServerConfig): MastraMCPServerDefinition {
+function mcpEntryToServerConfig(
+  mcp: MCPServerConfig,
+): MastraMCPServerDefinition {
   if (mcp.url != null && mcp.url.length > 0) {
     return { url: new URL(mcp.url) };
   }
@@ -96,12 +97,12 @@ export function wrapMcpImportError(err: unknown): never {
 
 async function resolveMcpEntry(
   name: string,
-  entry: { mcp: MCPServerConfig },
+  entry: Extract<SourceConfigEntry, { kind: "mcp" }>,
 ): Promise<{
   adapter: SourceAdapter<unknown>;
   tools: Record<string, unknown>;
 }> {
-  let makeMCPSourceAdapter: typeof import("@arivie/source-mcp")["makeMCPSourceAdapter"];
+  let makeMCPSourceAdapter: (typeof import("@arivie/source-mcp"))["makeMCPSourceAdapter"];
   try {
     ({ makeMCPSourceAdapter } = await import("@arivie/source-mcp"));
   } catch (err: unknown) {
@@ -139,7 +140,7 @@ export async function resolveSources(
   return { sources: out, mcpTools, metadata };
 }
 
-/** @deprecated Use {@link resolveSources} for configs that may include `{ mcp }` entries. */
+/** @deprecated Use {@link resolveSources} for configs that may include MCP entries. */
 export function normalizeSources(
   sources: SourcesConfig,
 ): Record<string, SourceAdapter<unknown>> {
@@ -153,31 +154,4 @@ export function normalizeSources(
     out[name] = unwrapSourceEntry(entry);
   }
   return out;
-}
-
-export function postgresAdapterFromSources(
-  sources: Record<string, SourceAdapter<unknown>>,
-): PostgresAdapter {
-  const postgres = sources.postgres;
-  if (postgres == null) {
-    throw new ArivieConfigError(
-      'sources must include a "postgres" entry for Mastra storage and owner verification in Sprint 0',
-    );
-  }
-  if (postgres.kind !== "postgres") {
-    throw new ArivieConfigError('sources.postgres must be a postgres SourceAdapter (kind: "postgres")');
-  }
-  if (!("url" in postgres) || !("sql" in postgres)) {
-    throw new ArivieConfigError("sources.postgres must implement PostgresAdapter");
-  }
-  return postgres as unknown as PostgresAdapter;
-}
-
-export function extractConnectionString(adapter: PostgresAdapter): string {
-  if (typeof adapter.url === "string" && adapter.url.length > 0) {
-    return adapter.url;
-  }
-  throw new ArivieConfigError(
-    "PostgresAdapter must expose a connection url for Mastra storage",
-  );
 }

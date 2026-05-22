@@ -41,8 +41,9 @@ const validMinimalConfig = {
   model: mockModel,
   workspace: { rootDir: "./semantic" },
   semantic: { path: "./semantic", mode: "auto" as const },
+  storage: mockSource,
   sources: {
-    postgres: { adapter: mockSource, description: "Minimal config test source." },
+    postgres: { kind: "adapter", adapter: mockSource, description: "Minimal config test source." },
   },
   resolveUser,
 };

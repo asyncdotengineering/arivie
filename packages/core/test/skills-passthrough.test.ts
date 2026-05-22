@@ -97,8 +97,9 @@ describe("defineArivie workspace.skills passthrough (v02-S3-02)", () => {
         model: stubModel,
         workspace: { filesystem },
         skills: [skillsPackagePath],
+        storage: mockPostgres(),
         sources: {
-          postgres: { adapter: mockPostgres(), description: "Test source." },
+          postgres: { kind: "adapter", adapter: mockPostgres(), description: "Test source." },
         },
         semantic: { path: sem5FixturePath, mode: "preload" },
         resolveUser: async () => ({
@@ -124,8 +125,9 @@ describe("defineArivie workspace.skills passthrough (v02-S3-02)", () => {
         model: stubModel,
         workspace: { filesystem },
         skills: skillsPackagePath,
+        storage: mockPostgres(),
         sources: {
-          postgres: { adapter: mockPostgres(), description: "Test source." },
+          postgres: { kind: "adapter", adapter: mockPostgres(), description: "Test source." },
         },
         semantic: { path: sem5FixturePath, mode: "preload" },
         resolveUser: async () => ({
@@ -147,8 +149,9 @@ describe("defineArivie workspace.skills passthrough (v02-S3-02)", () => {
         owner: { id: "owner-no-skills", name: "No Skills" },
         model: stubModel,
         workspace: { filesystem },
+        storage: mockPostgres(),
         sources: {
-          postgres: { adapter: mockPostgres(), description: "Test source." },
+          postgres: { kind: "adapter", adapter: mockPostgres(), description: "Test source." },
         },
         semantic: { path: sem5FixturePath, mode: "preload" },
         resolveUser: async () => ({

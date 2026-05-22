@@ -58,11 +58,13 @@ export type MCPServerConfig = {
  */
 export type SourceConfigEntry =
   | {
+      kind: "adapter";
       adapter: SourceAdapter<unknown>;
       description: string;
       useWhen?: string;
     }
   | {
+      kind: "mcp";
       mcp: MCPServerConfig;
       description: string;
       useWhen?: string;
@@ -70,6 +72,39 @@ export type SourceConfigEntry =
 
 /** Multi-adapter declaration slot (RFC-003 v2 REQ-44). */
 export type SourcesConfig = Record<string, SourceConfigEntry>;
+
+/**
+ * Infrastructure storage adapter for the Arivie instance — backs Mastra
+ * Memory (chat threads + messages) AND the owner-identity / boundary
+ * verification on the request handler.
+ *
+ * This is separate from `sources:` by design: sources are user-named
+ * domain DBs the agent queries via `execute_<name>`. Storage is
+ * infrastructure — one per Arivie instance, always Postgres for now.
+ *
+ * Defined inline (not as `import("@arivie/db-postgres").PostgresAdapter`)
+ * to break the d.ts boot cycle — db-postgres imports from
+ * @arivie/core/types, so core's types can't reference db-postgres back.
+ * Structurally compatible with PostgresAdapter; PostgresAdapter is
+ * assignable to StorageAdapter.
+ */
+export interface StorageAdapter {
+  readonly kind: "postgres";
+  readonly id: string;
+  readonly url: string;
+  // Use `any` here to bridge the postgres.Sql tagged-template surface
+  // without importing the `postgres` types into core (would re-introduce
+  // the boot cycle via db-postgres's transitive dep graph). PostgresAdapter
+  // tightens this to `postgres.Sql` at the db-postgres consumer site.
+  // biome-ignore lint/suspicious/noExplicitAny: see comment above
+  sql: any;
+  verifyOwnerIdentity(expectedOwnerId: string): Promise<void>;
+  setupRole(
+    role: string,
+    options?: { allowedTables?: string[] },
+  ): Promise<void>;
+  close?(): Promise<void>;
+}
 
 /**
  * Source metadata pulled off a {@link SourceConfigEntry} — emitted by
@@ -88,6 +123,12 @@ export interface SourceMetadata {
  */
 export interface ArivieConfig {
   owner: { id: string; name: string };
+  /**
+   * Infrastructure storage for Mastra Memory (threads + messages) and
+   * owner-identity verification. Always Postgres for now. Separate from
+   * `sources:` by design — those are user-named domain DBs.
+   */
+  storage: StorageAdapter;
   model: LanguageModel;
   semantic: SemanticConfig;
   sources: SourcesConfig;
@@ -422,15 +463,19 @@ export interface ArivieInstance {
    * `toolCalls`, `sql`, and `artifacts` extracted up front.
    */
   ask(opts: AskOptions): Promise<AskResult>;
+  /**
+   * Web Standard request handler. Drop into ANY web host that speaks
+   * Fetch — no framework adapter needed. See `defineArivie` for usage
+   * patterns per framework.
+   */
   handler: (req: Request) => Promise<Response>;
-  next: { POST: (req: Request) => Promise<Response> };
+  /** Pre-wired Hono app — convenience for the Hono case. */
   hono: import("hono").Hono;
-  bun: { fetch: (req: Request) => Promise<Response> };
-  worker: ExportedHandler;
   /** Close all source adapters that expose {@link SourceAdapter.close}. */
   dispose(): Promise<void>;
 }
 
+/** @deprecated Use `arivie.handler` directly — no adapter needed. */
 export interface ExportedHandler {
   fetch(
     request: Request,
