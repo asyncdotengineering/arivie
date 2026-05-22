@@ -199,7 +199,12 @@ async function main(): Promise<void> {
     semantic: { path: semanticPath, mode: "preload" },
     skills: skillsPath,
     skillsMode: "auto",
-    sources: { postgres },
+    sources: {
+      postgres: {
+        adapter: postgres,
+        description: "Demo Postgres for this example script.",
+      },
+    },
     workspace: localWorkspace({ at: sandboxRoot }),
     compileMetric: true,
     resolveUser: async () => user,

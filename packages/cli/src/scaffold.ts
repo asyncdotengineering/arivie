@@ -23,10 +23,18 @@ export const arivie = await defineArivie({
   model: anthropic("claude-sonnet-4-20250514"),
   workspace: { rootDir: "./semantic" },
   sources: {
-    postgres: postgresAdapter({
-      url: process.env.DATABASE_URL!,
-      readOnlyRole: "arivie_reader",
-    }),
+    postgres: {
+      adapter: postgresAdapter({
+        url: process.env.DATABASE_URL!,
+        readOnlyRole: "arivie_reader",
+      }),
+      // Required — one sentence on what's in this source. The agent reads
+      // this to know when to call execute_postgres for a question.
+      description: "TODO: describe your Postgres source — e.g. \\"Production OLTP — customers, orders, payments\\".",
+      // Optional — when to pick this source over another. Only useful
+      // when you declare 2+ sources.
+      // useWhen: "any operational entity (customers, orders) question",
+    },
   },
   semantic: { path: "./semantic", mode: ${JSON.stringify(opts.mode)} },
   resolveUser: async (_req) => {

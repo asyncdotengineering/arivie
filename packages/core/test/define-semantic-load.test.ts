@@ -49,7 +49,9 @@ describe("defineArivie semantic load (KI-1-01)", () => {
       owner: { id: "owner-1", name: "Acme" },
       model: mockModel,
       workspace: { rootDir: missingRoot },
-      sources: { postgres: mockSource },
+      sources: {
+        postgres: { adapter: mockSource, description: "Test source." },
+      },
       semantic: { path: missingRoot, mode: "auto" },
       resolveUser,
     });
@@ -79,7 +81,9 @@ describe("defineArivie semantic load (KI-1-01)", () => {
         owner: { id: "owner-1", name: "Acme" },
         model: mockModel,
         workspace: { rootDir: root },
-        sources: { postgres: mockSource },
+        sources: {
+          postgres: { adapter: mockSource, description: "Test source." },
+        },
         semantic: { path: root, mode: "auto" },
         resolveUser,
       }),

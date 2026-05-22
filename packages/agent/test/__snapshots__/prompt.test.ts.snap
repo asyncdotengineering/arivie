@@ -486,6 +486,7 @@ After you know the schema, call \`execute_<sourceName>\` with read-only SQL.
 ## Declared sources
 
 ### execute_postgres
+Demo postgres source.
 Run read-only SQL (SELECT or WITH only) against the \`postgres\` source via \`execute_postgres\`.
 
 ## compile_metric tool

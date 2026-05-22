@@ -32,6 +32,7 @@ describe("resolveSources MCP dispatch", () => {
     const resolved = await resolveSources({
       mock: {
         mcp: { command: "node", args: ["server.js"] },
+        description: "Mock MCP source for the dispatch test.",
       },
     });
 
@@ -71,8 +72,14 @@ describe("resolveSources MCP dispatch", () => {
       });
 
     const resolved = await resolveSources({
-      linear: { mcp: { command: "linear-mcp-server" } },
-      slack: { mcp: { command: "slack-mcp-server", env: { SLACK_TOKEN: "x" } } },
+      linear: {
+        mcp: { command: "linear-mcp-server" },
+        description: "Linear MCP source.",
+      },
+      slack: {
+        mcp: { command: "slack-mcp-server", env: { SLACK_TOKEN: "x" } },
+        description: "Slack MCP source.",
+      },
     });
 
     expect(makeMCPSourceAdapter).toHaveBeenCalledTimes(2);

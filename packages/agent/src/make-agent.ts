@@ -35,9 +35,14 @@ export interface MakeAgentOptions {
   /**
    * Per-source metadata (description + optional useWhen) rendered into
    * the system prompt so the agent can pick the right `execute_<name>`
-   * tool. Must align by name with the keys of `sources`.
+   * tool. Must align by name with the keys of `sources` when provided.
+   *
+   * Optional at this layer for direct `makeAgent` callers (tests, custom
+   * orchestrators). `defineArivie` always supplies it. When omitted,
+   * each source falls back to a generic "<name> source" descriptor —
+   * functional for the model but less informative than a real description.
    */
-  sourceMetadata: ReadonlyArray<{
+  sourceMetadata?: ReadonlyArray<{
     name: string;
     description: string;
     useWhen?: string;
@@ -358,7 +363,12 @@ export function makeAgent(opts: MakeAgentOptions): Agent {
       mode: opts.contextMode,
       semantic: opts.semantic,
       compileMetricEnabled: compileMetric,
-      sources: opts.sourceMetadata,
+      sources:
+        opts.sourceMetadata ??
+        sourceNames.map((name) => ({
+          name,
+          description: `${name} source`,
+        })),
       hasFinalizeReport: registerFinalizeReport,
       skillsMode: opts.skillsMode ?? "none",
     }),

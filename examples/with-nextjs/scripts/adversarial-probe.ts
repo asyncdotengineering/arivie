@@ -405,7 +405,12 @@ async function main(): Promise<void> {
     
     model,
     workspace: { rootDir: semanticPath },
-    sources: { postgres },
+    sources: {
+      postgres: {
+        adapter: postgres,
+        description: "Demo Postgres for this example script.",
+      },
+    },
     semantic: { path: semanticPath, mode: "preload" },
     compileMetric: true,
     resolveUser: async () => user,

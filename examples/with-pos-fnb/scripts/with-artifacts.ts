@@ -78,7 +78,16 @@ async function main(): Promise<void> {
     skills: skillsPath,
     skillsMode: "auto",
     sources: {
-      postgres: postgresAdapter({ url: databaseUrl, readOnlyRole: "arivie_reader" }),
+      postgres: {
+        adapter: postgresAdapter({
+          url: databaseUrl,
+          readOnlyRole: "arivie_reader",
+        }),
+        description:
+          "Lumière F&B operational Postgres — same schema as the main example.",
+        useWhen:
+          "any revenue, orders, menu, or outlet question when running the artifacts smoke",
+      },
     },
     workspace: localWorkspace({ at: workspaceRoot, bash: true }),
     compileMetric: true,

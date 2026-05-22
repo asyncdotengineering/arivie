@@ -87,7 +87,13 @@ export async function getArivieRuntime(env: ArivieWorkerEnv): Promise<{
       owner: { id: ownerId, name: "With Cloudflare DO Example" },
       model: resolveModel(env),
       workspace: { rootDir: "./semantic" },
-      sources: { postgres },
+      sources: {
+        postgres: {
+          adapter: postgres,
+          description: "Demo Postgres reached from a Cloudflare Worker — read-only role enforced via session-scoped query rewriting.",
+          useWhen: "any analytics question routed through the Worker runtime",
+        },
+      },
       // `path` is required by the config schema but unused at runtime when
       // `layer` is set — the Worker runtime can't read disk.
       semantic: { path: "./semantic", layer: semanticLayer, mode: "preload" },

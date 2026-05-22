@@ -123,7 +123,12 @@ describeIntegration.sequential("@arivie/core defineArivie integration", () => {
       owner: { id: "test-owner", name: "Test" },
       model: stubModel,
       workspace: { rootDir: semanticPath },
-      sources: { postgres: postgresAdapter({ url: connectionUrl }) },
+      sources: {
+        postgres: {
+          adapter: postgresAdapter({ url: connectionUrl }),
+          description: "Test source.",
+        },
+      },
       semantic: { path: semanticPath, mode: "auto" as const },
       resolveUser: async () => ({
         userId: "u1",
@@ -223,7 +228,9 @@ describeIntegration.sequential("@arivie/core defineArivie integration", () => {
       owner: { id: ownerId, name: "Test" },
       model: stubModel,
       workspace: { rootDir: semanticPath },
-      sources: { postgres },
+      sources: {
+        postgres: { adapter: postgres, description: "Test source." },
+      },
       semantic: { path: semanticPath, mode: "auto" as const },
       resolveUser: async () => ({
         userId: "u1",
@@ -382,7 +389,9 @@ describeIntegration.sequential("@arivie/core defineArivie integration", () => {
         owner: { id: "test-owner", name: "Test" },
         model: stubModel,
         workspace: { rootDir: semanticPath },
-        sources: { postgres: flakyDb },
+        sources: {
+          postgres: { adapter: flakyDb, description: "Flaky test source." },
+        },
         semantic: { path: semanticPath, mode: "auto" as const },
         resolveUser: async () => ({
           userId: "u1",
@@ -429,7 +438,9 @@ describeIntegration.sequential("@arivie/core defineArivie integration", () => {
         owner: { id: "test-owner", name: "Test" },
         model: stubModel,
         workspace: { rootDir: semanticPath },
-        sources: { postgres: countingDb },
+        sources: {
+          postgres: { adapter: countingDb, description: "Counting test source." },
+        },
         semantic: { path: semanticPath, mode: "auto" as const },
         resolveUser: async () => ({
           userId: "u1",

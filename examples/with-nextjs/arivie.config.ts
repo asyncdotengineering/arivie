@@ -91,7 +91,22 @@ export async function getArivieRuntime(): Promise<{
       },
       model: resolveModel(),
       workspace: { rootDir: semanticPath },
-      sources: { postgres, mixpanel },
+      sources: {
+        postgres: {
+          adapter: postgres,
+          description:
+            "Demo operational Postgres for the with-nextjs example — synthetic CRM/orders schema.",
+          useWhen:
+            "anything about customers, orders, or operational entities backed by the relational DB",
+        },
+        mixpanel: {
+          adapter: mixpanel,
+          description:
+            "Mixpanel event analytics via JQL — funnels, retention, behavioral events.",
+          useWhen:
+            "any user-behavior, funnel, or product-event question that lives in product analytics, not the OLTP DB",
+        },
+      },
       semantic: { path: semanticPath, mode: "preload" },
       compileMetric: true, // JSON-IR routing for declared measures (arxiv 2502.00032)
       resolveUser: async () => ({

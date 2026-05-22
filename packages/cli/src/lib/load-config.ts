@@ -87,7 +87,13 @@ async function configFromInstance(
     owner: { id: ownerId, name: ownerId },
     model: {} as LanguageModel,
     workspace: { rootDir: "./semantic" },
-    sources: { postgres: postgresAdapter({ url: dbUrl }) },
+    sources: {
+      postgres: {
+        adapter: postgresAdapter({ url: dbUrl }),
+        description:
+          "Postgres source resolved by the Arivie CLI for ad-hoc commands.",
+      },
+    },
     semantic,
     resolveUser: async () => ({
       userId: "cli",

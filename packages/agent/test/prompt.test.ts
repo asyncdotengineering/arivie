@@ -34,7 +34,10 @@ describe("buildSystemPromptIndexed", () => {
   it("includes WORKSPACE_NAVIGATION_RULE and per-source execute tools", () => {
     const prompt = buildSystemPromptIndexed({
       compileMetricEnabled: false,
-      sources: ["postgres", "mixpanel"],
+      sources: [
+        { name: "postgres", description: "Demo postgres source." },
+        { name: "mixpanel", description: "Demo mixpanel source." },
+      ],
       hasFinalizeReport: false,
     });
 
@@ -53,7 +56,7 @@ describe("buildSystemPromptIndexed", () => {
   it("includes compile_metric and finalize_report sections when enabled", () => {
     const prompt = buildSystemPromptIndexed({
       compileMetricEnabled: true,
-      sources: ["postgres"],
+      sources: [{ name: "postgres", description: "Demo postgres source." }],
       hasFinalizeReport: true,
     });
 

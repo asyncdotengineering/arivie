@@ -6,9 +6,12 @@ export const config = {
   model: {},
   workspace: { rootDir: "./semantic" },
   sources: {
-    postgres: postgresAdapter({
-      url: process.env.DATABASE_URL ?? "postgres://localhost:5432/arivie",
-    }),
+    postgres: {
+      adapter: postgresAdapter({
+        url: process.env.DATABASE_URL ?? "postgres://localhost:5432/arivie",
+      }),
+      description: "Setup-config fixture Postgres for CLI tests.",
+    },
   },
   semantic: { path: "./semantic", mode: "auto" as const },
   resolveUser: async () => ({

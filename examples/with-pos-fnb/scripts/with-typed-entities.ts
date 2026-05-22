@@ -117,7 +117,15 @@ async function main(): Promise<void> {
     model,
     semantic: { layer, mode: "preload", path: "" },
     sources: {
-      postgres: postgresAdapter({ url: databaseUrl, readOnlyRole: "arivie_reader" }),
+      postgres: {
+        adapter: postgresAdapter({
+          url: databaseUrl,
+          readOnlyRole: "arivie_reader",
+        }),
+        description:
+          "Lumière F&B operational Postgres — used by the typed-entities smoke.",
+        useWhen: "any orders/customers/products question in the typed-entities demo",
+      },
     },
     workspace: localWorkspace({ at: workspaceRoot, bash: false }),
     compileMetric: true,

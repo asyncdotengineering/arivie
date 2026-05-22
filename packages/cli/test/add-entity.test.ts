@@ -103,7 +103,10 @@ describeIntegration.sequential("add entity orders (dogfood seed)", () => {
       model: {} as LanguageModel,
       workspace: { rootDir: "./semantic" },
       sources: {
-        postgres: postgresAdapter({ url: container.getConnectionUri() }),
+        postgres: {
+          adapter: postgresAdapter({ url: container.getConnectionUri() }),
+          description: "Test Postgres for the CLI add-entity test.",
+        },
       },
       semantic: { path: "./semantic", mode: "preload" },
       resolveUser: async () => ({

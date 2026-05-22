@@ -188,7 +188,12 @@ async function buildInstance(mode: Flags["mode"]): Promise<{
     
     model,
     workspace: { rootDir: semanticPath },
-    sources: { postgres },
+    sources: {
+      postgres: {
+        adapter: postgres,
+        description: "Demo Postgres for this example script.",
+      },
+    },
     semantic: {
       path: semanticPath,
       mode,

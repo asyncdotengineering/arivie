@@ -117,12 +117,16 @@ describeIntegration.sequential(
         model: stubModel,
         workspace: { rootDir: semanticPath },
         sources: {
-          postgres: postgresAdapter({ url: connectionUrl }),
+          postgres: {
+            adapter: postgresAdapter({ url: connectionUrl }),
+            description: "Postgres test source.",
+          },
           mock: {
             mcp: {
               command: "tsx",
               args: [mockServerPath],
             },
+            description: "Mock MCP test source.",
           },
         },
         semantic: { path: semanticPath, mode: "auto" as const },
@@ -207,12 +211,16 @@ describeIntegration.sequential(
         model: stubModel,
         workspace: { rootDir: semanticPath },
         sources: {
-          postgres: postgresAdapter({ url: connectionUrl }),
+          postgres: {
+            adapter: postgresAdapter({ url: connectionUrl }),
+            description: "Postgres test source.",
+          },
           mock: {
             mcp: {
               command: "tsx",
               args: [mockServerPath],
             },
+            description: "Mock MCP test source.",
           },
         },
         semantic: { path: semanticPath, mode: "auto" as const },
