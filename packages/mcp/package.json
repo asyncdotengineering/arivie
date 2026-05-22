@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": false,
   "type": "module",
-  "description": "Arivie Mastra MCP server — ask, query, schema, and memory tools over MCPServer.",
+  "description": "Arivie Mastra MCP server \u2014 ask, query, schema, and memory tools over MCPServer.",
   "license": "Apache-2.0",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -42,7 +42,8 @@
     "@mastra/core": "^1.35.0",
     "@mastra/mcp": "^1.7.0",
     "@modelcontextprotocol/sdk": "^1.29.0",
-    "zod": "^4.4.0"
+    "zod": "^4.4.0",
+    "@arivie/ui-catalog": "workspace:*"
   },
   "peerDependencies": {
     "@arivie/agent": "workspace:*"

@@ -1,6 +1,8 @@
 @import "tailwindcss";
 
 @source "../node_modules/streamdown/dist/index.js";
+@source "../../../packages/react/dist";
+@source "../../../node_modules/.pnpm/@arivie+react*/node_modules/@arivie/react/dist";
 
 @custom-variant dark (&:is(.dark, .dark *));
 
