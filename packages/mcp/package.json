@@ -35,8 +35,13 @@
   "dependencies": {
     "@arivie/db-postgres": "workspace:*",
     "@arivie/semantic": "workspace:*",
+    "@json-render/core": "^0.19.0",
+    "@json-render/mcp": "^0.19.0",
+    "@json-render/react": "^0.19.0",
+    "@json-render/shadcn": "^0.19.0",
     "@mastra/core": "^1.35.0",
     "@mastra/mcp": "^1.7.0",
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "zod": "^4.4.0"
   },
   "peerDependencies": {
