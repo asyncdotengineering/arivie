@@ -331,6 +331,7 @@ arivie/
 │   └── react/             # Headless React hooks for chat UI
 ├── examples/
 │   ├── with-pos-fnb/      # Full BI/BA example — F&B chain, 16 entities, 10 SOP skills
+│   ├── with-arivie-chat/  # Production-shaped Next.js chat — Mastra-native, Better Auth, artifact pane
 │   ├── with-nextjs/       # Next.js scaffold with HTTP route + chat UI
 │   ├── with-clerk/, with-workos/, with-better-auth/, with-authjs/, with-custom-jose/  # auth integrations
 │   ├── with-hono/, with-bun/, with-cloudflare-do/  # deploy targets
@@ -366,7 +367,8 @@ Arivie's design center is *"the analytics agent you ship to your tenants in a si
 Every example boots end-to-end with `pnpm install && pnpm dev`:
 
 - **[`examples/with-pos-fnb/`](./examples/with-pos-fnb/)** — F&B chain with 16 entities, 10 SOP skills, single-agent shape, multi-provider model selector (Gemini / OpenAI / xAI). The reference example.
-- **[`examples/with-nextjs/`](./examples/with-nextjs/)** — Next.js 15 App Router + streaming chat UI.
+- **[`examples/with-arivie-chat/`](./examples/with-arivie-chat/)** — Production-shaped Next.js 16 chat starter. Mastra-native (no Drizzle for chat state — threads and messages persist through Mastra Memory against the same Postgres database the analytics agent uses). Better Auth replaces Auth.js. AI SDK 6 client with streaming `handleChatStream` server-side; multi-turn memory recall verified end-to-end with Gemini 2.5 Flash. Ships an artifact pane (query / chart / report / entity renderers) that auto-upgrades `execute_<source>` and `write_report` tool outputs into rich artifact cards.
+- **[`examples/with-nextjs/`](./examples/with-nextjs/)** — minimal Next.js scaffold (HTTP route only; no chat UI). Use `with-arivie-chat` for a full chat experience.
 - **[`examples/with-clerk/`](./examples/with-clerk/)**, **[`with-workos/`](./examples/with-workos/)**, **[`with-better-auth/`](./examples/with-better-auth/)**, **[`with-authjs/`](./examples/with-authjs/)**, **[`with-custom-jose/`](./examples/with-custom-jose/)** — auth integration patterns.
 - **[`examples/with-hono/`](./examples/with-hono/)**, **[`with-bun/`](./examples/with-bun/)**, **[`with-cloudflare-do/`](./examples/with-cloudflare-do/)** — deploy targets.
 
