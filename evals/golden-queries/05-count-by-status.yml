@@ -1,0 +1,12 @@
+id: count-by-status
+category: normal
+question: "How many orders do we have in each status?"
+golden_sql: |
+  SELECT status, COUNT(*)::bigint AS order_count
+  FROM orders
+  GROUP BY status
+  ORDER BY status
+validation:
+  - result_has_rows: true
+  - column_exists: order_count
+  - column_exists: status

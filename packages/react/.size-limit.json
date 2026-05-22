@@ -1,0 +1,8 @@
+[
+  {
+    "path": "dist/index.js",
+    "limit": "30 KB",
+    "gzip": true,
+    "ignore": ["react", "react-dom", "ai-elements", "@ai-sdk/react", "zod"]
+  }
+]

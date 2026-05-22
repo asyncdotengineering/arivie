@@ -1,0 +1,14 @@
+{
+  "name": "owner-context-badge",
+  "type": "registry:ui",
+  "version": "0.1.0",
+  "files": [
+    {
+      "path": "components/arivie/owner-context-badge.tsx",
+      "type": "registry:component"
+    }
+  ],
+  "dependencies": ["@arivie/react"],
+  "shadcnDependencies": ["badge"],
+  "description": "Subtle UI showing which owner this Arivie instance is bound to"
+}

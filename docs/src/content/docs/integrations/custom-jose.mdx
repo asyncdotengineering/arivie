@@ -1,0 +1,47 @@
+---
+title: Custom JWT (jose)
+description: Verify bearer JWTs with jose and use the sub claim as ownerId.
+source: "RFC-002 §3.2 + examples/with-custom-jose"
+---
+
+import { Code } from '@astrojs/starlight/components';
+import routeTs from '../../../../../examples/with-custom-jose/app/api/arivie/route.ts?raw';
+import resolveOwner from '../../../../../examples/with-custom-jose/lib/resolve-owner.ts?raw';
+
+Use a **custom JWT** when you already issue bearer tokens (internal IdP, API gateway, or multi-service mesh) and want Arivie to verify signatures with **`jose`** rather than adopting a full auth framework.
+
+## Setup
+
+1. Copy `examples/with-custom-jose/.env.example`:
+
+   - `DATABASE_URL`
+   - `JWT_SECRET` (HS256 symmetric key for the example; adapt for RS256 in production)
+   - Model keys (optional)
+
+2. Install:
+
+   ```bash
+   pnpm add jose
+   ```
+
+3. Clients send `Authorization: Bearer <jwt>` on Arivie API requests.
+
+## Route handler
+
+<Code code={routeTs} lang="typescript" title="app/api/arivie/route.ts" />
+
+## ownerId derivation
+
+<Code code={resolveOwner} lang="typescript" title="lib/resolve-owner.ts" />
+
+The verified JWT's **`sub`** claim is `ownerId`. Missing or invalid bearer tokens throw before the handler runs.
+
+## Runnable example
+
+```bash
+pnpm --filter with-custom-jose dev
+```
+
+Canonical tree: `arivie/examples/with-custom-jose/`.
+
+_Tested with `jose ^6.2.3`._

@@ -1,0 +1,49 @@
+{
+  "name": "@arivie/workspace",
+  "version": "0.1.0",
+  "description": "Arivie workspace — read-only SemanticLayerFilesystem over Mastra Workspace.",
+  "type": "module",
+  "license": "Apache-2.0",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "lint": "echo no-lint-yet"
+  },
+  "optionalDependencies": {
+    "@vercel/sandbox": "1.10.2",
+    "dockerode": "5.0.0"
+  },
+  "peerDependencies": {
+    "@mastra/core": "^1.35.0",
+    "zod": "^4.4.0"
+  },
+  "devDependencies": {
+    "@mastra/core": "^1.35.0",
+    "zod": "^4.4.0",
+    "@types/dockerode": "^4.0.1",
+    "@types/node": "^22.0.0",
+    "@vitest/coverage-v8": "4.1.6",
+    "tsup": "^8.5.1",
+    "typescript": "^6.0.0",
+    "vitest": "^4.1.0"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  }
+}

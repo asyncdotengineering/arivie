@@ -1,0 +1,47 @@
+---
+title: WorkOS AuthKit
+description: Integrate Arivie with WorkOS AuthKit and withAuth() user id as ownerId.
+source: "RFC-002 §3.2 + examples/with-workos"
+---
+
+import { Code } from '@astrojs/starlight/components';
+import routeTs from '../../../../../examples/with-workos/app/api/arivie/route.ts?raw';
+import resolveOwner from '../../../../../examples/with-workos/lib/resolve-owner.ts?raw';
+
+Use **WorkOS AuthKit** when you standardize on `@workos-inc/authkit-nextjs` for enterprise SSO and want `ownerId` from the authenticated WorkOS user record.
+
+## Setup
+
+1. Copy `examples/with-workos/.env.example` and configure:
+
+   - `DATABASE_URL`
+   - `WORKOS_API_KEY`, `WORKOS_CLIENT_ID`, `WORKOS_COOKIE_PASSWORD`, `WORKOS_REDIRECT_URI`
+   - Model provider keys (optional)
+
+2. Install:
+
+   ```bash
+   pnpm add @workos-inc/authkit-nextjs
+   ```
+
+3. Follow WorkOS AuthKit Next.js setup (middleware, callback route) as in the example README.
+
+## Route handler
+
+<Code code={routeTs} lang="typescript" title="app/api/arivie/route.ts" />
+
+## ownerId derivation
+
+<Code code={resolveOwner} lang="typescript" title="lib/resolve-owner.ts" />
+
+`withAuth()` supplies `user.id` as `ownerId` when present.
+
+## Runnable example
+
+```bash
+pnpm --filter with-workos dev
+```
+
+Canonical tree: `arivie/examples/with-workos/`.
+
+_Tested with `@workos-inc/authkit-nextjs ^4.1.0`._

@@ -1,0 +1,62 @@
+name: orders
+description: |
+  Orders placed by customers. One row per order.
+  For revenue reporting, exclude cancelled and draft orders.
+
+grain: one row per order
+primary_key: id
+
+measures:
+  - name: revenue
+    description: Total revenue from completed orders (excludes tax and shipping).
+    sql: "SUM(total_amount) FILTER (WHERE status = 'completed')"
+
+  - name: outstanding_amount
+    description: Total unpaid order value across open orders.
+    sql: "SUM(total_amount - amount_paid) FILTER (WHERE status NOT IN ('paid', 'void', 'draft'))"
+
+dimensions:
+  - name: status
+    sql: status
+    values: [pending, processing, completed, refunded, cancelled, draft]
+    description: Order lifecycle status. Use completed for revenue.
+
+  - name: created_at
+    sql: created_at
+    type: timestamp
+    description: When the order was placed. Use date_trunc() for grouping.
+
+  - name: currency
+    sql: currency
+    description: ISO currency code on the order (USD, EUR, GBP).
+
+segments:
+  - name: current_quarter
+    sql: "created_at >= date_trunc('quarter', CURRENT_DATE)"
+    description: Orders placed in the current calendar quarter.
+
+joins:
+  - to: customers
+    on: "orders.customer_id = customers.id"
+    type: many_to_one
+
+example_questions:
+  - "What is my total revenue this quarter?"
+  - "How many orders did we get last month?"
+
+example_queries:
+  - question: "Total revenue this quarter"
+    sql: |
+      SELECT SUM(total_amount) AS revenue
+      FROM orders
+      WHERE status = 'completed'
+        AND created_at >= date_trunc('quarter', CURRENT_DATE)
+
+hints:
+  - Revenue and average order value use status = 'completed' only; exclude cancelled, draft, and refunded rows unless the question is about refunds.
+  - "Monthly trends: GROUP BY date_trunc('month', created_at)."
+  - "Top-N customer questions: GROUP BY customer_id, ORDER BY the metric DESC, LIMIT N."
+  - "Overdue balance: pending or processing orders with due_date < CURRENT_DATE; use SUM(total_amount - amount_paid)."
+  - "Calendar month filters: created_at >= date_trunc('month', ...) AND created_at < date_trunc('month', ...) + interval '1 month'."
+  - "Previous calendar quarter: created_at >= date_trunc('quarter', CURRENT_DATE) - interval '3 months' AND created_at < date_trunc('quarter', CURRENT_DATE)."
+  - If a status value does not exist in the semantic layer, investigate (e.g. run a broader query) before concluding there is no data.

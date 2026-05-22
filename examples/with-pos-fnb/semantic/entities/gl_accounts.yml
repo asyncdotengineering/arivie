@@ -1,0 +1,26 @@
+name: gl_accounts
+description: |
+  Chart of accounts. Use account_type to group GL entries into the standard
+  restaurant P&L sections (revenue, COGS, labor, operating expense).
+
+grain: one row per GL account code
+primary_key: code
+
+dimensions:
+  - name: code
+    sql: code
+    type: text
+  - name: name
+    sql: name
+    type: text
+  - name: account_type
+    sql: account_type
+    values: [asset, liability, equity, revenue, cogs, expense]
+  - name: category
+    sql: category
+    type: text
+
+joins:
+  - to: gl_entries
+    on: "gl_accounts.code = gl_entries.account_code"
+    type: one_to_many

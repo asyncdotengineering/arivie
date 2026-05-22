@@ -1,0 +1,16 @@
+# SPDX-License-Identifier: Apache-2.0
+name = "with-cloudflare-do-arivie"
+main = "src/worker.ts"
+compatibility_date = "2026-05-20"
+compatibility_flags = ["nodejs_compat"]
+
+[[durable_objects.bindings]]
+name = "ARIVIE_DO"
+class_name = "ArivieDO"
+
+[[migrations]]
+tag = "v1"
+new_classes = ["ArivieDO"]
+
+[vars]
+ARIVIE_OWNER_ID = "with-cloudflare-do-owner"

@@ -1,0 +1,36 @@
+name: ingredients
+description: |
+  Inventory catalog. Each row is a SKU the kitchen / bar stocks.
+  Categories distinguish food (protein/produce/dairy/dry/frozen) from
+  bar (beer/wine/spirit/liqueur/mixer), which lets queries report
+  food cost % and pour cost % separately.
+
+grain: one row per ingredient SKU
+primary_key: id
+
+dimensions:
+  - name: sku
+    sql: sku
+    type: text
+  - name: name
+    sql: name
+    type: text
+  - name: category
+    sql: category
+    values: [protein, produce, dairy, dry, frozen, beverage_na, beer, wine, spirit, liqueur, mixer, paper, cleaning]
+    description: Drives bar-vs-food separation. Bar = beer/wine/spirit/liqueur/mixer.
+  - name: unit
+    sql: unit
+    type: text
+    description: Stock unit (g, ml, each, lb). Recipe quantities must match.
+  - name: shelf_life_days
+    sql: shelf_life_days
+    type: numeric
+
+joins:
+  - to: stock_movements
+    on: "ingredients.id = stock_movements.ingredient_id"
+    type: one_to_many
+  - to: recipe_lines
+    on: "ingredients.id = recipe_lines.ingredient_id"
+    type: one_to_many

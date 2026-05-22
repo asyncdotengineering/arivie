@@ -1,0 +1,44 @@
+name: purchase_orders
+description: |
+  Inbound supplier orders. Each PO has a header + lines; line costs roll up
+  to total_cost. Use status=received for landed cost; non-received is on-order.
+
+grain: one row per PO header
+primary_key: id
+
+measures:
+  - name: received_cost
+    description: Total landed cost for received POs.
+    sql: "SUM(total_cost) FILTER (WHERE status = 'received')"
+
+  - name: on_order_cost
+    description: Outstanding PO value (sent/partial, not yet received).
+    sql: "SUM(total_cost) FILTER (WHERE status IN ('sent', 'partial'))"
+
+dimensions:
+  - name: outlet_id
+    sql: outlet_id
+    type: text
+  - name: supplier_id
+    sql: supplier_id
+    type: numeric
+  - name: ordered_at
+    sql: ordered_at
+    type: timestamp
+  - name: delivered_at
+    sql: delivered_at
+    type: timestamp
+  - name: status
+    sql: status
+    values: [draft, sent, partial, received, cancelled]
+  - name: invoice_number
+    sql: invoice_number
+    type: text
+
+joins:
+  - to: suppliers
+    on: "purchase_orders.supplier_id = suppliers.id"
+    type: many_to_one
+  - to: outlets
+    on: "purchase_orders.outlet_id = outlets.id"
+    type: many_to_one

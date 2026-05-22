@@ -1,0 +1,27 @@
+entities:
+  - name: orders
+    description: Orders placed by customers; revenue and lifecycle reporting.
+    keywords: [orders, revenue, sales]
+  - name: customers
+    description: Customer accounts and contact metadata.
+    keywords: [customers, accounts]
+  - name: invoices
+    description: Accounts receivable invoices and recognized revenue.
+    keywords: [invoices, revenue, billing]
+  - name: line_items
+    description: Order line items linking orders to products.
+    keywords: [line_items, items]
+  - name: products
+    description: Product catalog for joins from line items.
+    keywords: [products, catalog]
+  - name: page_views
+    description: Mixpanel page-view events for traffic and acquisition reporting.
+    keywords: [page_views, mixpanel, traffic, utm]
+generated_at: "2026-05-20T00:00:00.000Z"
+source_files:
+  - entities/orders.yml
+  - entities/customers.yml
+  - entities/invoices.yml
+  - entities/line_items.yml
+  - entities/products.yml
+  - entities/page_views.yml

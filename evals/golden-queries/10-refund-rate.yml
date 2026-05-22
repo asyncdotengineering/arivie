@@ -1,0 +1,11 @@
+id: refund-rate
+category: normal
+question: "What is our refund rate among completed and refunded orders?"
+golden_sql: |
+  SELECT
+    COUNT(*) FILTER (WHERE status = 'refunded')::numeric
+    / NULLIF(COUNT(*) FILTER (WHERE status IN ('completed', 'refunded')), 0) AS refund_rate
+  FROM orders
+validation:
+  - result_has_rows: true
+  - column_exists: refund_rate

@@ -1,0 +1,62 @@
+{
+  "name": "@arivie/cli",
+  "version": "0.1.2",
+  "private": false,
+  "type": "module",
+  "description": "Arivie CLI — citty-based init, setup, add, lint, eval, dev, deploy.",
+  "license": "Apache-2.0",
+  "engines": {
+    "node": ">=20"
+  },
+  "bin": {
+    "arivie": "./dist/bin/arivie.js"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "sideEffects": false,
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "lint": "echo no-lint-yet",
+    "dev": "tsup --watch"
+  },
+  "dependencies": {
+    "@arivie/agent": "workspace:*",
+    "@arivie/core": "workspace:*",
+    "@arivie/db-postgres": "workspace:*",
+    "@arivie/embeddings": "workspace:*",
+    "@arivie/mcp": "workspace:*",
+    "@arivie/semantic": "workspace:*",
+    "@clack/prompts": "^1.4.0",
+    "@mastra/pg": "^1.11.0",
+    "citty": "^0.2.2",
+    "jiti": "^2.7.0",
+    "yaml": "^2.9.0",
+    "zod": "^4.4.0"
+  },
+  "devDependencies": {
+    "@testcontainers/postgresql": "^11.0.0",
+    "@types/node": "^22.0.0",
+    "testcontainers": "^11.0.0",
+    "tsup": "^8.5.1",
+    "typescript": "^6.0.0",
+    "vitest": "^4.1.0"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  }
+}

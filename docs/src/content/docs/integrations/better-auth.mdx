@@ -1,0 +1,47 @@
+---
+title: Better Auth
+description: Integrate Arivie with Better Auth session userId as ownerId.
+source: "RFC-002 §3.2 + examples/with-better-auth"
+---
+
+import { Code } from '@astrojs/starlight/components';
+import routeTs from '../../../../../examples/with-better-auth/app/api/arivie/route.ts?raw';
+import resolveOwner from '../../../../../examples/with-better-auth/lib/resolve-owner.ts?raw';
+
+Use **Better Auth** when you want a self-hosted auth server with email/password (and optional plugins) and need `ownerId` from the Better Auth session (`user.id` or `user.email`).
+
+## Setup
+
+1. Copy `examples/with-better-auth/.env.example`:
+
+   - `DATABASE_URL`
+   - `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`
+   - Model keys (optional)
+
+2. Install:
+
+   ```bash
+   pnpm add better-auth
+   ```
+
+3. Configure `lib/auth.ts` per the example (Email+Password baseline for CI).
+
+## Route handler
+
+<Code code={routeTs} lang="typescript" title="app/api/arivie/route.ts" />
+
+## ownerId derivation
+
+<Code code={resolveOwner} lang="typescript" title="lib/resolve-owner.ts" />
+
+Session lookup uses `auth.api.getSession({ headers })`; `user.id` is preferred, then `user.email`.
+
+## Runnable example
+
+```bash
+pnpm --filter with-better-auth dev
+```
+
+Canonical tree: `arivie/examples/with-better-auth/`.
+
+_Tested with `better-auth ^1.6.11`._

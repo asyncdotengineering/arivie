@@ -1,0 +1,63 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 24rem;
+}
+
+.messages {
+  flex: 1;
+  min-height: 0;
+}
+
+.inputRow {
+  display: flex;
+  gap: 0.5rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid hsl(var(--border));
+}
+
+.status {
+  font-size: 0.75rem;
+  color: hsl(var(--muted-foreground));
+  padding: 0.25rem 0.5rem;
+}
+
+.conversation {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.message {
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.5rem;
+  background: hsl(var(--muted) / 0.35);
+}
+
+.messageUser {
+  align-self: flex-end;
+  background: hsl(var(--primary) / 0.15);
+}
+
+.messageAssistant {
+  align-self: flex-start;
+}
+
+.sql {
+  margin-top: 0.5rem;
+  overflow-x: auto;
+  border-radius: 0.375rem;
+  padding: 0.5rem;
+  font-size: 0.75rem;
+  background: hsl(var(--muted) / 0.5);
+}
+
+.promptInput {
+  flex: 1;
+  border: 1px solid hsl(var(--border));
+  border-radius: 0.375rem;
+  padding: 0.5rem 0.75rem;
+  background: transparent;
+  color: inherit;
+}

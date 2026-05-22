@@ -1,0 +1,60 @@
+{
+  "name": "@arivie/agent",
+  "version": "0.1.1",
+  "private": false,
+  "type": "module",
+  "description": "Arivie Mastra agent — execute_<source> tools and optional compile_metric over the semantic layer.",
+  "license": "Apache-2.0",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
+  "scripts": {
+    "build": "pnpm run build:esm && pnpm run build:dts",
+    "build:esm": "ARIVIE_SKIP_DTS=1 tsup",
+    "build:dts": "ARIVIE_SKIP_CLEAN=1 tsup --dts-only",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "lint": "echo no-lint-yet"
+  },
+  "dependencies": {
+    "@arivie/core": "workspace:*",
+    "@arivie/db-postgres": "workspace:*",
+    "@arivie/embeddings": "workspace:*",
+    "@arivie/semantic": "workspace:*",
+    "@mastra/memory": "^1.18.2"
+  },
+  "peerDependencies": {
+    "@mastra/core": "^1.35.0",
+    "ai": "^6.0.0",
+    "zod": "^4.4.0"
+  },
+  "devDependencies": {
+    "@arivie/source-mixpanel": "workspace:*",
+    "@arivie/source-mcp": "workspace:*",
+    "@arivie/workspace": "workspace:*",
+    "@mastra/pg": "^1.11.0",
+    "@testcontainers/postgresql": "^11.0.0",
+    "@mastra/core": "^1.35.0",
+    "ai": "^6.0.0",
+    "@types/node": "^22.0.0",
+    "tsup": "^8.5.1",
+    "typescript": "^6.0.0",
+    "vitest": "^4.1.0",
+    "zod": "^4.4.0"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  }
+}

@@ -1,0 +1,30 @@
+name: line_items
+description: |
+  Individual line items on orders. One row per product line on an order.
+  Join to products for SKU and category attributes.
+
+grain: one row per line item
+primary_key: id
+
+dimensions:
+  - name: quantity
+    sql: quantity
+    type: numeric
+    description: Units ordered on this line.
+
+  - name: unit_price
+    sql: unit_price
+    type: numeric
+    description: Price per unit at time of order.
+
+joins:
+  - to: orders
+    on: "line_items.order_id = orders.id"
+    type: many_to_one
+  - to: products
+    on: "line_items.product_id = products.id"
+    type: many_to_one
+
+example_questions:
+  - "What are the best-selling products by quantity?"
+  - "Average items per order last month?"

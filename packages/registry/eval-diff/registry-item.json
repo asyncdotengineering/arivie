@@ -1,0 +1,14 @@
+{
+  "name": "eval-diff",
+  "type": "registry:ui",
+  "version": "0.1.0",
+  "files": [
+    {
+      "path": "components/arivie/eval-diff.tsx",
+      "type": "registry:component"
+    }
+  ],
+  "dependencies": ["react-diff-view"],
+  "shadcnDependencies": ["tabs"],
+  "description": "Side-by-side golden SQL vs agent SQL diff (`react-diff-view`)"
+}

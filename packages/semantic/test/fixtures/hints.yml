@@ -1,0 +1,8 @@
+name: hinted
+description: Entity with hints for parse tests.
+grain: one row per thing
+primary_key: id
+
+hints:
+  - First hint.
+  - Second hint.

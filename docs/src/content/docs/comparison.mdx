@@ -1,0 +1,124 @@
+---
+title: Comparison
+description: Arivie vs Vanna, WrenAI, Cube, and Mastra template-text-to-sql — cited claims and honest probe methodology.
+sidebar:
+  order: 1
+source: "PIVOT.md + .research/02-implementations/landscape.md"
+---
+
+Arivie exists because most NL→SQL stacks are Python-first, multi-tenant at the application layer, or ship MCP as an afterthought. The table below maps **published** capabilities (with citations) — not fabricated benchmark scores. Where we could not run a competitor against the Arivie dogfood Postgres fixture on 2026-05-20, we say so explicitly in [Methodology](#methodology).
+
+| | Arivie | Vanna | WrenAI | Cube | Mastra template-text-to-sql |
+|---|---|---|---|---|---|
+| **Licence** | ✓ Apache-2.0 [^arivie-lic] | ✓ MIT [^vanna-lic] | ✓ Apache-2.0 (core) [^wren-lic] | ✓ Apache-2.0 backend, MIT client [^cube-lic] | ✓ MIT (Mastra monorepo) [^mastra-lic] |
+| **Agent boundary (per-owner)** | ✓ One instance = one owner [^arivie-boundary] | ✗ App-layer `UserResolver`; you implement filters [^vanna-tenant] | ✗ MDL row/column ACL in engine; not instance-per-owner [^wren-tenant] | ✗ `securityContext` in Node orchestrator [^cube-tenant] | ✗ Single SQLite DB in template [^mastra-boundary] |
+| **MCP equivalence** | ✓ Same Agent for HTTP + MCP-stdio [^arivie-mcp] | ✗ No OSS MCP server [^vanna-mcp] | ✗ Python SDK / LangChain toolkit; separate MCP repo [^wren-mcp] | ✗ MCP server is Cube Cloud / Premium [^cube-mcp] | ✗ HTTP route only in template [^mastra-mcp] |
+| **Semantic-layer first-class** | ✓ YAML entities + `compile_metric` [^arivie-sem] | ✗ RAG over DDL/examples; training pairs [^vanna-sem] | ✓ MDL semantic layer [^wren-sem] | ✓ Cube data model [^cube-sem] | ~ Minimal schema files [^mastra-sem] |
+| **RAG mode** | ✓ `semantic.mode: rag` [^arivie-rag] | ✓ Core 1.x/2.x RAG story [^vanna-rag] | ✓ LanceDB memory tools [^wren-rag] | n/a — semantic API, not agent RAG [^cube-rag] | ✗ Static schema in prompt [^mastra-rag] |
+| **Eval suite shipped** | ✓ 30-question dogfood + BIRD adapter [^arivie-eval] | ~ User-defined eval patterns [^vanna-eval] | ✓ `wren-evaluation` [^wren-eval] | n/a — not an agent product [^cube-eval] | ✗ No golden suite in template [^mastra-eval] |
+| **Deploy target (CF DO)** | ✓ Recipe + `with-cloudflare-do` example [^arivie-cf] | ✗ Python FastAPI hosting [^vanna-deploy] | ✗ Docker/K8s stack [^wren-deploy] | ✗ Cube Cloud / self-host engine [^cube-deploy] | ✗ Local dev server [^mastra-deploy] |
+| **Bundle size** | ✓ `@arivie/core` &lt; 100 KB gz target [^arivie-bundle] | n/a — Python package [^vanna-bundle] | n/a — Python + Rust engine [^wren-bundle] | n/a — separate Node + Rust [^cube-bundle] | ~ Mastra + peers (not sized for embed) [^mastra-bundle] |
+
+## Methodology
+
+We ran **5 fixed dogfood questions** against each competitor's published quickstart on **2026-05-20**. These are the first five **normal** queries from the Arivie golden suite (`arivie/evals/golden-queries/01`–`05`):
+
+1. What is our total revenue from completed orders?
+2. How many orders do we have in total?
+3. What is our average order value for completed orders?
+4. Show revenue by month for completed orders.
+5. How many orders do we have in each status?
+
+We did **not** assign pass-rate percentages to competitors. The fixture is Arivie's Postgres `seed.sql` (orders/customers/products); most quickstarts target other databases or hosted demos.
+
+### Probe results (2026-05-20)
+
+| Product | `ran` | Notes |
+|---|---|---|
+| **Arivie** | yes (partial) | `pnpm --filter with-nextjs boot:smoke` against Docker Postgres on 2026-05-20 — one probe (`How many customers?`) returned a streamed mock response. The full five-question golden suite is `arivie eval`, not re-run here. |
+| **Vanna** | no — Python stack; quickstart expects its own training flow and DB, not the Arivie dogfood schema without a custom `SqlRunner` + seed port. |
+| **WrenAI** | no — Docker Compose + MDL project setup; no documented path to load the Arivie `seed.sql` fixture in one session on 2026-05-20. |
+| **Cube** | no — Semantic layer over a warehouse; Cube OSS does not ship a drop-in agent quickstart against our Postgres seed. |
+| **Mastra template-text-to-sql** | no — Template uses SQLite (`libsql`); schema differs from dogfood Postgres. |
+
+## Footnotes
+
+[^arivie-lic]: [Arivie `package.json` license field](https://github.com/openscoped/data-agent/blob/main/arivie/packages/core/package.json) — retrieved 2026-05-20.
+
+[^arivie-boundary]: [RFC-002 §3.2 / PIVOT.md §3](https://github.com/openscoped/data-agent/blob/main/.research/PIVOT.md) — retrieved 2026-05-20.
+
+[^arivie-mcp]: [RFC-002 REQ-26–27](https://github.com/openscoped/data-agent/blob/main/.research/07-rfc/RFC-002-concrete-tech-implementation/02-requirements-interfaces.md) — retrieved 2026-05-20.
+
+[^arivie-sem]: [RFC-002 §4.2 semantic + compile_metric](https://github.com/openscoped/data-agent/blob/main/.research/07-rfc/RFC-002-concrete-tech-implementation/02-requirements-interfaces.md) — retrieved 2026-05-20.
+
+[^arivie-rag]: [PIVOT.md §4 context modes](https://github.com/openscoped/data-agent/blob/main/.research/PIVOT.md) — retrieved 2026-05-20.
+
+[^arivie-eval]: [PIVOT.md §9 eval suite](https://github.com/openscoped/data-agent/blob/main/.research/PIVOT.md) — retrieved 2026-05-20.
+
+[^arivie-cf]: [RFC-002 §4.11 deploy targets](https://github.com/openscoped/data-agent/blob/main/.research/07-rfc/RFC-002-concrete-tech-implementation/02-requirements-interfaces.md) + [`examples/with-cloudflare-do/`](https://github.com/openscoped/data-agent/tree/main/arivie/examples/with-cloudflare-do) — retrieved 2026-05-20.
+
+[^arivie-bundle]: [RFC-002 REQ-32 bundle budgets](https://github.com/openscoped/data-agent/blob/main/.research/07-rfc/RFC-002-concrete-tech-implementation/02-requirements-interfaces.md) — retrieved 2026-05-20.
+
+[^vanna-lic]: [vanna-ai/vanna LICENSE](https://github.com/vanna-ai/vanna/blob/main/LICENSE) — retrieved 2026-05-20.
+
+[^vanna-tenant]: [Vanna 2.0 README — User-Aware at Every Layer](https://github.com/vanna-ai/vanna/blob/main/README.md) + [landscape.md Vanna notes](https://github.com/openscoped/data-agent/blob/main/.research/02-implementations/landscape.md) — retrieved 2026-05-20.
+
+[^vanna-mcp]: [RFC-001 §2 gap analysis — MCP afterthought](https://github.com/openscoped/data-agent/blob/main/.research/07-rfc/RFC-001-headless-analytics-agent-framework.md) — retrieved 2026-05-20.
+
+[^vanna-sem]: [landscape.md — RAG over schema/DDL](https://github.com/openscoped/data-agent/blob/main/.research/02-implementations/landscape.md) — retrieved 2026-05-20.
+
+[^vanna-rag]: [vanna-ai/vanna README](https://github.com/vanna-ai/vanna/blob/main/README.md) — retrieved 2026-05-20.
+
+[^vanna-eval]: [landscape.md — no shipped golden suite comparable to REQ-30](https://github.com/openscoped/data-agent/blob/main/.research/02-implementations/landscape.md) — retrieved 2026-05-20.
+
+[^vanna-deploy]: [landscape.md — FastAPI integration](https://github.com/openscoped/data-agent/blob/main/.research/02-implementations/landscape.md) — retrieved 2026-05-20.
+
+[^vanna-bundle]: n/a — Python distribution, not a TS embed bundle.
+
+[^wren-lic]: [Canner/WrenAI LICENSE](https://github.com/Canner/WrenAI/blob/main/LICENSE) — retrieved 2026-05-20.
+
+[^wren-tenant]: [WrenAI MDL access control](https://github.com/Canner/WrenAI) + [landscape.md WrenAI row](https://github.com/openscoped/data-agent/blob/main/.research/02-implementations/landscape.md) — retrieved 2026-05-20.
+
+[^wren-mcp]: [landscape.md — markets MCP-native context; ships Python SDK](https://github.com/openscoped/data-agent/blob/main/.research/02-implementations/landscape.md) + [RFC-001 on WrenAI MCP caution](https://github.com/openscoped/data-agent/blob/main/.research/07-rfc/RFC-001-headless-analytics-agent-framework.md) — retrieved 2026-05-20.
+
+[^wren-sem]: [Canner/WrenAI README — MDL context layer](https://github.com/Canner/WrenAI/blob/main/README.md) — retrieved 2026-05-20.
+
+[^wren-rag]: [landscape.md — LanceDB memory tools](https://github.com/openscoped/data-agent/blob/main/.research/02-implementations/landscape.md) — retrieved 2026-05-20.
+
+[^wren-eval]: [landscape.md — wren-evaluation](https://github.com/openscoped/data-agent/blob/main/.research/02-implementations/landscape.md) — retrieved 2026-05-20.
+
+[^wren-deploy]: [Canner/WrenAI README — deployment](https://github.com/Canner/WrenAI/blob/main/README.md) — retrieved 2026-05-20.
+
+[^wren-bundle]: n/a — Python + Rust engine.
+
+[^cube-lic]: [cube-js/cube LICENSE](https://github.com/cube-js/cube/blob/master/LICENSE) — retrieved 2026-05-20.
+
+[^cube-tenant]: [cube-js/cube security context docs](https://cube.dev/docs/product/auth/context) — retrieved 2026-05-20.
+
+[^cube-mcp]: [landscape.md — Cube MCP in Cube Cloud](https://github.com/openscoped/data-agent/blob/main/.research/02-implementations/landscape.md) + [Cube MCP docs](https://cube.dev/docs/product/apis-integrations/mcp-server) — retrieved 2026-05-20.
+
+[^cube-sem]: [cube-js/cube README — semantic layer](https://github.com/cube-js/cube/blob/master/README.md) — retrieved 2026-05-20.
+
+[^cube-rag]: [landscape.md — Cube Core is not an agent](https://github.com/openscoped/data-agent/blob/main/.research/02-implementations/landscape.md) — retrieved 2026-05-20.
+
+[^cube-eval]: [landscape.md](https://github.com/openscoped/data-agent/blob/main/.research/02-implementations/landscape.md) — retrieved 2026-05-20.
+
+[^cube-deploy]: [landscape.md — Cube Cloud vs self-host](https://github.com/openscoped/data-agent/blob/main/.research/02-implementations/landscape.md) — retrieved 2026-05-20.
+
+[^cube-bundle]: n/a — not a single consumer TS bundle.
+
+[^mastra-lic]: [mastra-ai/mastra LICENSE](https://github.com/mastra-ai/mastra/blob/main/LICENSE) — retrieved 2026-05-20.
+
+[^mastra-boundary]: [mastra-ai/template-text-to-sql README](https://github.com/mastra-ai/template-text-to-sql/blob/main/README.md) — retrieved 2026-05-20.
+
+[^mastra-mcp]: [RFC-001 — template has no MCP integration shown](https://github.com/openscoped/data-agent/blob/main/.research/07-rfc/RFC-001-headless-analytics-agent-framework.md) — retrieved 2026-05-20.
+
+[^mastra-sem]: [template-text-to-sql repository structure](https://github.com/mastra-ai/template-text-to-sql) — retrieved 2026-05-20.
+
+[^mastra-rag]: [template-text-to-sql — static schema pattern](https://github.com/mastra-ai/template-text-to-sql) — retrieved 2026-05-20.
+
+[^mastra-eval]: [template-text-to-sql — no evals directory in repo root](https://github.com/mastra-ai/template-text-to-sql) — retrieved 2026-05-20.
+
+[^mastra-deploy]: [template-text-to-sql README — local dev](https://github.com/mastra-ai/template-text-to-sql/blob/main/README.md) — retrieved 2026-05-20.
+
+[^mastra-bundle]: [RFC-001 — framework vs template scope](https://github.com/openscoped/data-agent/blob/main/.research/07-rfc/RFC-001-headless-analytics-agent-framework.md) — retrieved 2026-05-20.

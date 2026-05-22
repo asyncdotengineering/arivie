@@ -1,0 +1,51 @@
+name: stock_movements
+description: |
+  Inventory ledger. Every movement of stock — receive, consume, waste, transfer,
+  count adjust — gets a row. On-hand by ingredient is the signed sum of qty:
+    SUM(qty × CASE movement_type WHEN 'consume' THEN -1
+                                 WHEN 'waste'   THEN -1
+                                 WHEN 'transfer_out' THEN -1
+                                 ELSE 1 END)
+  Use for food cost variance, waste tracking, par-level audits.
+
+grain: one row per movement
+primary_key: id
+
+measures:
+  - name: actual_consumption_cost
+    description: Actual cost of consumed inventory (consume movements). Drives actual food cost.
+    sql: "SUM(qty * unit_cost) FILTER (WHERE movement_type = 'consume')"
+
+  - name: waste_cost
+    description: Cost of inventory written off as waste. Industry healthy <2% of food revenue.
+    sql: "SUM(qty * unit_cost) FILTER (WHERE movement_type = 'waste')"
+
+  - name: received_cost
+    description: Cost of inventory received from suppliers (matches PO totals).
+    sql: "SUM(qty * unit_cost) FILTER (WHERE movement_type = 'receive')"
+
+  - name: net_movement_qty
+    description: Signed quantity (receive +, consume/waste/transfer_out -).
+    sql: "SUM(qty * CASE movement_type WHEN 'consume' THEN -1 WHEN 'waste' THEN -1 WHEN 'transfer_out' THEN -1 ELSE 1 END)"
+
+dimensions:
+  - name: outlet_id
+    sql: outlet_id
+    type: text
+  - name: ingredient_id
+    sql: ingredient_id
+    type: numeric
+  - name: movement_type
+    sql: movement_type
+    values: [receive, consume, waste, transfer_in, transfer_out, count_adjust]
+  - name: occurred_at
+    sql: occurred_at
+    type: timestamp
+
+joins:
+  - to: ingredients
+    on: "stock_movements.ingredient_id = ingredients.id"
+    type: many_to_one
+  - to: outlets
+    on: "stock_movements.outlet_id = outlets.id"
+    type: many_to_one

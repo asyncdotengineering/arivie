@@ -1,0 +1,34 @@
+---
+title: Cloudflare Durable Objects
+description: Run one Arivie instance per Durable Object with Wrangler and Worker bindings.
+sidebar:
+  order: 3
+runnable_example: examples/with-cloudflare-do/
+source: "RFC-002 §4.11 + examples/with-cloudflare-do"
+---
+
+import { Code } from '@astrojs/starlight/components';
+import workerTs from '../../../../../examples/with-cloudflare-do/src/worker.ts?raw';
+
+## When to use this
+
+Deploy on **Cloudflare Durable Objects** when you want one isolated Arivie instance per owner with sub-second cold starts and idle survival — the deploy target RFC-002 §4.11.4 budgets as **&lt; 1 s cold, &lt; 200 ms warm**. The Worker routes `POST /api/arivie` to a named DO stub; model keys and `DATABASE_URL` come from Worker `env` bindings, not `process.env`.
+
+## Architecture
+
+![Deploy targets and cold-start budgets](../../../assets/architecture/deploy-targets.svg)
+
+## Code snippet
+
+<Code code={workerTs} lang="typescript" title="src/worker.ts" />
+
+## Run it
+
+```bash
+cd arivie && pnpm install
+pnpm --filter with-cloudflare-do build   # wrangler deploy --dry-run
+wrangler dev
+curl -X POST http://127.0.0.1:8787/api/arivie -H 'Content-Type: application/json' -d '{"prompt":"How many customers?"}'
+```
+
+Canonical tree: [`arivie/examples/with-cloudflare-do/`](https://github.com/openscoped/data-agent/tree/main/arivie/examples/with-cloudflare-do).

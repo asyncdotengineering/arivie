@@ -1,0 +1,115 @@
+{
+  "name": "@arivie/core",
+  "version": "0.1.1",
+  "private": false,
+  "type": "module",
+  "description": "Arivie core — defineArivie factory, public types, owner-identity boundary. Built on Mastra.",
+  "license": "Apache-2.0",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "typesVersions": {
+    "*": {
+      "context": [
+        "./dist/context.d.ts"
+      ],
+      "types": [
+        "./dist/public-types.d.ts"
+      ],
+      "errors": [
+        "./dist/errors.d.ts"
+      ]
+    }
+  },
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./next": {
+      "import": "./dist/adapters/next.js",
+      "types": "./dist/adapters/next.d.ts"
+    },
+    "./hono": {
+      "import": "./dist/adapters/hono.js",
+      "types": "./dist/adapters/hono.d.ts"
+    },
+    "./bun": {
+      "import": "./dist/adapters/bun.js",
+      "types": "./dist/adapters/bun.d.ts"
+    },
+    "./worker": {
+      "import": "./dist/adapters/worker.js",
+      "types": "./dist/adapters/worker.d.ts"
+    },
+    "./context": {
+      "import": "./dist/context.js",
+      "types": "./dist/context.d.ts"
+    },
+    "./types": {
+      "import": "./dist/public-types.js",
+      "types": "./dist/public-types.d.ts"
+    },
+    "./errors": {
+      "import": "./dist/errors.js",
+      "types": "./dist/errors.d.ts"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
+  "scripts": {
+    "build": "pnpm run build:esm && pnpm run build:dts:shared && pnpm run build:dts && pnpm run build:dts:shared",
+    "build:esm": "ARIVIE_SKIP_DTS=1 tsup",
+    "build:dts:shared": "ARIVIE_BUILD_DTS_SHARED=1 ARIVIE_SKIP_CLEAN=1 tsup --dts-only",
+    "build:dts": "ARIVIE_SKIP_CLEAN=1 tsup --dts-only",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "lint": "echo no-lint-yet"
+  },
+  "dependencies": {
+    "@arivie/agent": "workspace:*",
+    "@arivie/embeddings": "workspace:*",
+    "@arivie/db-postgres": "workspace:*",
+    "@arivie/semantic": "workspace:*",
+    "@arivie/workspace": "workspace:*",
+    "@mastra/mcp": "^1.7.0",
+    "@mastra/memory": "^1.18.2",
+    "@mastra/pg": "^1.11.0"
+  },
+  "optionalDependencies": {
+    "hono": "^4.12.0"
+  },
+  "peerDependencies": {
+    "@arivie/source-mcp": "workspace:*",
+    "@mastra/core": "^1.35.0",
+    "ai": "^6.0.0",
+    "zod": "^4.4.0"
+  },
+  "peerDependenciesMeta": {
+    "@arivie/source-mcp": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@arivie/source-mcp": "workspace:*",
+    "@arivie/workspace": "workspace:*",
+    "@mastra/core": "^1.35.0",
+    "@testcontainers/postgresql": "^11.0.0",
+    "@types/node": "^22.0.0",
+    "ai": "^6.0.0",
+    "hono": "^4.12.0",
+    "postgres": "^3.4.9",
+    "testcontainers": "^11.0.0",
+    "tsup": "^8.5.1",
+    "typescript": "^6.0.0",
+    "vitest": "^4.1.0",
+    "zod": "^4.4.0"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  }
+}

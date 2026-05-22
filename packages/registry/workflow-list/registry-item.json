@@ -1,0 +1,14 @@
+{
+  "name": "workflow-list",
+  "type": "registry:ui",
+  "version": "0.1.0",
+  "files": [
+    {
+      "path": "components/arivie/workflow-list.tsx",
+      "type": "registry:component"
+    }
+  ],
+  "dependencies": [],
+  "shadcnDependencies": ["card"],
+  "description": "Saved questions with run/edit affordances"
+}

@@ -1,0 +1,30 @@
+name: recipe_lines
+description: |
+  Bill of materials: menu_item → ingredient with portion quantities.
+  Joined against stock_movements + actual ingredient cost to compute
+  theoretical vs actual food cost variance.
+
+grain: one row per (menu_item, ingredient)
+primary_key: id
+
+dimensions:
+  - name: menu_item_id
+    sql: menu_item_id
+    type: numeric
+  - name: ingredient_id
+    sql: ingredient_id
+    type: numeric
+  - name: qty
+    sql: qty
+    type: numeric
+  - name: unit
+    sql: unit
+    type: text
+
+joins:
+  - to: menu_items
+    on: "recipe_lines.menu_item_id = menu_items.id"
+    type: many_to_one
+  - to: ingredients
+    on: "recipe_lines.ingredient_id = ingredients.id"
+    type: many_to_one

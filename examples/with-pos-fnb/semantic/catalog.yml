@@ -1,0 +1,49 @@
+entities:
+  - name: outlets
+    description: Locations in the Lumière chain.
+    keywords: [outlets, locations, stores, restaurants]
+  - name: tickets
+    description: Guest checks — revenue, comps, voids, avg check, covers.
+    keywords: [tickets, checks, orders, revenue, sales, comps, voids]
+  - name: ticket_items
+    description: Line items on a ticket. Used for menu-engineering and item velocity.
+    keywords: [ticket_items, line_items, items, menu_engineering]
+  - name: menu_items
+    description: Menu / SKU catalog. Theoretical food cost lives here.
+    keywords: [menu_items, menu, skus, food_cost, menu_engineering]
+  - name: menu_categories
+    description: Category grouping for course-level revenue reporting.
+    keywords: [menu_categories, categories, courses]
+  - name: tenders
+    description: Payments. Cash, card, 3PD remittances; processor fees.
+    keywords: [tenders, payments, cash, card, processor_fees]
+  - name: employees
+    description: Staff across all outlets; roles, wages, tip eligibility.
+    keywords: [employees, staff, servers, bartenders, cooks, gm, owner]
+  - name: shifts
+    description: Scheduled labor.
+    keywords: [shifts, schedule, labor_schedule]
+  - name: time_entries
+    description: Clock-in / clock-out cycles. Drives labor cost.
+    keywords: [time_entries, labor, clock_in, payroll]
+  - name: stock_movements
+    description: Inventory ledger — receive, consume, waste.
+    keywords: [stock_movements, inventory, waste, par_level]
+  - name: ingredients
+    description: Inventory SKU catalog.
+    keywords: [ingredients, inventory_items]
+  - name: recipe_lines
+    description: Bill of materials linking menu_items to ingredients.
+    keywords: [recipes, bom, recipe_lines]
+  - name: suppliers
+    description: Vendor master.
+    keywords: [suppliers, vendors, ap]
+  - name: purchase_orders
+    description: Inbound supplier orders.
+    keywords: [purchase_orders, po, receiving]
+  - name: gl_entries
+    description: GL journal. Double-entry. Daily close postings per outlet.
+    keywords: [gl_entries, journal, accounting, ledger]
+  - name: gl_accounts
+    description: Chart of accounts.
+    keywords: [gl_accounts, chart_of_accounts, coa]

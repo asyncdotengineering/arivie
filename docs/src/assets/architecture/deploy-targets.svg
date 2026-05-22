@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 360" role="img" aria-labelledby="deploy-title deploy-desc">
+  <title id="deploy-title">Arivie deploy targets and cold-start budgets</title>
+  <desc id="deploy-desc">Four deployment cards from RFC section 4.11 with cold-start latency budgets.</desc>
+  <style>
+    .bg { fill: #0f1419; }
+  .card { fill: #1a2332; stroke: #3d5a80; stroke-width: 1.5; }
+  .h { font-family: ui-sans-serif, system-ui, sans-serif; fill: #f1f5f9; font-size: 14px; font-weight: 700; }
+  .b { font-family: ui-sans-serif, system-ui, sans-serif; fill: #34d399; font-size: 12px; font-weight: 600; }
+  .n { font-family: ui-sans-serif, system-ui, sans-serif; fill: #94a3b8; font-size: 10px; }
+  </style>
+  <rect class="bg" width="800" height="360"/>
+  <rect class="card" x="24" y="40" width="170" height="130" rx="10"/>
+  <text class="h" x="109" y="72" text-anchor="middle">Cloudflare DO</text>
+  <text class="b" x="109" y="100" text-anchor="middle">&lt; 1 s cold</text>
+  <text class="n" x="109" y="120" text-anchor="middle">&lt; 200 ms warm</text>
+  <rect class="card" x="214" y="40" width="170" height="130" rx="10"/>
+  <text class="h" x="299" y="72" text-anchor="middle">Vercel</text>
+  <text class="b" x="299" y="100" text-anchor="middle">&lt; 800 ms cold</text>
+  <rect class="card" x="404" y="40" width="170" height="130" rx="10"/>
+  <text class="h" x="489" y="72" text-anchor="middle">Docker</text>
+  <text class="b" x="489" y="100" text-anchor="middle">&lt; 5 s container start</text>
+  <rect class="card" x="594" y="40" width="170" height="130" rx="10"/>
+  <text class="h" x="679" y="72" text-anchor="middle">Node + PM2</text>
+  <text class="b" x="679" y="100" text-anchor="middle">&lt; 3 s</text>
+  <text class="n" x="400" y="220" text-anchor="middle">RFC-002 sec 4.11.4 - @arivie/deploy emitRecipe targets (v0.1 wiring)</text>
+</svg>

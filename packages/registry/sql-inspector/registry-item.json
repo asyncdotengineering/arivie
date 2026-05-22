@@ -1,0 +1,14 @@
+{
+  "name": "sql-inspector",
+  "type": "registry:ui",
+  "version": "0.1.0",
+  "files": [
+    {
+      "path": "components/arivie/sql-inspector.tsx",
+      "type": "registry:component"
+    }
+  ],
+  "dependencies": ["shiki"],
+  "shadcnDependencies": ["collapsible", "code"],
+  "description": "Expandable \"Show SQL\" panel with syntax highlighting (`shiki`)"
+}

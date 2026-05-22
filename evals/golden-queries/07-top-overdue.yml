@@ -1,0 +1,17 @@
+id: top-overdue
+category: normal
+question: "Which 3 customers have the highest overdue outstanding balance?"
+golden_sql: |
+  SELECT customer_id,
+         SUM(total_amount - amount_paid) AS overdue_amount
+  FROM orders
+  WHERE status IN ('pending', 'processing')
+    AND due_date < CURRENT_DATE
+  GROUP BY customer_id
+  ORDER BY overdue_amount DESC
+  LIMIT 3
+validation:
+  - result_has_rows: true
+  - column_exists: overdue_amount
+  - column_exists: customer_id
+  - max_rows: 3

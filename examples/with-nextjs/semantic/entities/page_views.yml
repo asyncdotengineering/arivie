@@ -1,0 +1,36 @@
+name: page_views
+description: |
+  Mixpanel Page Viewed events for web traffic and acquisition reporting.
+  Cross-source join to orders via customer_id = distinct_id (seed uses cust-* ids).
+
+grain: one row per distinct_id and utm_source
+primary_key: distinct_id
+
+source:
+  adapter: mixpanel
+  instance: primary
+
+measures:
+  - name: page_view_count
+    description: Count of Page Viewed events for the user.
+    sql: "COUNT(*)"
+
+dimensions:
+  - name: event_name
+    sql: event_name
+    type: text
+    description: Mixpanel event name (Page Viewed, Purchased, Signed Up).
+
+  - name: utm_source
+    sql: utm_source
+    type: text
+    description: Traffic acquisition source (google, direct, email, social).
+
+columns:
+  - name: distinct_id
+    type: text
+    description: Mixpanel distinct_id — matches orders.customer_id in the demo seed.
+
+example_questions:
+  - "How many page views did we get last week?"
+  - "Which traffic source drives the most page views?"

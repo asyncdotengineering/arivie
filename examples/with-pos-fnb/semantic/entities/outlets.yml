@@ -1,0 +1,58 @@
+name: outlets
+description: |
+  Locations in the Lumière restaurant chain. Each outlet has its own
+  P&L, payroll, and inventory. Always filter by outlet_id when reporting
+  to a single-location operator; aggregate across outlets for the owner.
+
+grain: one row per outlet
+primary_key: id
+
+dimensions:
+  - name: id
+    sql: id
+    type: text
+    description: Outlet identifier (e.g. 'luminere-bistro').
+
+  - name: name
+    sql: name
+    type: text
+    description: Display name of the outlet.
+
+  - name: brand
+    sql: brand
+    type: text
+    description: Restaurant brand. All current outlets are 'Lumière'.
+
+  - name: concept
+    sql: concept
+    type: text
+    values: [full_service, fast_casual, bar, cafe]
+    description: Operating concept; drives daypart expectations.
+
+  - name: city
+    sql: city
+    type: text
+
+  - name: state
+    sql: state
+    type: text
+
+  - name: seats
+    sql: seats
+    type: numeric
+    description: Seating capacity. Used for covers-per-seat productivity.
+
+joins:
+  - to: tickets
+    on: "outlets.id = tickets.outlet_id"
+    type: one_to_many
+  - to: employees
+    on: "outlets.id = employees.outlet_id"
+    type: one_to_many
+  - to: gl_entries
+    on: "outlets.id = gl_entries.outlet_id"
+    type: one_to_many
+
+example_questions:
+  - "How is each outlet performing this week?"
+  - "Which outlet has the lowest average check?"

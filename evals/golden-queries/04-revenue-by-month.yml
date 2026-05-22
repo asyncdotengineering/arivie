@@ -1,0 +1,14 @@
+id: revenue-by-month
+category: normal
+question: "Show revenue by month for completed orders."
+golden_sql: |
+  SELECT date_trunc('month', created_at) AS month,
+         SUM(total_amount) AS revenue
+  FROM orders
+  WHERE status = 'completed'
+  GROUP BY 1
+  ORDER BY 1
+validation:
+  - result_has_rows: true
+  - column_exists: revenue
+  - column_exists: month

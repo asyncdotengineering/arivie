@@ -1,0 +1,49 @@
+name: orders
+description: |
+  Orders placed by customers. One row per order.
+  For revenue reporting, exclude cancelled and draft orders.
+
+grain: one row per order
+primary_key: id
+
+measures:
+  - name: revenue
+    description: Total revenue from completed orders (excludes tax and shipping).
+    sql: "SUM(total_amount) FILTER (WHERE status = 'completed')"
+
+  - name: outstanding_amount
+    description: Total unpaid order value across open orders.
+    sql: "SUM(total_amount - amount_paid) FILTER (WHERE status NOT IN ('paid', 'void', 'draft'))"
+
+dimensions:
+  - name: status
+    sql: status
+    values: [pending, processing, completed, refunded, cancelled]
+    description: Order lifecycle status. Use completed for revenue.
+
+  - name: created_at
+    sql: created_at
+    type: timestamp
+    description: When the order was placed. Use date_trunc() for grouping.
+
+segments:
+  - name: current_quarter
+    sql: "created_at >= date_trunc('quarter', CURRENT_DATE)"
+    description: Orders placed in the current calendar quarter.
+
+joins:
+  - to: customers
+    on: "orders.customer_id = customers.id"
+    type: many_to_one
+
+example_questions:
+  - "What is my total revenue this quarter?"
+  - "How many orders did we get last month?"
+
+example_queries:
+  - question: "Total revenue this quarter"
+    sql: |
+      SELECT SUM(total_amount) AS revenue
+      FROM orders
+      WHERE status = 'completed'
+        AND created_at >= date_trunc('quarter', CURRENT_DATE)

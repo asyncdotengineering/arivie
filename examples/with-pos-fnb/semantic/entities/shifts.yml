@@ -1,0 +1,38 @@
+name: shifts
+description: |
+  Scheduled labor. Compare against time_entries to surface schedule variance
+  (employee clocked in late, left early, missed shift, overtime).
+
+grain: one row per scheduled shift
+primary_key: id
+
+dimensions:
+  - name: outlet_id
+    sql: outlet_id
+    type: text
+  - name: employee_id
+    sql: employee_id
+    type: text
+  - name: business_day
+    sql: business_day
+    type: date
+  - name: scheduled_start
+    sql: scheduled_start
+    type: timestamp
+  - name: scheduled_end
+    sql: scheduled_end
+    type: timestamp
+  - name: role_assigned
+    sql: role_assigned
+    type: text
+  - name: section
+    sql: section
+    type: text
+
+joins:
+  - to: employees
+    on: "shifts.employee_id = employees.id"
+    type: many_to_one
+  - to: time_entries
+    on: "shifts.id = time_entries.shift_id"
+    type: one_to_many

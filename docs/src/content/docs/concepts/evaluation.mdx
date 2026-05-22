@@ -1,0 +1,45 @@
+---
+title: Evaluation
+description: Dogfood golden suite, BIRD-Interact, pass-rate gates, and quality budgets.
+source: "RFC-002 §3.9–3.10 + PIVOT.md §9"
+---
+
+**Evaluation** is how Arivie proves v0.1 is production-ready — not merely demo-ready. RFC-002 §3.9–3.10 (REQ-30–32) and the pivot's eval section define the suites, thresholds, and operational budgets that gate release.
+
+## 30-question dogfood suite
+
+**REQ-30** requires a hand-authored golden-SQL suite of **30 questions** run against the dogfood schema. Composition is fixed:
+
+- 12 normal queries (revenue, top-N, time windows, JOIN, GROUP BY)
+- 5 **context-quality** probes (semantic-layer descriptions used correctly — replaces removed cross-tenant probes)
+- 3 zero-row traps (self-correction must catch)
+- 3 implausible-result traps (self-correction must catch)
+- 3 ambiguous-question probes (assumption-stating must work)
+- 2 memory-dependent probes (instance-global vs personal)
+- 2 **MCP-equivalence** probes (HTTP and MCP produce the same answer)
+
+The dogfood must pass **≥ 90%** across all three context modes. Cross-tenant probes are architecturally impossible under the single-owner boundary and do not appear in the suite.
+
+Run locally with `pnpm eval` / `arivie eval` (see `@arivie/cli` README). CI will gate on pass rate in Sprint 5 (C36).
+
+## BIRD-Interact
+
+**REQ-31** wires the BIRD-Interact harness in v0.1 and requires a **publishable score** in the launch README. The adapter maps BIRD questions to Arivie's `Probe` type; CI uses a subset for speed and the full suite for release runs (RFC-002 §9 validation sketch).
+
+## Quality attribute budgets
+
+**REQ-32** lists budgets that must hold at v0.1 launch:
+
+| Attribute | Budget |
+|-----------|--------|
+| Latency p95 (first token) | &lt; 5 s; cold instance &lt; 1 s; warm &lt; 200 ms |
+| Bundle size | `@arivie/core` &lt; 100 KB gz; `@arivie/react` &lt; 30 KB gz |
+| Test coverage | `@arivie/core`, `@arivie/db-postgres`, `@arivie/agent` ≥ 80% |
+| Dogfood pass rate | ≥ 90% across preload, browse, and rag |
+| MCP parity | 100% pass per release |
+
+Sprint 5 ships automated CI gates (`check-bundle-size`, coverage, eval pass-rate). Sprint 4 adds **Puppeteer quickstart** (`pnpm test:quickstart`) as the runtime gate that a new developer can follow documented steps and receive a streamed answer within the documented **10-minute** user-experience bound (RFC §9.3.8).
+
+## Mode coverage
+
+The pivot requires **mode-coverage probes** — every context mode (`preload`, `browse`, `rag`) must be exercised in CI. Auto-detection via `arivie lint` chooses a default mode from token count; consumers override with `semantic.mode` when they know their catalog size.

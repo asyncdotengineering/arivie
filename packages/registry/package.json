@@ -1,0 +1,44 @@
+{
+  "name": "@arivie/registry",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Local-fs shadcn-style component registry for Arivie (REQ-28, RFC §4.9). Not published to npm.",
+  "license": "Apache-2.0",
+  "exports": {
+    "./agent-chat": "./agent-chat/agent-chat.tsx"
+  },
+  "scripts": {
+    "validate": "tsx scripts/validate-registry.ts",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "lint": "echo no-lint-yet"
+  },
+  "peerDependencies": {
+    "@arivie/react": "workspace:*",
+    "lucide-react": ">=0.400.0",
+    "react": "^18 || ^19"
+  },
+  "devDependencies": {
+    "@arivie/react": "workspace:*",
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.0.0",
+    "lucide-react": "^0.511.0",
+    "react": "^19.0.0",
+    "tsx": "^4.20.5",
+    "typescript": "^6.0.0",
+    "vitest": "^4.1.0",
+    "zod": "^4.4.0",
+    "zod-to-json-schema": "^3.25.2"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ]
+}

@@ -1,0 +1,64 @@
+name: menu_items
+description: |
+  Menu / SKU catalog. Theoretical food cost lives here — drives food_cost_pct
+  and menu-engineering classification (star, plowhorse, puzzle, dog).
+
+grain: one row per menu SKU
+primary_key: id
+
+dimensions:
+  - name: sku
+    sql: sku
+    type: text
+
+  - name: name
+    sql: name
+    type: text
+
+  - name: category_id
+    sql: category_id
+    type: numeric
+
+  - name: list_price
+    sql: list_price
+    type: numeric
+
+  - name: theoretical_food_cost
+    sql: theoretical_food_cost
+    type: numeric
+    description: Theoretical cost per portion (USD). Source of truth for menu engineering.
+
+  - name: is_alcoholic
+    sql: is_alcoholic
+    type: boolean
+    description: Flag separating bar revenue from food revenue.
+
+  - name: menu_class
+    sql: menu_class
+    values: [star, plowhorse, puzzle, dog]
+    description: |
+      Menu-engineering classification (Kasavana & Smith). Refreshed quarterly:
+        star      = high margin, high volume    (promote, protect)
+        plowhorse = low margin,  high volume    (cost-engineer)
+        puzzle    = high margin, low volume     (reposition / market)
+        dog       = low margin,  low volume     (cut from menu)
+
+  - name: theoretical_margin
+    sql: (list_price - theoretical_food_cost)
+    type: numeric
+    description: Per-unit gross margin (price minus theoretical food cost).
+
+  - name: theoretical_margin_pct
+    sql: ROUND(100.0 * (list_price - theoretical_food_cost) / NULLIF(list_price, 0), 2)
+    type: numeric
+
+joins:
+  - to: ticket_items
+    on: "menu_items.id = ticket_items.menu_item_id"
+    type: one_to_many
+  - to: menu_categories
+    on: "menu_items.category_id = menu_categories.id"
+    type: many_to_one
+  - to: recipe_lines
+    on: "menu_items.id = recipe_lines.menu_item_id"
+    type: one_to_many

@@ -1,0 +1,12 @@
+id: zero-row-trap
+category: zero-row
+question: "What was our revenue from shipped orders last month?"
+golden_sql: |
+  SELECT COALESCE(SUM(total_amount), 0) AS revenue
+  FROM orders
+  WHERE status = 'shipped'
+    AND created_at >= date_trunc('month', CURRENT_DATE - interval '1 month')
+    AND created_at < date_trunc('month', CURRENT_DATE)
+validation:
+  - tool_calls_min: 2
+  - answer_must_not_claim_zero_revenue: true

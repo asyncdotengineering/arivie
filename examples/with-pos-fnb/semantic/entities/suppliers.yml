@@ -1,0 +1,24 @@
+name: suppliers
+description: |
+  Vendor master. Joined against purchase_orders for spend-by-supplier reports
+  (concentration risk, payment-terms exposure, food-cost-by-category trend).
+
+grain: one row per supplier
+primary_key: id
+
+dimensions:
+  - name: name
+    sql: name
+    type: text
+  - name: category
+    sql: category
+    type: text
+  - name: payment_terms
+    sql: payment_terms
+    type: text
+    description: net_30, net_15, cod, etc. Drives AP aging.
+
+joins:
+  - to: purchase_orders
+    on: "suppliers.id = purchase_orders.supplier_id"
+    type: one_to_many

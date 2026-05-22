@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 780 340" role="img" aria-labelledby="ctx-modes-title ctx-modes-desc">
+  <title id="ctx-modes-title">Arivie context loading modes</title>
+  <desc id="ctx-modes-desc">Three columns for preload, browse, and rag modes with their semantic artefact stacks.</desc>
+  <style>
+    .bg { fill: #0f1419; }
+  .col { fill: #1a2332; stroke: #3d5a80; stroke-width: 1.5; }
+  .stack { fill: #243447; stroke: #5c7cfa; stroke-width: 1; }
+  .h { font-family: ui-sans-serif, system-ui, sans-serif; fill: #f1f5f9; font-size: 15px; font-weight: 700; }
+  .t { font-family: ui-sans-serif, system-ui, sans-serif; fill: #cbd5e1; font-size: 11px; }
+  </style>
+  <rect class="bg" width="780" height="340"/>
+  <rect class="col" x="30" y="30" width="220" height="280" rx="10"/>
+  <text class="h" x="140" y="62" text-anchor="middle">preload</text>
+  <rect class="stack" x="55" y="85" width="170" height="40" rx="6"/>
+  <text class="t" x="140" y="110" text-anchor="middle">catalog only</text>
+  <text class="t" x="140" y="140" text-anchor="middle">flattened into system prompt</text>
+  <rect class="col" x="280" y="30" width="220" height="280" rx="10"/>
+  <text class="h" x="390" y="62" text-anchor="middle">browse</text>
+  <rect class="stack" x="305" y="85" width="170" height="36" rx="6"/>
+  <text class="t" x="390" y="108" text-anchor="middle">catalog</text>
+  <rect class="stack" x="305" y="130" width="170" height="36" rx="6"/>
+  <text class="t" x="390" y="153" text-anchor="middle">on-demand introspection</text>
+  <text class="t" x="390" y="190" text-anchor="middle">Mastra Workspace / Filesystem</text>
+  <rect class="col" x="530" y="30" width="220" height="280" rx="10"/>
+  <text class="h" x="640" y="62" text-anchor="middle">rag</text>
+  <rect class="stack" x="555" y="85" width="170" height="36" rx="6"/>
+  <text class="t" x="640" y="108" text-anchor="middle">catalog</text>
+  <rect class="stack" x="555" y="130" width="170" height="36" rx="6"/>
+  <text class="t" x="640" y="153" text-anchor="middle">vector index</text>
+  <text class="t" x="640" y="190" text-anchor="middle">Mastra Vector retrieval</text>
+</svg>

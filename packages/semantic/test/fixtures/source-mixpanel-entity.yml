@@ -1,0 +1,16 @@
+name: events
+description: Product analytics events from Mixpanel.
+grain: one row per event
+primary_key: event_id
+source:
+  adapter: mixpanel
+
+measures:
+  - name: event_count
+    description: Total events.
+    sql: "COUNT(*)"
+
+dimensions:
+  - name: event_name
+    sql: event_name
+    type: text

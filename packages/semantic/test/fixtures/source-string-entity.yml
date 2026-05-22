@@ -1,0 +1,5 @@
+name: legacy_source
+description: Entity with v0.1 string source (must be rejected).
+grain: one row per row
+primary_key: id
+source: postgres.orders

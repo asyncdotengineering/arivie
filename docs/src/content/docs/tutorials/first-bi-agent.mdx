@@ -1,0 +1,565 @@
+---
+title: Build your first BI/BA agent
+description: Zero to working analytics agent in 60 minutes. You get a Postgres-backed semantic layer, an LLM that translates business questions into SQL, role-aware SOP skills, and a workspace that lets the same agent write Markdown reports to disk. Every step has a checkpoint.
+source: "Distilled from the with-pos-fnb example"
+---
+
+By the end of this tutorial you will have a working analytics agent against a Postgres database. You ask "what was revenue last week?" — it picks the right semantic measure, writes a CTE-chained SQL query, executes it, and returns the answer with the SQL inlined. Then you add **role-aware skills** (SOP playbooks the agent reads on demand) and a **workspace** so the same agent can land Markdown reports on disk.
+
+We'll build for a fictional Food & Beverage chain because the domain has rich, recognizable measures (revenue, prime cost, comp rate, void rate). The patterns transfer directly to SaaS metrics, e-commerce, or any other BI domain — only the schema changes.
+
+## What you'll have at the end
+
+- A `arivie_tutorial` Postgres database with three tables and ~30 rows
+- A 3-entity semantic layer (`outlets`, `tickets`, `ticket_items`) with measures and segments
+- A single Arivie agent that answers business questions in plain English with verifiable SQL
+- One SOP skill (`daily-recap`) the agent reads on demand
+- A workspace mounted at `workspace/` so the same agent can write Markdown reports via `mastra_workspace_write_file`
+- A demo script (`tutorial-ask.ts`) you can run repeatedly
+
+## Prerequisites
+
+- Node.js 20+ and [pnpm](https://pnpm.io/)
+- Postgres 14+ running locally (`brew install postgresql` / `docker run postgres`)
+- `psql` on PATH
+- A Gemini API key — [aistudio.google.com](https://aistudio.google.com) → API key → free tier is enough for this tutorial
+
+Optional: VS Code with the YAML + SQL extensions to make the semantic-layer files easier on the eyes.
+
+## 1. Scaffold the project (5 min)
+
+```bash
+mkdir my-bi-agent && cd my-bi-agent
+pnpm init
+pnpm add @arivie/core @arivie/db-postgres @arivie/workspace \
+         @ai-sdk/google @mastra/core ai postgres zod
+pnpm add -D tsx typescript @types/node
+```
+
+`tsconfig.json`:
+
+```json
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "esModuleInterop": true,
+    "strict": true,
+    "skipLibCheck": true,
+    "noEmit": true
+  },
+  "include": ["**/*.ts"]
+}
+```
+
+`package.json` add:
+
+```json
+"type": "module",
+"scripts": {
+  "db:setup": "psql -d postgres -c 'CREATE DATABASE arivie_tutorial;' && psql -d arivie_tutorial -f db/schema.sql && tsx db/seed.ts",
+  "ask": "tsx scripts/ask.ts"
+}
+```
+
+**Checkpoint:** `ls` shows `node_modules/`, `tsconfig.json`, `package.json` with `@arivie/core` in deps. If pnpm can't find `@arivie/*`, you're targeting a published version that doesn't exist yet — for now, develop inside the Arivie workspace (`arivie/examples/<your-example>/`) instead of standalone.
+
+## 2. Provision the database (5 min)
+
+`db/schema.sql`:
+
+```sql
+BEGIN;
+
+CREATE TABLE outlets (
+  id      TEXT PRIMARY KEY,
+  name    TEXT NOT NULL,
+  city    TEXT NOT NULL,
+  seats   INT  NOT NULL
+);
+
+CREATE TABLE tickets (
+  id              TEXT PRIMARY KEY,
+  outlet_id       TEXT NOT NULL REFERENCES outlets(id),
+  business_day    DATE NOT NULL,
+  opened_at       TIMESTAMPTZ NOT NULL,
+  service_type    TEXT NOT NULL CHECK (service_type IN ('dine_in','takeout','delivery')),
+  subtotal        NUMERIC(10,2) NOT NULL,
+  comp_amount     NUMERIC(10,2) NOT NULL DEFAULT 0,
+  void_amount     NUMERIC(10,2) NOT NULL DEFAULT 0,
+  status          TEXT NOT NULL CHECK (status IN ('closed','voided'))
+);
+
+CREATE TABLE ticket_items (
+  id          BIGSERIAL PRIMARY KEY,
+  ticket_id   TEXT NOT NULL REFERENCES tickets(id),
+  item_name   TEXT NOT NULL,
+  qty         INT  NOT NULL,
+  line_total  NUMERIC(10,2) NOT NULL
+);
+
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='arivie_reader') THEN
+    CREATE ROLE arivie_reader NOLOGIN;
+  END IF;
+END $$;
+GRANT USAGE ON SCHEMA public TO arivie_reader;
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO arivie_reader;
+
+COMMIT;
+```
+
+`db/seed.ts`:
+
+```ts
+import postgres from "postgres";
+
+const sql = postgres(process.env.DATABASE_URL!);
+const today = new Date(); today.setUTCHours(0,0,0,0);
+const days = [-2, -1, 0]; // three business days
+
+await sql`TRUNCATE outlets, tickets, ticket_items RESTART IDENTITY CASCADE`;
+
+await sql`INSERT INTO outlets (id, name, city, seats) VALUES
+  ('o1', 'Bistro Centro',   'Brooklyn', 48),
+  ('o2', 'Bistro Riverside','Hoboken',  36)`;
+
+let ticketCounter = 0;
+for (const offset of days) {
+  const bd = new Date(today); bd.setUTCDate(bd.getUTCDate() + offset);
+  for (const outletId of ['o1','o2']) {
+    for (let i = 0; i < 8; i++) {
+      ticketCounter++;
+      const subtotal = 30 + Math.random()*80;
+      const compAmt = Math.random() < 0.1 ? subtotal * 0.5 : 0;
+      const voidAmt = Math.random() < 0.05 ? subtotal : 0;
+      const status = voidAmt > 0 ? 'voided' : 'closed';
+      const tid = `t-${ticketCounter}`;
+      await sql`INSERT INTO tickets VALUES (
+        ${tid}, ${outletId}, ${bd.toISOString().slice(0,10)},
+        ${new Date(bd.getTime() + 18*3600_000).toISOString()},
+        ${['dine_in','takeout','delivery'][Math.floor(Math.random()*3)]},
+        ${subtotal.toFixed(2)}, ${compAmt.toFixed(2)}, ${voidAmt.toFixed(2)}, ${status}
+      )`;
+      await sql`INSERT INTO ticket_items (ticket_id, item_name, qty, line_total) VALUES (
+        ${tid}, ${['Burger','Salad','Wine','Coffee'][Math.floor(Math.random()*4)]},
+        1, ${subtotal.toFixed(2)}
+      )`;
+    }
+  }
+}
+console.log(`Seeded ${ticketCounter} tickets`);
+await sql.end();
+```
+
+Run it:
+
+```bash
+DATABASE_URL=postgresql://localhost:5432/arivie_tutorial pnpm db:setup
+```
+
+**Checkpoint:** `psql -d arivie_tutorial -c "SELECT COUNT(*) FROM tickets"` returns ~48 rows. If it errors `role "arivie_reader" already exists` or similar, that's idempotent — re-run is safe.
+
+## 3. Write the semantic layer (10 min)
+
+The semantic layer is YAML files in `semantic/entities/` describing each table's grain, measures, dimensions, and joins. The agent reads these to know what's queryable.
+
+`semantic/entities/outlets.yml`:
+
+```yaml
+name: outlets
+description: Restaurant locations in the chain.
+grain: one row per outlet
+primary_key: id
+
+dimensions:
+  - { name: id,   sql: id,   type: text }
+  - { name: name, sql: name, type: text }
+  - { name: city, sql: city, type: text }
+  - { name: seats, sql: seats, type: numeric }
+
+joins:
+  - to: tickets
+    on: "outlets.id = tickets.outlet_id"
+    type: one_to_many
+```
+
+`semantic/entities/tickets.yml`:
+
+```yaml
+name: tickets
+description: |
+  Guest checks. Filter status NOT IN ('voided') for revenue.
+  The business_day field already applies the operating-day cutoff.
+grain: one row per guest check
+primary_key: id
+
+measures:
+  - name: revenue
+    description: Net revenue (subtotal less comps and voids).
+    sql: "SUM(subtotal - comp_amount - void_amount) FILTER (WHERE status NOT IN ('voided'))"
+
+  - name: ticket_count
+    description: Number of closed tickets.
+    sql: "COUNT(*) FILTER (WHERE status NOT IN ('voided'))"
+
+  - name: comp_pct
+    description: Comps as percent of gross. Investigate above 3%.
+    sql: "ROUND(100.0 * SUM(comp_amount) / NULLIF(SUM(subtotal), 0), 2)"
+
+dimensions:
+  - { name: id, sql: id, type: text }
+  - { name: outlet_id, sql: outlet_id, type: text }
+  - { name: business_day, sql: business_day, type: date }
+  - { name: service_type, sql: service_type, values: [dine_in, takeout, delivery] }
+  - { name: status, sql: status, values: [closed, voided] }
+  - { name: opened_at, sql: opened_at, type: timestamp }
+
+segments:
+  - name: current_business_day
+    sql: "business_day = (CURRENT_DATE - INTERVAL '1 day')::date"
+    description: Yesterday's complete business day.
+  - name: last_7_days
+    sql: "business_day >= (CURRENT_DATE - INTERVAL '7 days')::date AND business_day < CURRENT_DATE"
+
+joins:
+  - to: outlets
+    on: "tickets.outlet_id = outlets.id"
+    type: many_to_one
+  - to: ticket_items
+    on: "tickets.id = ticket_items.ticket_id"
+    type: one_to_many
+```
+
+`semantic/entities/ticket_items.yml`:
+
+```yaml
+name: ticket_items
+description: Line items on a guest check.
+grain: one row per item line
+primary_key: id
+
+measures:
+  - name: units_sold
+    sql: "SUM(qty)"
+  - name: item_revenue
+    sql: "SUM(line_total)"
+
+dimensions:
+  - { name: ticket_id, sql: ticket_id, type: text }
+  - { name: item_name, sql: item_name, type: text }
+
+joins:
+  - to: tickets
+    on: "ticket_items.ticket_id = tickets.id"
+    type: many_to_one
+```
+
+`semantic/catalog.yml`:
+
+```yaml
+entities:
+  - { name: outlets,      description: Restaurant locations,    keywords: [outlets, locations] }
+  - { name: tickets,      description: Guest checks; revenue,   keywords: [tickets, revenue, comps, voids] }
+  - { name: ticket_items, description: Line items per ticket,   keywords: [items, line_items] }
+```
+
+**Checkpoint:** `find semantic -type f` shows four files (`catalog.yml` + three entity YAMLs). The agent will parse these on startup.
+
+### Why this shape
+
+- **Measures** are SQL expressions over an entity. Once declared, the agent can compose them with dimensions and segments without re-writing SQL.
+- **Segments** are reusable `WHERE` clauses. `current_business_day` is the most important segment in F&B because business days have a non-midnight cutoff in production (the example uses simple yesterday).
+- **Joins** make the entity graph traversable. The agent reads them to know it can pull `outlets.city` alongside `tickets.revenue` without you spelling out the JOIN.
+
+## 4. Wire up the agent (10 min)
+
+`arivie.config.ts`:
+
+```ts
+import { defineArivie } from "@arivie/core";
+import { postgresAdapter } from "@arivie/db-postgres";
+import { createGoogleGenerativeAI } from "@ai-sdk/google";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+
+export function buildInstance() {
+  const google = createGoogleGenerativeAI({
+    apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY!,
+  });
+  const model = google("gemini-2.5-flash");
+
+  const postgres = postgresAdapter({
+    url: process.env.DATABASE_URL!,
+    readOnlyRole: "arivie_reader",
+  });
+
+  return defineArivie({
+    owner: { id: "tutorial", name: "Tutorial Chain" },
+    model,
+    semantic: { path: join(__dirname, "semantic"), mode: "preload" },
+    sources: { postgres },
+    compileMetric: true,
+    resolveUser: async () => ({
+      userId: "tutorial-user",
+      permissions: ["analytics:read"],
+      dbRole: "arivie_reader",
+    }),
+  });
+}
+```
+
+`scripts/ask.ts`:
+
+```ts
+import { buildInstance } from "../arivie.config.js";
+
+async function main() {
+  const prompt = process.argv.slice(2).join(" ").trim();
+  if (!prompt) { console.error('usage: pnpm ask "your question"'); process.exit(1); }
+
+  const instance = await buildInstance();
+  const result = await instance.ask({
+    prompt,
+    user: { userId: "tutorial-user", permissions: ["analytics:read"], dbRole: "arivie_reader" },
+  });
+
+  console.log("\n" + result.text);
+}
+
+main().catch((err) => { console.error(err); process.exit(1); });
+```
+
+`instance.agent` is the Arivie agent — a single Mastra Agent with SQL tools attached. In step 6 we add a workspace so the same agent can write files.
+
+Run it:
+
+```bash
+export GOOGLE_GENERATIVE_AI_API_KEY=sk-...
+export DATABASE_URL=postgresql://localhost:5432/arivie_tutorial
+pnpm ask "What is our revenue this week?"
+```
+
+**Checkpoint:** The output contains:
+- A `Result:` line with a dollar figure
+- An `Assumptions:` block stating which segment / status filter was applied
+- A `SQL:` block with one CTE-chained query
+
+If you get `column ... does not exist`, the agent guessed a column name that doesn't match your schema — check that your entity YAMLs have the dimensions the question references. If you get "no user context", you forgot the `runWithUserContext(user, ...)` wrapper.
+
+## 5. Add an SOP skill (10 min)
+
+A **skill** is a Markdown playbook the agent reads on demand. It contains a frontmatter block (when to load this skill), a math-discipline preamble (covered in the [SQL is the calculator](/recipes/sql-as-calculator/) recipe), and a single consolidated SQL CTE that returns the final answer shape.
+
+`skills/daily-recap/SKILL.md`:
+
+```markdown
+---
+name: daily-recap
+description: Yesterday's recap — revenue, ticket count, comp rate per outlet.
+when_to_use: |
+  Load this skill when the user asks about:
+    - "How did we do yesterday" / "Daily sales recap" / "Last night's numbers"
+    - "Yesterday's revenue" / "Morning report"
+  DON'T load for:
+    - Multi-day trends (use a weekly query instead)
+sources: [postgres]
+---
+
+> ## Math discipline
+>
+> All arithmetic happens in ONE `execute_postgres` CTE. Do not compute
+> percentages or compare numbers in your response text.
+
+# Daily recap
+
+Run a single `execute_postgres` query that returns the headline numbers,
+the service-mix breakdown, and the quality flag — all in CTE form.
+
+```sql
+WITH headline AS (
+  SELECT
+    t.outlet_id,
+    o.name AS outlet_name,
+    SUM(t.subtotal - t.comp_amount - t.void_amount)
+      FILTER (WHERE t.status NOT IN ('voided')) AS revenue,
+    COUNT(*) FILTER (WHERE t.status NOT IN ('voided')) AS ticket_count,
+    ROUND(100.0 * SUM(t.comp_amount) / NULLIF(SUM(t.subtotal), 0), 2)
+      AS comp_pct
+  FROM tickets t
+  JOIN outlets o ON o.id = t.outlet_id
+  WHERE t.business_day = (CURRENT_DATE - INTERVAL '1 day')::date
+  GROUP BY 1, 2
+)
+SELECT
+  outlet_name,
+  ROUND(revenue, 2)   AS revenue,
+  ticket_count,
+  comp_pct,
+  CASE WHEN comp_pct > 3 THEN 'comp_breached' ELSE 'ok' END AS flag
+FROM headline
+ORDER BY revenue DESC;
+```
+
+Surface the rows. The `flag` column is your verdict — do not re-derive it.
+```
+
+Update `arivie.config.ts` to register the skills directory:
+
+```ts
+return defineArivie({
+  // ...
+  workspace: {
+    rootDir: join(__dirname, "semantic"),
+    skills: join(__dirname, "skills"),
+    skillsMode: "auto",
+  },
+  // ...
+});
+```
+
+Re-run:
+
+```bash
+pnpm ask "How did we do yesterday?"
+```
+
+**Checkpoint:** The output references the skill in its reasoning ("following the daily-recap playbook…") OR you see a tool call to `load_skill` / `skill_read` in the agent's trace. The SQL in the response is the CTE from the skill (or close to it).
+
+The `skillsMode: "auto"` setting auto-picks **eager** mode (skill content injected into the system prompt) for ≤6 skills and **on-demand** (BM25-searchable) for >6. With one skill, eager fires every turn.
+
+## 6. Add a workspace and write a Markdown report (15 min)
+
+So far the agent only reads + computes. Now mount a sandboxed workspace so the same agent can **write files** via `mastra_workspace_write_file`. No second agent, no delegation — the SQL rows that come out of `execute_postgres` go straight into the file write in the same turn.
+
+Update `arivie.config.ts` to attach a workspace filesystem rooted at a project-local directory:
+
+```ts
+import { InProcessSandboxFilesystem } from "@arivie/workspace";
+import { resolve } from "node:path";
+
+// ...inside buildInstance(), before defineArivie:
+const workspaceRoot = resolve(__dirname, "workspace");
+const filesystem = new InProcessSandboxFilesystem({ rootDir: workspaceRoot });
+
+return defineArivie({
+  // ...
+  workspace: {
+    filesystem,
+    skills: join(__dirname, "skills"),
+    skillsMode: "auto",
+    // Opt-in: surfaces `workspace_bash` so you can also shell out for things
+    // SQL can't shape (jq / awk / python). Omit if you only need file writes.
+    tools: ["bash"],
+  },
+  // ...
+});
+```
+
+Add `workspace/` to `.gitignore` — artifacts are run-time output, not source.
+
+Mastra automatically registers the workspace tools on your agent: `mastra_workspace_read_file`, `mastra_workspace_write_file`, `mastra_workspace_grep`, `mastra_workspace_list_files`, `mastra_workspace_mkdir`, `mastra_workspace_delete`, `mastra_workspace_edit_file`, `mastra_workspace_file_stat`, plus `workspace_bash` because we opted in.
+
+Create `scripts/recap-to-file.ts`:
+
+```ts
+import { runWithUserContext } from "@arivie/core/context";
+import { existsSync, mkdirSync, readFileSync, rmSync } from "node:fs";
+import { join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import { dirname } from "node:path";
+import { buildInstance } from "../arivie.config.js";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const workspaceRoot = resolve(__dirname, "..", "workspace");
+
+async function main() {
+  if (existsSync(workspaceRoot)) rmSync(workspaceRoot, { recursive: true, force: true });
+  mkdirSync(join(workspaceRoot, "reports"), { recursive: true });
+
+  const instance = await buildInstance();
+  const result = await instance.ask({
+    prompt: `Produce yesterday's recap and save it as a Markdown file.
+1. Use the daily-recap skill to pull the data via ONE execute_postgres CTE.
+2. Call mastra_workspace_write_file to write reports/recap-yesterday.md with
+   the outlet name, revenue, ticket count, comp_pct, and a one-line verdict.
+   Copy values from the SQL result row verbatim — do not round.
+3. Confirm the file was written.`,
+    user: { userId: "tutorial-user", permissions: ["analytics:read"], dbRole: "arivie_reader" },
+  });
+
+  const report = join(workspaceRoot, "reports", "recap-yesterday.md");
+  console.log("\n— Agent's answer —\n" + result.text);
+  console.log(`\n— Tool trace —\n${result.toolCalls.map((c) => `  ${c.tool}`).join("\n")}`);
+  console.log("\n— File on disk —\n" + (existsSync(report) ? readFileSync(report, "utf8") : "(not written)"));
+}
+
+main().catch((err) => { console.error(err); process.exit(1); });
+```
+
+Run it:
+
+```bash
+pnpm tsx scripts/recap-to-file.ts
+```
+
+**Checkpoint:** The script prints two sections. The "File on disk" section shows actual Markdown with the dollar figures from the database — those numbers should match what `pnpm ask "How did we do yesterday?"` returned. The file lives at `workspace/reports/recap-yesterday.md` and you can `cat` it.
+
+If the file doesn't get written, check:
+- The tool trace includes one `execute_postgres` call followed by one `mastra_workspace_write_file` call.
+- The path in the prompt is relative (`reports/recap-yesterday.md`), not absolute. Absolute paths trip the path-guard.
+- You didn't put the model in a mode that strips tool calls (some "JSON mode" wrappers do this).
+
+## 7. What you just built
+
+```
+┌────────────────────────────────────────────────────────────┐
+│ instance.agent — Arivie agent (Gemini)                     │
+│   tools:                                                   │
+│     - compile_metric                                       │
+│     - execute_postgres                                     │
+│     - mastra_workspace_{read,write,grep,list,…}_file       │
+│     - workspace_bash (opt-in)                              │
+│   inputs:                                                  │
+│     - semantic layer (3 entities, preloaded)               │
+│     - skills (daily-recap, eager mode)                     │
+└────────────────────────────────────────────────────────────┘
+                ↓
+       Postgres `arivie_tutorial`
+                ↓
+       workspace/reports/*.md
+```
+
+One entry point, one model, two tool families:
+
+```ts
+const result = await instance.agent.generate(prompt, {
+  memory: { thread: `chat-${Date.now()}`, resource: user.userId },
+});
+```
+
+The same call answers an analytics question OR produces a file, depending on what the prompt asks for. No routing layer to debug; the tool trace is the routing log.
+
+## 8. Where to go from here
+
+| Want to | Read |
+|---|---|
+| Understand why Arivie is a single agent, not a supervisor + sub-agents | [The single-agent shape](/concepts/the-single-agent/) |
+| Add more skills as your team's SOPs accumulate | The `examples/with-pos-fnb/skills/` directory ships 10 SOP skills mapped to F&B roles — same shape transfers |
+| Produce CSVs / HTML reports / shell out to Python | [File artifacts recipe](/recipes/file-artifacts/) — workspace tools end-to-end |
+| Ship to production (Next.js, Cloudflare DO) | [Recipes section](/recipes/nextjs/) |
+| Avoid LLM math errors at scale | [SQL is the calculator](/recipes/sql-as-calculator/) — research-backed conventions you should adopt before your skill count grows |
+| Multi-tenancy and per-user auth | The `resolveUser` callback and `runWithUserContext` wrapper — covered in [The boundary](/concepts/the-boundary/) |
+
+## What makes this a real BI/BA agent (and not a SQL toy)
+
+Three things, in order of weight:
+
+1. **The semantic layer is the contract.** Measures, dimensions, and segments are declared once and reused everywhere. The agent doesn't reinvent `revenue` on each query; it composes the declared SQL.
+2. **Skills are SOPs, not prompts.** A skill is a versioned, reviewable, testable Markdown playbook that says "here's how this analysis should always be done." The agent reads the playbook before answering. New analysts get the same answer the senior analyst would have given because the skill is the senior analyst.
+3. **The workspace is part of the same agent.** When marketing wants the recap emailed daily, you wire a mailer at the host-app layer that calls `instance.agent.generate(...)` with "...then write reports/recap.md". When finance wants the same recap in CSV, you change the prompt. The SQL surface and the skills don't change, and there's no second LLM in the loop translating data into prose between steps.
+
+That's the difference between an analytics chatbot and an analytics platform.

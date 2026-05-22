@@ -1,0 +1,19 @@
+entities:
+  - name: orders
+    description: Orders with cross-entity dimensions and joins for compile_metric tests.
+    keywords: [orders, revenue]
+  - name: customers
+    description: Customer accounts joined from orders.
+    keywords: [customers, region]
+  - name: products
+    description: Product catalog joined from orders.
+    keywords: [products, category]
+  - name: invoices
+    description: Invoices with ambiguous total metric vs orders.
+    keywords: [invoices, total]
+generated_at: "2026-05-20T00:00:00.000Z"
+source_files:
+  - entities/orders.yml
+  - entities/customers.yml
+  - entities/products.yml
+  - entities/invoices.yml

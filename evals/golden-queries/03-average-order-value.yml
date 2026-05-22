@@ -1,0 +1,11 @@
+id: average-order-value
+category: normal
+question: "What is our average order value for completed orders?"
+golden_sql: |
+  SELECT AVG(total_amount) AS average_order_value
+  FROM orders
+  WHERE status = 'completed'
+validation:
+  - result_has_rows: true
+  - column_exists: average_order_value
+  - value_positive: average_order_value

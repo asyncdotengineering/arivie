@@ -1,0 +1,12 @@
+id: refunded-last-quarter
+category: normal
+question: "What was the total refunded amount in the previous calendar quarter?"
+golden_sql: |
+  SELECT COALESCE(SUM(total_amount), 0) AS refunded_amount
+  FROM orders
+  WHERE status = 'refunded'
+    AND created_at >= date_trunc('quarter', CURRENT_DATE) - interval '3 months'
+    AND created_at < date_trunc('quarter', CURRENT_DATE)
+validation:
+  - result_has_rows: true
+  - column_exists: refunded_amount

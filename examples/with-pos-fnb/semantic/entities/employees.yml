@@ -1,0 +1,47 @@
+name: employees
+description: |
+  Staff roster across all outlets. Includes FOH, BOH, management, and the chain owner.
+  Each role has analytics implications:
+    - server / bartender: tip-eligible, owns tickets, evaluated on average check / void rate
+    - line_cook / exec_chef / sous_chef: BOH labor cost
+    - gm / foh_manager: management labor, comp authorizers
+    - owner / bookkeeper: chain-level, no shift work
+
+grain: one row per employee
+primary_key: id
+
+dimensions:
+  - name: outlet_id
+    sql: outlet_id
+    type: text
+
+  - name: full_name
+    sql: full_name
+    type: text
+
+  - name: role
+    sql: role
+    values: [owner, gm, exec_chef, sous_chef, line_cook, foh_manager, server, bartender, busser, host, dishwasher, bookkeeper]
+
+  - name: hourly_wage
+    sql: hourly_wage
+    type: numeric
+
+  - name: tip_eligible
+    sql: tip_eligible
+    type: boolean
+
+  - name: is_active
+    sql: is_active
+    type: boolean
+
+joins:
+  - to: outlets
+    on: "employees.outlet_id = outlets.id"
+    type: many_to_one
+  - to: shifts
+    on: "employees.id = shifts.employee_id"
+    type: one_to_many
+  - to: tickets
+    on: "employees.id = tickets.server_id"
+    type: one_to_many

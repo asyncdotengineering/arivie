@@ -1,0 +1,52 @@
+---
+title: Clerk
+description: Integrate Arivie with Clerk middleware and session userId as ownerId.
+source: "RFC-002 §3.2 + examples/with-clerk"
+---
+
+import { Code } from '@astrojs/starlight/components';
+import routeTs from '../../../../../examples/with-clerk/app/api/arivie/route.ts?raw';
+import middlewareTs from '../../../../../examples/with-clerk/middleware.ts?raw';
+import resolveOwner from '../../../../../examples/with-clerk/lib/resolve-owner.ts?raw';
+
+Use **Clerk** when your app already authenticates users with `@clerk/nextjs` and you want `ownerId` to follow Clerk's `userId` without building custom JWT plumbing.
+
+## Setup
+
+1. Copy `examples/with-clerk/.env.example` to `.env.local` and set:
+
+   - `DATABASE_URL`
+   - `CLERK_PUBLISHABLE_KEY` / `CLERK_SECRET_KEY` (and `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`)
+   - Model keys (optional; mock mode without keys)
+
+2. Install dependencies (already listed in the example `package.json`):
+
+   ```bash
+   pnpm add @clerk/nextjs
+   ```
+
+3. Add Clerk middleware at the project root:
+
+<Code code={middlewareTs} lang="typescript" title="middleware.ts" />
+
+## Route handler
+
+<Code code={routeTs} lang="typescript" title="app/api/arivie/route.ts" />
+
+## ownerId derivation
+
+The canonical line uses Clerk's server `auth()` helper:
+
+<Code code={resolveOwner} lang="typescript" title="lib/resolve-owner.ts" />
+
+When `session.userId` is present it becomes `ownerId`. CI sets `ARIVIE_AUTH_BYPASS=1` to skip Clerk and use a fixed bypass owner.
+
+## Runnable example
+
+```bash
+cd arivie && pnpm --filter with-clerk dev
+```
+
+Canonical tree: [`arivie/examples/with-clerk/`](https://github.com/openscoped/data-agent/tree/main/arivie/examples/with-clerk).
+
+_Tested with `@clerk/nextjs ^7.3.7` (see example `package.json`)._

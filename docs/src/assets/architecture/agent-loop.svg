@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 320" role="img" aria-labelledby="agent-loop-title agent-loop-desc">
+  <title id="agent-loop-title">Arivie agent loop</title>
+  <desc id="agent-loop-desc">Flow from user question through explore, compile_metric, execute on read-only Postgres, to streaming answer, with retry from execute back to compile_metric.</desc>
+  <style>
+    .bg { fill: #0f1419; }
+  .node { fill: #243447; stroke: #5c7cfa; stroke-width: 1.5; }
+  .label { font-family: ui-sans-serif, system-ui, sans-serif; fill: #e8eef4; font-size: 12px; font-weight: 600; }
+  .arrow { stroke: #94a3b8; stroke-width: 2; fill: none; marker-end: url(#arrowhead); }
+  .retry { stroke: #f59e0b; stroke-width: 2; fill: none; stroke-dasharray: 6 4; marker-end: url(#arrowhead-retry); }
+  </style>
+  <defs>
+    <marker id="arrowhead" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <polygon points="0 0, 8 3, 0 6" fill="#94a3b8"/>
+    </marker>
+    <marker id="arrowhead-retry" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <polygon points="0 0, 8 3, 0 6" fill="#f59e0b"/>
+    </marker>
+  </defs>
+  <rect class="bg" width="800" height="320"/>
+  <rect class="node" x="20" y="120" width="110" height="48" rx="8"/>
+  <text class="label" x="75" y="148" text-anchor="middle">User Question</text>
+  <rect class="node" x="160" y="120" width="110" height="48" rx="8"/>
+  <text class="label" x="215" y="148" text-anchor="middle">Explore Tool</text>
+  <rect class="node" x="300" y="120" width="120" height="48" rx="8"/>
+  <text class="label" x="360" y="142" text-anchor="middle">compile_metric</text>
+  <text class="label" x="360" y="158" text-anchor="middle" font-size="10" font-weight="400">(opt-in)</text>
+  <rect class="node" x="450" y="120" width="150" height="48" rx="8"/>
+  <text class="label" x="525" y="142" text-anchor="middle">execute</text>
+  <text class="label" x="525" y="158" text-anchor="middle" font-size="10" font-weight="400">read-only Postgres</text>
+  <rect class="node" x="630" y="120" width="130" height="48" rx="8"/>
+  <text class="label" x="695" y="148" text-anchor="middle">Streaming Answer</text>
+  <path class="arrow" d="M130 144 H160"/>
+  <path class="arrow" d="M270 144 H300"/>
+  <path class="arrow" d="M420 144 H450"/>
+  <path class="arrow" d="M600 144 H630"/>
+  <path class="retry" d="M525 168 C525 240 360 240 360 168"/>
+  <text class="label" x="442" y="228" text-anchor="middle" fill="#f59e0b" font-size="11">retry</text>
+</svg>

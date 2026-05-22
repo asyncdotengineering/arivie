@@ -1,0 +1,13 @@
+id: revenue-ambiguous
+category: ambiguous
+question: "What is our total revenue?"
+golden_sql: |
+  SELECT COALESCE(SUM(total_amount), 0) AS revenue
+  FROM orders
+  WHERE status = 'completed'
+validation:
+  - result_has_rows: true
+  - column_exists: revenue
+  - assumption_states:
+      - completed
+      - all time

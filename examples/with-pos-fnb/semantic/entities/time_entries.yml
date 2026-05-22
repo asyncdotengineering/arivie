@@ -1,0 +1,49 @@
+name: time_entries
+description: |
+  Clock-in / clock-out records. The source of truth for labor cost — drives labor_pct,
+  prime_cost, and payroll. Use (clock_out_at - clock_in_at - break_minutes) for paid hours.
+
+grain: one row per clock-in/out cycle
+primary_key: id
+
+measures:
+  - name: labor_hours
+    description: Paid labor hours. Excludes break time.
+    sql: "SUM(EXTRACT(EPOCH FROM (clock_out_at - clock_in_at)) / 3600.0 - break_minutes / 60.0) FILTER (WHERE clock_out_at IS NOT NULL)"
+
+  - name: labor_cost
+    description: Wage cost (hourly_wage × paid hours). Excludes tips since tips are pass-through.
+    sql: "SUM((EXTRACT(EPOCH FROM (clock_out_at - clock_in_at)) / 3600.0 - break_minutes / 60.0) * hourly_wage) FILTER (WHERE clock_out_at IS NOT NULL)"
+
+  - name: declared_tips
+    description: Tips reported by tip-eligible staff. Should match tickets.tip_total within rounding.
+    sql: "SUM(declared_tips)"
+
+dimensions:
+  - name: outlet_id
+    sql: outlet_id
+    type: text
+
+  - name: employee_id
+    sql: employee_id
+    type: text
+
+  - name: business_day
+    sql: business_day
+    type: date
+
+  - name: clock_in_at
+    sql: clock_in_at
+    type: timestamp
+
+  - name: clock_out_at
+    sql: clock_out_at
+    type: timestamp
+
+joins:
+  - to: employees
+    on: "time_entries.employee_id = employees.id"
+    type: many_to_one
+  - to: outlets
+    on: "time_entries.outlet_id = outlets.id"
+    type: many_to_one

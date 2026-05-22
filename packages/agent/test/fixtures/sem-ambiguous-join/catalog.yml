@@ -1,0 +1,11 @@
+entities:
+  - name: orders_ambiguous
+    description: Orders with duplicate join paths to customers.
+    keywords: [orders]
+  - name: customers
+    description: Customers.
+    keywords: [customers]
+generated_at: "2026-05-20T00:00:00.000Z"
+source_files:
+  - entities/orders_ambiguous.yml
+  - entities/customers.yml

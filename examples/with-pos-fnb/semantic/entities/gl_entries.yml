@@ -1,0 +1,72 @@
+name: gl_entries
+description: |
+  General ledger journal — double-entry. Each row is one side of a posting
+  (debit XOR credit). Daily close emits balanced postings per outlet:
+    DR cash/CC/3PD receivable      CR sales (food/alcohol/N-A)
+    DR sales-comps (contra)        CR sales (offset)
+    DR COGS-food/alcohol/N-A       CR inventory
+    DR labor (FOH/BOH/Mgmt)        CR tips-payable etc.
+  Use account_type='revenue' less contra-revenue for net sales by GL,
+  and account_type='cogs' for landed cost of goods sold.
+
+grain: one row per debit OR credit line
+primary_key: id
+
+measures:
+  - name: total_debits
+    description: Sum of debits for the slice.
+    sql: "SUM(debit)"
+  - name: total_credits
+    description: Sum of credits for the slice.
+    sql: "SUM(credit)"
+  - name: net_amount
+    description: Signed amount (credits positive for revenue, debits positive for expenses/cogs/assets).
+    sql: "SUM(CASE WHEN debit > 0 THEN -debit ELSE credit END)"
+  - name: gl_revenue
+    description: Net revenue from GL (sales accounts 4010-4030, less contras 4900-4920).
+    sql: "SUM(CASE WHEN account_code IN ('4010', '4020', '4030') THEN credit ELSE 0 END) - SUM(CASE WHEN account_code IN ('4900', '4910', '4920') THEN debit ELSE 0 END)"
+  - name: gl_cogs
+    description: Cost of goods sold from GL (5010-5030).
+    sql: "SUM(CASE WHEN account_code IN ('5010', '5020', '5030') THEN debit ELSE 0 END)"
+  - name: gl_labor
+    description: Total labor cost from GL (6010-6030).
+    sql: "SUM(CASE WHEN account_code IN ('6010', '6020', '6030') THEN debit ELSE 0 END)"
+  - name: gl_processor_fees
+    description: Card / 3PD processor fees from GL (6100).
+    sql: "SUM(CASE WHEN account_code = '6100' THEN debit ELSE 0 END)"
+
+dimensions:
+  - name: outlet_id
+    sql: outlet_id
+    type: text
+  - name: business_day
+    sql: business_day
+    type: date
+  - name: account_code
+    sql: account_code
+    type: text
+  - name: posted_at
+    sql: posted_at
+    type: timestamp
+  - name: reference
+    sql: reference
+    type: text
+
+segments:
+  - name: current_business_day
+    sql: "business_day = (CURRENT_DATE - INTERVAL '1 day')::date"
+    description: Yesterday's complete business day.
+  - name: last_7_days
+    sql: "business_day >= (CURRENT_DATE - INTERVAL '7 days')::date AND business_day < CURRENT_DATE"
+  - name: last_14_days
+    sql: "business_day >= (CURRENT_DATE - INTERVAL '14 days')::date AND business_day < CURRENT_DATE"
+  - name: this_week
+    sql: "business_day >= date_trunc('week', CURRENT_DATE)::date AND business_day < CURRENT_DATE"
+
+joins:
+  - to: gl_accounts
+    on: "gl_entries.account_code = gl_accounts.code"
+    type: many_to_one
+  - to: outlets
+    on: "gl_entries.outlet_id = outlets.id"
+    type: many_to_one

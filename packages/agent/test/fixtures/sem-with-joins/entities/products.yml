@@ -1,0 +1,9 @@
+name: products
+description: Products joined from orders.
+grain: one row per product
+primary_key: id
+
+dimensions:
+  - name: category
+    sql: category
+    description: Merchandising category.

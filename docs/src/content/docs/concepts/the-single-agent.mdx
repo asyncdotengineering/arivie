@@ -1,0 +1,108 @@
+---
+title: The single-agent shape
+description: defineArivie returns one Mastra agent with text-to-SQL tools + workspace tools attached directly. Why Arivie picked this over a supervisor + sub-agents topology, and what changes when you do need orchestration.
+source: "v0.2 single-agent reversal"
+---
+
+`defineArivie()` returns a **single Mastra agent** with two tool families attached: text-to-SQL (`compile_metric`, `execute_<source>`) and workspace (`mastra_workspace_read_file`, `mastra_workspace_write_file`, `mastra_workspace_grep`, optional `workspace_bash`). The agent that runs the SQL is the same agent that writes the Markdown report or runs the shell utility. No supervisor, no sub-agents, no inter-agent prose handoff.
+
+```ts
+const instance = await defineArivie({ ... });
+
+instance.agent      // The Arivie analytics agent. Tools attached: SQL + workspace.
+```
+
+## Why one agent, not a supervisor + sub-agents
+
+Production text-to-SQL systems have converged on the single-agent shape: **Dataherald** (single ReAct + tools), **Vanna 2.0+** (single agent with `run_sql` and `visualize_data` as **tools**, not sub-agents), **WrenAI** (typed workflow with deterministic steps; LLM at composition points only). None of them use a supervisor that re-verbalizes data to a coder sub-agent.
+
+The reason is structural. When a supervisor delegates "pull the data, then write the report" to two sub-agents:
+
+```
+user prompt
+  ↓
+supervisor LLM
+  ↓ delegates to sql-agent (tool call)
+sql-agent LLM runs execute_postgres → rows live in sql-agent's scratchpad
+  ↓ returns text (a prose paraphrase of the rows)
+supervisor LLM (sees only the paraphrase, NOT the original rows)
+  ↓ delegates to coder (tool call)
+coder LLM (sees the supervisor's paraphrase, NOT the rows)
+  ↓ writes file
+```
+
+Every arrow between LLMs is a **prose summary boundary**. The rows that came out of Postgres are now a narrative the supervisor wrote — and weak models fill gaps in that narrative with plausible-sounding numbers. We have a verified failure mode from Grok where the actual SQL output had correct outlet IDs and prime-cost percentages, and the user-facing HTML report had **completely fabricated** revenue, COGS, and labor numbers. The data was right at the boundary; the boundary destroyed it.
+
+The single-agent shape eliminates the boundary:
+
+```
+user prompt
+  ↓
+agent LLM runs execute_postgres → rows in scratchpad
+  ↓
+agent LLM calls mastra_workspace_write_file with rows from scratchpad
+  ↓
+file on disk
+```
+
+Rows never leave the agent's working memory. There's no model that has to re-verbalize them.
+
+## What this looks like in practice
+
+A composite prompt — "pull yesterday's outlet KPIs and write me an HTML report" — runs as one agent turn with a sequence of tool calls visible in the trace:
+
+```
+── tool-call[0] execute_postgres
+   input: { sql: "WITH yesterday AS (...) SELECT ..." }
+── tool-result[0]
+   output: { rows: [{ outlet: "luminere-bistro", revenue: 4521.18, ... }, ...] }
+── tool-call[1] mastra_workspace_write_file
+   input: { path: "reports/eod.html", content: "<table><tr>...</tr></table>" }
+── tool-result[1]
+   output: { bytesWritten: 2841 }
+```
+
+The agent saw the rows. The agent wrote the file. One LLM, two tools, zero handoff.
+
+## What about workflows?
+
+For composite work where you want **deterministic steps** (validate input → fetch → render → email) rather than letting the LLM choose the tool sequence, use Mastra Workflows. Workflows let you put the LLM only at the steps that need genuine reasoning, with typed state flowing between them. This is WrenAI's shape and the recommended escape hatch when you want to lock down a procedure.
+
+Arivie itself does not ship workflow primitives in v0.2 — they belong in the host application that uses Arivie as a building block, not in the framework.
+
+## What about genuinely heterogeneous specialists?
+
+If you're building something that routes between distinct domains — say, an analytics agent **and** a customer-support agent **and** a code-review agent — then the supervisor + agents-as-tools pattern (Mastra's canonical example, Anthropic's "Building Effective Agents" orchestrator pattern) is the right shape. The boundary cost is real, but routing between genuine specialists is the actual problem you have.
+
+That is not what Arivie is. Arivie is an analytics agent. The work is text-to-SQL with optional file output. One LLM, multiple tools.
+
+If you do need supervisor routing, you can construct it yourself by wrapping `instance.agent` as a tool on your own supervisor Agent — Mastra exposes this through its `agents:` parameter on the Agent constructor. But that lives in your app code, not in `defineArivie`'s surface.
+
+## What you give up (vs. supervisor + sub-agents)
+
+| You lose | Why it matters less than it sounds |
+|---|---|
+| Per-agent model selection (cheap supervisor + heavy coder) | The single agent can be any model; if you need heavy reasoning for some prompts, use a heavier model. The bookkeeping of two models was never worth the fabrication risk. |
+| Memory isolation between sub-agents | Scratch noise in a single agent's context is normal and small. The compounded prompt length of supervisor + sub-agent identity definitions is much larger. |
+| Path-scoped sandbox isolation (coder writes elsewhere) | The single agent's workspace IS path-scoped (`InProcessSandboxFilesystem({ rootDir })`). The agent cannot escape the workspace root — same guarantee, fewer moving parts. |
+
+## What you keep
+
+Everything that matters for analytics agents:
+
+- Read-only DB role enforcement
+- Owner-identity boundary
+- Per-source `execute_<source>` tools with row-limit + timeout
+- `compile_metric` semantic-layer compilation
+- Skills (SOP playbooks) loaded by `SkillsProcessor`
+- Mastra Memory for cross-turn state
+- Workspace filesystem with path-guard
+- Opt-in `workspace_bash` for shell utilities
+
+The package surface is smaller, the failure modes are fewer, and the production-validated text-to-SQL pattern is what ships as the default.
+
+## See also
+
+- [SQL is the calculator](/recipes/sql-as-calculator/) — the rule that turns the single-agent shape into reliable arithmetic.
+- [File artifacts recipe](/recipes/file-artifacts/) — how a single agent produces Markdown / CSV / HTML reports.
+- [The agent loop](/concepts/the-agent-loop/) — what one turn looks like end-to-end.

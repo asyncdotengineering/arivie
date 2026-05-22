@@ -1,0 +1,14 @@
+{
+  "name": "semantic-browser",
+  "type": "registry:ui",
+  "version": "0.1.0",
+  "files": [
+    {
+      "path": "components/arivie/semantic-browser.tsx",
+      "type": "registry:component"
+    }
+  ],
+  "dependencies": ["@arivie/react", "lucide-react"],
+  "shadcnDependencies": ["collapsible"],
+  "description": "Tree view of entities + columns + descriptions"
+}

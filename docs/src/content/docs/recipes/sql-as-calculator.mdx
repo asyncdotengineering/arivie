@@ -1,0 +1,163 @@
+---
+title: SQL is the calculator
+description: How to enforce that every arithmetic step lives in a SQL CTE, never in the LLM's head. Research-backed convention, no new tools required.
+source: "v0.2 math-discipline pass (commit da5be16)"
+---
+
+LLMs are unreliable at multi-step arithmetic. A prompt that says "pull X, pull Y, then compute (X − Y) / Y × 100" will silently produce wrong percentages on a non-trivial fraction of runs. Production text-to-SQL agents have converged on a single fix: **the SQL is the calculator**. Every variance, ratio, percentage, ranking, and classification gets done in a single SQL query (CTE-chained), and the LLM only narrates the result.
+
+## Empirical basis
+
+A survey of six leading text-to-SQL agents (WrenAI, Dataherald, LangChain SQLDatabaseToolkit, Vercel `natural-language-postgres`, Vanna, Mastra primitives) found:
+
+- **Five of six** push all math into SQL. None ship a "calculator" or "post-query math" tool.
+- The one outlier (Vanna) ships a Python tool, but it's a general workspace REPL, not a math-correctness tool.
+- The unanimous pattern is multi-CTE: pull raw inputs as CTE-rows, then a final SELECT does the arithmetic with `ROUND(100.0 * (a - b) / NULLIF(b, 0), 2) AS pct_delta` and a `CASE` for the verdict.
+
+## The pattern
+
+```sql
+WITH raw_a AS (
+  SELECT key, value FROM source_a WHERE ...
+),
+raw_b AS (
+  SELECT key, value FROM source_b WHERE ...
+),
+joined AS (
+  SELECT
+    raw_a.key,
+    raw_a.value - raw_b.value                              AS abs_delta,
+    ROUND(100.0 * (raw_a.value - raw_b.value)
+          / NULLIF(raw_b.value, 0), 2)                     AS pct_delta,
+    CASE
+      WHEN raw_a.value > raw_b.value * 1.10 THEN 'over'
+      WHEN raw_a.value < raw_b.value * 0.90 THEN 'under'
+      ELSE 'in_band'
+    END                                                    AS verdict
+  FROM raw_a JOIN raw_b USING (key)
+)
+SELECT * FROM joined ORDER BY pct_delta DESC;
+```
+
+One `execute_postgres` call. Final shape — value, delta, pct, verdict — all in the result rows. The LLM forwards the rows; it doesn't compute anything.
+
+## How to enforce it
+
+### 1. A math-discipline preamble on every skill
+
+Every skill in `examples/with-pos-fnb/skills/*/SKILL.md` opens with:
+
+```markdown
+> ## Math discipline — read before doing anything else
+>
+> **Every arithmetic step in this report happens inside ONE SQL query
+> (CTE-chained), not in your response text.**
+>
+> Do NOT compute variances, percentages, ratios, deltas, classifications,
+> or aggregates by combining the outputs of multiple `compile_metric` calls.
+> The model is unreliable at multi-step arithmetic; SQL is exact.
+>
+> **Banned in your reasoning trace:**
+> - "Compute X = A - B"
+> - "Divide A by B"
+> - "The percentage is roughly..."
+> - "I'll calculate the variance..."
+>
+> If a step truly cannot be expressed in SQL, STOP and surface that as a
+> limitation — do not eyeball the math.
+```
+
+The skill loader (`SkillsProcessor` or `SkillSearchProcessor`) injects this into the agent context when the skill is loaded. The model sees it before it sees the Phase blocks.
+
+### 2. A system-rule prefix on every user prompt
+
+Wrap user prompts in a non-skill-bound discipline reminder:
+
+```ts
+const MATH_DISCIPLINE_PREFIX = `[SYSTEM RULE — read first]
+All arithmetic in this turn MUST happen inside ONE \`execute_postgres\` call
+(CTE-chained), not in your response text. Do not combine outputs of multiple
+\`compile_metric\` calls with arithmetic. ...`;
+
+const result = await instance.agent.generate(
+  `${MATH_DISCIPLINE_PREFIX}${userPrompt}`,
+  { memory: { thread, resource } },
+);
+```
+
+The agent's own instructions enforce the same rule, but the prefix is belt-and-suspenders for prompts that don't trigger a skill load.
+
+### 3. Skills consolidate Phase blocks into single CTEs
+
+A "Phase 1 — pull A. Phase 2 — pull B. Phase 3 — compute variance" structure leaks math to the LLM. Rewrite as **one consolidated query** that returns the final shape:
+
+```markdown
+## Phase 1 — ONE consolidated query
+
+Pull theoretical, actual, waste, food revenue, variance, and verdict — all in a
+single SQL call. Do not split into three `compile_metric` calls.
+
+\`\`\`sql
+WITH theoretical AS (...),
+     actual      AS (...),
+     waste       AS (...)
+SELECT
+  theoretical.outlet_id,
+  theoretical.cost                                       AS theoretical_cost,
+  actual.cost                                            AS actual_cost,
+  actual.cost - theoretical.cost                         AS variance_dollars,
+  ROUND(100.0 * (actual.cost - theoretical.cost)
+        / NULLIF(food_revenue.revenue, 0), 2)            AS variance_pct,
+  CASE
+    WHEN ... THEN 'under_portioning'
+    WHEN ... THEN 'healthy'
+    WHEN ... THEN 'investigate'
+    ELSE          'material_leak'
+  END                                                    AS verdict
+FROM ...;
+\`\`\`
+
+The result already classifies every outlet. Surface the rows; do not re-derive
+the variance.
+```
+
+## What changes in agent behaviour
+
+Before discipline (10 tool calls per turn):
+
+```
+search_skills, load_skill,
+compile_metric (revenue),
+compile_metric (cogs),
+compile_metric (labor),
+compile_metric (comp_pct),
+compile_metric (void_pct),
+compile_metric (avg_check),
+compile_metric (covers),
+execute_postgres (top items),
+execute_postgres (service mix)
+→ LLM computes prime_cost_pct = (cogs + labor) / revenue × 100 in response text
+```
+
+After discipline (3 tool calls per turn):
+
+```
+search_skills, load_skill,
+execute_postgres (one CTE returning revenue, cogs, labor, prime_cost_pct, verdict)
+→ LLM forwards the rows verbatim; the verdict column already says 'bleeding' or 'healthy'
+```
+
+Same answer. Two-thirds fewer tool calls. Zero LLM arithmetic.
+
+## Self-correction
+
+| Symptom | Cause | Fix |
+|---|---|---|
+| Numbers in the answer don't match the SQL result | LLM paraphrased — math discipline failed | Tighten the skill preamble: "Copy values from the SQL result row verbatim — do not round, do not summarize into prose." |
+| Skill produces `compile_metric` × N then a sentence "the variance is X" | Skill still has separate Phase blocks | Rewrite the Phase blocks as a single consolidated CTE. |
+| Agent says "I'll compute the percentage" | The system-rule prefix isn't reaching this prompt | Confirm the prompt is wrapped with `MATH_DISCIPLINE_PREFIX`. |
+| The CTE returned but the agent then re-computed in the answer | Math-discipline rule slipped past the model | Add "Never restate a number in your own words — copy the digits from the SQL result" to the skill preamble and to `MATH_DISCIPLINE_PREFIX`. |
+
+## When SQL genuinely cannot express the math
+
+Rare, but real cases: combining results from two different databases, computing a chart's cumulative-share curve over a fetched JSON blob, running a domain-specific simulator. For those, opt into [`workspace_bash`](/recipes/file-artifacts/) and let the agent stage data via `mastra_workspace_write_file` then shell out (Python / jq / awk). The math runs in a deterministic process, not the LLM's reasoning trace. Never let the LLM do arithmetic on numbers that came back from two separate queries.

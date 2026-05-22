@@ -1,0 +1,10 @@
+id: order-count
+category: normal
+question: "How many orders do we have in total?"
+golden_sql: |
+  SELECT COUNT(*)::bigint AS order_count
+  FROM orders
+validation:
+  - result_has_rows: true
+  - column_exists: order_count
+  - value_positive: order_count

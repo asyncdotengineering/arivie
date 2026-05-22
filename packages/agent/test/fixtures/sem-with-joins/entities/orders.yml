@@ -1,0 +1,39 @@
+name: orders
+description: Orders for compile_metric join-walking and filter tests.
+grain: one row per order
+primary_key: id
+
+measures:
+  - name: revenue
+    description: Total order revenue.
+    sql: "SUM(total_amount)"
+
+  - name: total
+    description: Order count.
+    sql: "COUNT(*)"
+
+dimensions:
+  - name: status
+    sql: status
+    description: Order status.
+
+  - name: customers.region
+    sql: customers.region
+    description: Customer region via join.
+
+  - name: products.category
+    sql: products.category
+    description: Product category via join.
+
+segments:
+  - name: current_quarter
+    sql: "created_at >= date_trunc('quarter', CURRENT_DATE)"
+    description: Orders in the current calendar quarter.
+
+joins:
+  - to: customers
+    on: "orders.customer_id = customers.id"
+    type: many_to_one
+  - to: products
+    on: "orders.product_id = products.id"
+    type: many_to_one

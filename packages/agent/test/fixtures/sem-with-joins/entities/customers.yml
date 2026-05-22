@@ -1,0 +1,9 @@
+name: customers
+description: Customers joined from orders.
+grain: one row per customer
+primary_key: id
+
+dimensions:
+  - name: region
+    sql: region
+    description: Billing region.

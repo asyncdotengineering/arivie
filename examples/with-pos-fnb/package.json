@@ -1,0 +1,32 @@
+{
+  "name": "with-pos-fnb",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "db:create": "psql -d postgres -c 'CREATE DATABASE arivie_pos OWNER CURRENT_USER;'",
+    "db:schema": "psql -d arivie_pos -f db/schema.sql",
+    "db:seed": "DATABASE_URL=$${DATABASE_URL:-postgresql://localhost:5432/arivie_pos} tsx db/seed.ts",
+    "db:setup": "pnpm run db:schema && pnpm run db:seed",
+    "ask": "tsx scripts/ask-live.ts",
+    "walkthrough": "tsx scripts/role-walkthrough.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@ai-sdk/google": "^3.0.75",
+    "@arivie/core": "workspace:*",
+    "@arivie/db-postgres": "workspace:*",
+    "@arivie/workspace": "workspace:*",
+    "@mastra/core": "^1.35.0",
+    "ai": "^6.0.0",
+    "postgres": "^3.4.7",
+    "zod": "^4.4.3",
+    "@ai-sdk/openai": "^3.0.64",
+    "@ai-sdk/xai": "^3.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsx": "^4.20.3",
+    "typescript": "^5.9.0"
+  }
+}

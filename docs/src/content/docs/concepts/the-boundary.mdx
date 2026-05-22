@@ -1,0 +1,29 @@
+---
+title: The boundary
+description: One owner per instance, owner-identity assertion, and pass-through database ACLs.
+source: "RFC-002 §3.2 + 01-problem-background §3"
+---
+
+The Arivie **boundary** is the contract that separates one owner's analytics world from another's. RFC-002 §3.2 and the problem-background doc state the tenancy model plainly: **single-tenant per Arivie instance**. The instance **is** the boundary. There is no `tenant_id` in views, no session-variable firewall inside the framework, and no in-process multi-tenant code path. SaaS embedders who need many customers run **N instances** via `@arivie/deploy` recipes.
+
+## One owner per instance
+
+**REQ-5** requires every Arivie instance to serve exactly one `owner.id`. The framework **refuses to start** if `owner.id` is missing or empty. Public APIs use the terms **owner**, **user**, and **instance** — not `tenant` (REQ-7). The word `tenant` may appear only in adapter examples or docs where it maps to the consumer's external concept.
+
+`defineArivie` validates config with Zod, performs **lazy** owner-identity assertion on the first request, constructs a Mastra container, and returns handler shapes. On owner-identity mismatch it throws `ArivieBoundaryError` (RFC-002 §4.1).
+
+## Owner-identity assertion at boot
+
+**REQ-6** mandates an owner-identity assertion at startup: an environment-variable match check plus a startup database ping that confirms the connected Postgres role's identity matches the expected owner. Failure **aborts boot**.
+
+The `@arivie/db-postgres` adapter implements `verifyOwnerIdentity(expectedOwnerId: string)`. It executes `SELECT current_database(), current_user, version()` and queries `SELECT value FROM arivie_owner_identity WHERE key = 'owner_id'` to confirm the connected database is the expected owner's. The dogfood schema ships a one-row `arivie_owner_identity` table; `arivie setup` seeds it during provisioning.
+
+## Pass-through queries
+
+**REQ-8** states that every query the agent emits must execute using the database role returned by `resolveUser`. If the user's role lacks `SELECT` on a table, the query fails — **by Postgres**, not by Arivie application filtering. This is the OpenAI-style pass-through pattern cited in the pivot: the agent does not synthesize a second permission layer.
+
+Integration guides show how to derive `ownerId` from your auth provider and pass it into `getArivieRuntimeForOwner(ownerId)` so each authenticated principal maps to the correct instance configuration and owner-identity row.
+
+## Operational implication
+
+Operators provision **one database (or schema) per owner**, one `arivie_owner_identity` row, one read-only role (`arivie_reader` by convention), and one deployed Arivie process (or Durable Object). Crossing owners inside one instance is architecturally impossible — which is why cross-tenant probes were removed from the eval suite and replaced with context-quality and MCP-equivalence probes.

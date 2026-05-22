@@ -1,0 +1,66 @@
+---
+title: Audit routing (lifecycle hooks)
+description: Route every tool call and SQL execution to your audit pipeline via onToolCall and onAfterQuery.
+sidebar:
+  order: 5
+runnable_example: examples/with-nextjs/
+source: "RFC-002 §6.7 + examples/with-nextjs"
+---
+
+import { Code } from '@astrojs/starlight/components';
+import arivieConfig from '../../../../../examples/with-nextjs/arivie.config.ts?raw';
+
+## When to use this
+
+Use **audit routing** when compliance or support needs a per-decision log: which tool ran (`explore`, `execute`, `compile_metric`), with what args summary, plus the SQL and row count after execution. Arivie does not store audit records internally — RFC-002 routes them through lifecycle hooks to **your** pipeline (Axiom, Datadog, S3, etc.).
+
+## Architecture
+
+![MCP and HTTP share one agent — audit hooks sit below both transports](../../../assets/architecture/mcp-equivalence.svg)
+
+Base example: [`examples/with-nextjs/`](https://github.com/openscoped/data-agent/tree/main/arivie/examples/with-nextjs).
+
+## Config patch
+
+Add `hooks` to `defineArivie` in `arivie.config.ts`. `onToolCall` receives `tool` (the tool id string) for every agent step; `onAfterQuery` fires after `execute` / `compile_metric` runs SQL:
+
+```typescript
+defineArivie({
+  // ... owner, model, db, semantic, resolveUser
+  hooks: {
+    async onToolCall(ctx) {
+      await auditSink.write({
+        event: "tool.call",
+        tool: ctx.tool,
+        ownerId: ctx.ownerId,
+        userId: ctx.userId,
+        durationMs: ctx.durationMs,
+      });
+    },
+    async onAfterQuery(ctx) {
+      await auditSink.write({
+        event: "sql.executed",
+        sql: ctx.sql,
+        rowCount: ctx.rows.length,
+        ownerId: ctx.ownerId,
+        userId: ctx.userId,
+        durationMs: ctx.durationMs,
+      });
+    },
+  },
+});
+```
+
+The reference config shape (without hooks) is:
+
+<Code code={arivieConfig} lang="typescript" title="arivie.config.ts (base)" />
+
+## Run it
+
+```bash
+cd arivie && pnpm install
+pnpm --filter with-nextjs dev
+curl -X POST http://localhost:3000/api/arivie -H 'Content-Type: application/json' -d '{"prompt":"How many customers?"}'
+```
+
+Verify your audit sink receives `tool.call` and `sql.executed` events for the request.

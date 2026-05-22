@@ -1,0 +1,22 @@
+name: orders_ambiguous
+description: Orders entity with two join paths to customers for join-ambiguous tests.
+grain: one row per order
+primary_key: id
+
+measures:
+  - name: revenue
+    description: Revenue measure.
+    sql: "SUM(total_amount)"
+
+dimensions:
+  - name: customers.region
+    sql: customers.region
+    description: Region via ambiguous join paths.
+
+joins:
+  - to: customers
+    on: "orders_ambiguous.customer_id = customers.id"
+    type: many_to_one
+  - to: customers
+    on: "orders_ambiguous.billing_customer_id = customers.id"
+    type: many_to_one

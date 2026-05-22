@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 360" role="img" aria-labelledby="mcp-equiv-title mcp-equiv-desc">
+  <title id="mcp-equiv-title">HTTP and MCP equivalence</title>
+  <desc id="mcp-equiv-desc">HTTP and MCP-stdio transports both invoke the same Mastra Agent instance per REQ-26.</desc>
+  <style>
+    .bg { fill: #0f1419; }
+  .col { fill: #1a2332; stroke: #3d5a80; stroke-width: 1.5; }
+  .agent { fill: #2d4a3e; stroke: #34d399; stroke-width: 2; }
+  .label { font-family: ui-sans-serif, system-ui, sans-serif; fill: #e8eef4; font-size: 13px; font-weight: 600; }
+  .req { font-family: ui-sans-serif, system-ui, sans-serif; fill: #34d399; font-size: 12px; font-weight: 600; }
+  .arrow { stroke: #94a3b8; stroke-width: 2; fill: none; marker-end: url(#ah); }
+  </style>
+  <defs>
+    <marker id="ah" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <polygon points="0 0, 8 3, 0 6" fill="#94a3b8"/>
+    </marker>
+  </defs>
+  <rect class="bg" width="720" height="360"/>
+  <rect class="col" x="40" y="40" width="280" height="120" rx="10"/>
+  <text class="label" x="180" y="72" text-anchor="middle">HTTP</text>
+  <text class="label" x="180" y="100" text-anchor="middle" font-weight="400" font-size="11">arivie.next.POST</text>
+  <rect class="col" x="400" y="40" width="280" height="120" rx="10"/>
+  <text class="label" x="540" y="72" text-anchor="middle">MCP-stdio</text>
+  <text class="label" x="540" y="100" text-anchor="middle" font-weight="400" font-size="11">makeMcpServer</text>
+  <rect class="agent" x="220" y="220" width="280" height="80" rx="12"/>
+  <text class="label" x="360" y="258" text-anchor="middle">Agent instance</text>
+  <text class="label" x="360" y="278" text-anchor="middle" font-weight="400" font-size="11">same tools, same owner</text>
+  <path class="arrow" d="M180 160 V200"/>
+  <path class="arrow" d="M540 160 V200"/>
+  <text class="req" x="360" y="200" text-anchor="middle">REQ-26: same agent</text>
+</svg>

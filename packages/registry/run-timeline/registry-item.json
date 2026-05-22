@@ -1,0 +1,14 @@
+{
+  "name": "run-timeline",
+  "type": "registry:ui",
+  "version": "0.1.0",
+  "files": [
+    {
+      "path": "components/arivie/run-timeline.tsx",
+      "type": "registry:component"
+    }
+  ],
+  "dependencies": ["@arivie/react", "lucide-react"],
+  "shadcnDependencies": ["separator"],
+  "description": "Vertical timeline of tool calls + durations + cost"
+}

@@ -1,0 +1,3 @@
+name: bad_entity
+description: Missing primary_key on purpose for negative-path tests.
+grain: one row per bad row

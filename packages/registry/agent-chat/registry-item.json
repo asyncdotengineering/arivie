@@ -1,0 +1,18 @@
+{
+  "name": "agent-chat",
+  "type": "registry:ui",
+  "version": "0.1.0",
+  "files": [
+    {
+      "path": "components/arivie/agent-chat.tsx",
+      "type": "registry:component"
+    },
+    {
+      "path": "components/arivie/agent-chat.module.css",
+      "type": "registry:component"
+    }
+  ],
+  "dependencies": ["@arivie/react", "lucide-react"],
+  "shadcnDependencies": ["button", "card", "scroll-area"],
+  "description": "Top-level chat surface; consumes AI Elements `<Conversation>`, `<Message>`, `<PromptInput>`"
+}

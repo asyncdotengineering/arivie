@@ -1,0 +1,12 @@
+id: orders-in-march
+category: normal
+question: "How many orders were placed in March this year?"
+golden_sql: |
+  SELECT COUNT(*)::bigint AS order_count
+  FROM orders
+  WHERE created_at >= date_trunc('month', make_date(EXTRACT(YEAR FROM CURRENT_DATE)::int, 3, 1))
+    AND created_at < date_trunc('month', make_date(EXTRACT(YEAR FROM CURRENT_DATE)::int, 4, 1))
+validation:
+  - result_has_rows: true
+  - column_exists: order_count
+  - value_positive: order_count

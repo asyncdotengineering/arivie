@@ -1,0 +1,55 @@
+name: tenders
+description: |
+  Payment records — one row per payment line on a ticket. A ticket may have
+  multiple tenders (split checks). Card processor fees live here; net deposit
+  to the bank = SUM(amount + tip_amount - processor_fee) by card brand.
+
+grain: one row per payment line
+primary_key: id
+
+measures:
+  - name: tendered_amount
+    description: Gross amount captured across all tenders.
+    sql: "SUM(amount + tip_amount)"
+
+  - name: processor_fees
+    description: Card and 3PD processor fees paid. Subtract from tendered_amount for net deposit.
+    sql: "SUM(processor_fee)"
+
+  - name: net_deposit
+    description: tendered_amount minus processor_fees. The number the bookkeeper reconciles against the bank.
+    sql: "SUM(amount + tip_amount - processor_fee)"
+
+  - name: cash_collected
+    description: Cash tenders only. Drives the daily cash deposit envelope.
+    sql: "SUM(amount + tip_amount) FILTER (WHERE tender_type = 'cash')"
+
+dimensions:
+  - name: ticket_id
+    sql: ticket_id
+    type: text
+
+  - name: outlet_id
+    sql: outlet_id
+    type: text
+
+  - name: tender_type
+    sql: tender_type
+    values: [cash, card_credit, card_debit, gift_card, house_account, comp, doordash_pay, ubereats_pay, grubhub_pay]
+    description: Tender category. card_credit/card_debit carry processor fees; *_pay are 3PD marketplace remittances.
+
+  - name: card_brand
+    sql: card_brand
+    values: [visa, mc, amex, discover]
+
+  - name: captured_at
+    sql: captured_at
+    type: timestamp
+
+joins:
+  - to: tickets
+    on: "tenders.ticket_id = tickets.id"
+    type: many_to_one
+  - to: outlets
+    on: "tenders.outlet_id = outlets.id"
+    type: many_to_one

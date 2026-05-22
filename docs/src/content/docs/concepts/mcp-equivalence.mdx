@@ -1,0 +1,31 @@
+---
+title: MCP equivalence
+description: One Mastra Agent for HTTP and MCP; CI parity between transports.
+source: "RFC-002 §3.7 + PIVOT.md §6"
+---
+
+**MCP equivalence** means external agents and in-app HTTP clients talk to the **same** Mastra `Agent` instance with the **same** tools, semantic layer, and boundary checks. RFC-002 §3.7 (REQ-26–27) and the pivot's MCP section reject a separate MCP-only handler that would drift from HTTP over time.
+
+## One agent, two transports
+
+**REQ-26** requires a single Mastra `Agent` to back both the HTTP transport and the MCP transport. Arivie **refuses** to construct two agents per instance.
+
+`@arivie/mcp` wraps `makeMcpServer` from Mastra's MCP primitive (`@mastra/mcp`). The Next.js example mounts HTTP at `app/api/arivie/route.ts` and MCP at `app/api/arivie/mcp/route.ts`, both from `getArivieRuntime()` in `arivie.config.ts`.
+
+## Parity test in CI
+
+**REQ-27** mandates an MCP equivalence parity test in CI: a sample question asked over **HTTP** and over **MCP-stdio** must yield **structurally identical** answers — same SQL, same row count, same assumptions list. The test runs on every PR (`pnpm test:parity` in `arivie/tests/integration/mcp-parity.test.ts`).
+
+This guards against regressions where MCP tools diverge from HTTP handlers, a failure mode seen in ecosystems that ship empty or stale MCP servers separate from their REST APIs.
+
+## Deep links for external agents
+
+The pivot notes that MCP responses may include an `ActionDeepLink`-shaped object (pattern borrowed from agent-native commerce docs) so external agents can hyperlink back into the host application. That is an integration convenience, not a second agent loop.
+
+## Dogfood probes
+
+The 30-question eval suite (REQ-30) includes **two MCP-equivalence probes** among its composition: they exercise the same fixture questions across both transports. Cross-tenant probes do not exist — they were removed when the single-owner boundary pivot landed.
+
+## Choosing HTTP vs MCP
+
+Use **HTTP** when your UI calls `useAgent` from `@arivie/react` or posts JSON to `arivie.next.POST`. Use **MCP** when Claude Desktop, Cursor, or another MCP host should discover `explore` and `execute` as tools. Configuration differs only at the transport edge; `owner.id`, semantic path, and model resolver stay in `arivie.config.ts`.

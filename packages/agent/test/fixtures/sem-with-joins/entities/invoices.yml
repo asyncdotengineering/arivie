@@ -1,0 +1,9 @@
+name: invoices
+description: Invoices with total metric for ambiguous-metric tests.
+grain: one row per invoice
+primary_key: id
+
+measures:
+  - name: total
+    description: Invoice count.
+    sql: "COUNT(*)"

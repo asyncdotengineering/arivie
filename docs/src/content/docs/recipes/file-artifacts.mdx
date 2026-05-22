@@ -1,0 +1,140 @@
+---
+title: File artifacts (reports, CSVs, charts)
+description: How the single Arivie agent produces Markdown / HTML / CSV / JSON files from a natural-language prompt. Workspace tools attach directly to the agent — no coder sub-agent, no prose handoff.
+source: "v0.2 examples/with-pos-fnb/scripts/with-artifacts.ts"
+---
+
+When a user asks *"pull yesterday's outlet KPIs and write me an HTML report I can email,"* the Arivie agent treats it as one turn with a sequence of tool calls: SQL → `mastra_workspace_write_file`. The rows live in the agent's scratchpad from `execute_postgres` through to the file write. There is no second LLM in the loop and no prose paraphrase boundary where numbers can drift.
+
+This page shows the wiring.
+
+## 1. Attach a sandboxed workspace
+
+The `workspace.filesystem` you pass to `defineArivie` is the root for every workspace tool call. Use `InProcessSandboxFilesystem` from `@arivie/workspace` rooted at the directory you want artifacts to land in:
+
+```ts
+import { defineArivie, localWorkspace } from "@arivie/core";
+import { postgresAdapter } from "@arivie/db-postgres";
+
+const instance = await defineArivie({
+  owner: { id: "...", name: "..." },
+  model,
+  semantic: { path: "./semantic", mode: "preload" },
+  skills: "./skills",
+  skillsMode: "auto",
+  sources: { postgres: postgresAdapter({ url: process.env.DATABASE_URL! }) },
+  workspace: localWorkspace({ at: "./workspace", bash: true }),
+  compileMetric: true,
+  resolveUser: async () => ({
+    userId: "demo",
+    permissions: ["analytics:read"],
+    dbRole: "arivie_reader",
+  }),
+});
+```
+
+`localWorkspace({ at, bash })` is a one-line helper that constructs an `InProcessSandboxFilesystem` rooted at the given path and (when `bash: true`) surfaces `workspace_bash` for shell utilities (jq, awk, python). Drop `bash` if the agent only needs read/write/grep.
+
+The agent automatically gets these tools (Mastra registers them when the Workspace primitive is attached):
+
+| Tool | Purpose |
+|---|---|
+| `mastra_workspace_read_file` | Read a file, optionally a line range |
+| `mastra_workspace_write_file` | Create or overwrite a file; parents auto-created |
+| `mastra_workspace_edit_file` | Find-and-replace inside an existing file |
+| `mastra_workspace_list_files` | List a directory as a tree |
+| `mastra_workspace_grep` | Regex search across file contents |
+| `mastra_workspace_file_stat` | Inspect a path's size, type, mtime |
+| `mastra_workspace_mkdir` | Create a directory |
+| `mastra_workspace_delete` | Remove a file or directory |
+| `workspace_bash` *(opt-in via `workspace.bash: true` or `localWorkspace({ bash: true })`)* | Run a shell command in the sandbox; returns stdout/stderr/exit code |
+
+All paths are resolved relative to `workspaceRoot`. The path-guard rejects traversal: `../../../etc/passwd` becomes an error, not a security incident.
+
+## 2. Write the prompt
+
+The prompt itself is plain English — no special protocol, no tool-naming gymnastics. The agent's system prompt already includes the math-into-SQL discipline; for file work you just tell it where to put the output:
+
+```ts
+const result = await instance.ask({
+  prompt: `Pull yesterday's revenue, ticket count, covers, average check,
+   comp% and void% for outlet_id 'luminere-bistro' via ONE execute_postgres
+   query (single CTE). Then call mastra_workspace_write_file to write a
+   Markdown report at reports/eod-luminere-bistro-yesterday.md with:
+     - a heading with the outlet name and business_day
+     - a KPI table with the six metrics
+     - a one-line verdict ("Comp% breached" if > 3%, else "Within target")`,
+  user,
+});
+
+// result is AskResult — strictly typed.
+console.log(result.text);                       // string
+for (const c of result.toolCalls) console.log(c.tool);
+console.log(result.sql);                         // string[] of SQL that ran
+console.log(result.artifacts);                   // file paths written this turn
+```
+
+The agent will call `execute_postgres`, see the rows in its scratchpad, then call `mastra_workspace_write_file` with the formatted Markdown. The file lands at `workspace/reports/eod-luminere-bistro-yesterday.md`.
+
+## 3. Shell utilities for non-SQL transformations
+
+For things SQL can't do gracefully — JSON reshape, week-over-week delta, mermaid chart rendering — opt into `workspace_bash` and let the agent shell out. The agent stages JSON via `mastra_workspace_write_file`, runs a Python one-liner via `workspace_bash`, and reads the result back:
+
+```text
+Pull a per-ingredient breakdown via ONE execute_postgres query that returns
+ingredient_name, week_a_waste_cost (last 7 days), week_b_waste_cost (the 7 days
+before that). Write the rows to scratch/waste.json as a JSON array. Then run
+python3 -c with a script that loads scratch/waste.json, computes
+(week_a - week_b) per row, takes the top 3 by absolute delta, and writes the
+answer to scratch/answer.md as a Markdown bullet list. Read back the answer.
+```
+
+The tool trace looks like:
+
+```
+execute_postgres                  { sql: "WITH ranges AS (...) SELECT ..." }
+mastra_workspace_write_file       { path: "scratch/waste.json", content: "[...]" }
+workspace_bash                    { command: "python3 -c '...'" }
+mastra_workspace_read_file        { path: "scratch/answer.md" }
+```
+
+Four tool calls, one agent. No supervisor, no sub-agent.
+
+## 4. Verifying the artifact
+
+After the turn returns, walk the workspace directory and inspect what landed:
+
+```ts
+import { existsSync, readdirSync, statSync } from "node:fs";
+import { join } from "node:path";
+
+function walk(dir: string, prefix = ""): string[] {
+  if (!existsSync(dir)) return [];
+  const out: string[] = [];
+  for (const name of readdirSync(dir)) {
+    const full = join(dir, name);
+    const rel = prefix ? `${prefix}/${name}` : name;
+    const st = statSync(full);
+    if (st.isDirectory()) out.push(...walk(full, rel));
+    else out.push(`${rel}  (${st.size} bytes)`);
+  }
+  return out;
+}
+
+for (const f of walk(workspaceRoot)) console.log(`  ${f}`);
+```
+
+For a runnable end-to-end example with two task shapes (Markdown report + shell-scripted analysis), see `arivie/examples/with-pos-fnb/scripts/with-artifacts.ts`.
+
+## Anti-patterns to avoid
+
+- **Asking the agent to "summarize" the rows before writing.** It will, and a weak model will introduce paraphrase drift. Tell it to copy values verbatim from the SQL result.
+- **Doing arithmetic outside SQL.** Even with the file-write step, math goes in the SQL CTE. The file is a *renderer*, not a calculator. ([SQL is the calculator](/recipes/sql-as-calculator/))
+- **Putting the workspace at a system-shared location** (e.g., `/tmp` with no scoping). Use a project-local directory and gitignore it.
+- **Forgetting to opt into `workspace_bash`.** Without it the agent will try to do shell-y work in JS-like prose. Pass `bash: true` to `localWorkspace` (or `workspace: { bash: true }` if you're constructing the filesystem yourself) when you need real exec.
+
+## See also
+
+- [The single-agent shape](/concepts/the-single-agent/) — why workspace tools live on the agent itself.
+- [SQL is the calculator](/recipes/sql-as-calculator/) — the math rule that pairs with file artifacts.
+- [The agent loop](/concepts/the-agent-loop/) — what a turn looks like end-to-end.

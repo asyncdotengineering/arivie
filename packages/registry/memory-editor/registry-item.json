@@ -1,0 +1,14 @@
+{
+  "name": "memory-editor",
+  "type": "registry:ui",
+  "version": "0.1.0",
+  "files": [
+    {
+      "path": "components/arivie/memory-editor.tsx",
+      "type": "registry:component"
+    }
+  ],
+  "dependencies": ["@arivie/react"],
+  "shadcnDependencies": ["input", "button"],
+  "description": "List + edit + delete saved corrections"
+}

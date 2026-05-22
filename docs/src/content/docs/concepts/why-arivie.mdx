@@ -1,0 +1,27 @@
+---
+title: Why Arivie
+description: Product positioning and foundation decisions from the architecture pivot.
+source: "PIVOT.md + RFC-002 §3.1"
+---
+
+Arivie exists because teams want **agentic analytics inside their own application** without rebuilding Mastra primitives, duplicating MCP handlers, or inventing a parallel agent loop. The framework name, license, and foundation are locked in the project pivot document: **Arivie** ships under **Apache-2.0** for v0.x, published as `@arivie/*`, and is **built on Mastra** — not beside it.
+
+## Built on Mastra, not around it
+
+Every Arivie package whose responsibility overlaps a Mastra primitive **extends** that primitive's interface (REQ-1). Storage uses `@mastra/pg`; the filesystem-driven explore tool uses Mastra `Workspace`; embeddings use Mastra `Vector`; the agent uses Mastra `Agent`; MCP uses `@mastra/mcp`. Arivie does **not** run a parallel agent loop (REQ-2). AI SDK remains the escape hatch for narrow operations Mastra has not surfaced yet, but the production architecture treats Mastra as the loop owner.
+
+This matters for maintainers: when Mastra ships observability, dev TUI, eval framework, or MCP server primitives, Arivie consumes them rather than forking. Where Mastra does not cover data-agent-specific concerns — semantic-layer linting, cross-mode coverage, registry UI — Arivie ships those pieces in `@arivie/semantic`, `@arivie/registry`, and related packages.
+
+## Single-tenant by design
+
+The pivot's central simplification is **one Arivie instance = one owner** (one company's data, one tenant's data, or one department's data). The instance scope **is** the boundary. User-level permissions inside an instance are **pass-through to the owner's database role**: if the configured DB role cannot `SELECT` a table, the agent cannot either. Multi-tenant SaaS embedders deploy **N instances**, one per tenant, using `@arivie/deploy` recipes rather than in-process tenant routing.
+
+What was removed from the architecture is explicit in the pivot: tenant-scoped views with session variables as a firewall, in-process multi-tenant mode, cross-tenant eval probes, and a `resolveTenant(req)` contract. Those are replaced by owner-scoped instance config plus `resolveUser(req)` for personal memory and pass-through ACLs.
+
+## v0.1 is production-shaped
+
+The pivot commits to shipping the production deliverable list at v0.1 — documentation, eval suite, MCP parity, all three context modes, deployment recipes, and registry UI — with **no deferring** core primitives to a later milestone. RFC-002 encodes the same bar through REQ-30–32 (dogfood eval ≥ 90%, BIRD-Interact score, bundle and latency budgets).
+
+## When to choose Arivie
+
+Choose Arivie when you already run Postgres analytics data, want agents that **read** your warehouse through a curated semantic layer, need HTTP and MCP on the **same** Mastra `Agent`, and can map each customer or org to **its own deployed instance**. If you need arbitrary multi-tenant routing inside one process, Arivie is the wrong fit — deploy multiple instances instead.

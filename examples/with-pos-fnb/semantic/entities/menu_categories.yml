@@ -1,0 +1,25 @@
+name: menu_categories
+description: |
+  Menu category grouping. Drives course-level revenue reporting
+  (food vs beverage, starter vs main, cocktails vs wine).
+
+grain: one row per menu category
+primary_key: id
+
+dimensions:
+  - name: name
+    sql: name
+    type: text
+
+  - name: course
+    sql: course
+    values: [starter, main, side, dessert, beverage, cocktail, wine, beer, spirit, non_alcoholic]
+
+  - name: sort_order
+    sql: sort_order
+    type: numeric
+
+joins:
+  - to: menu_items
+    on: "menu_categories.id = menu_items.category_id"
+    type: one_to_many

@@ -1,0 +1,60 @@
+{
+  "name": "@arivie/mcp",
+  "version": "0.1.0",
+  "private": false,
+  "type": "module",
+  "description": "Arivie Mastra MCP server — ask, query, schema, and memory tools over MCPServer.",
+  "license": "Apache-2.0",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./next": {
+      "import": "./dist/next.js",
+      "types": "./dist/next.d.ts"
+    },
+    "./stdio": {
+      "import": "./dist/stdio.js",
+      "types": "./dist/stdio.d.ts"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "CHANGELOG.md"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "lint": "echo no-lint-yet"
+  },
+  "dependencies": {
+    "@arivie/db-postgres": "workspace:*",
+    "@arivie/semantic": "workspace:*",
+    "@mastra/core": "^1.35.0",
+    "@mastra/mcp": "^1.7.0",
+    "zod": "^4.4.0"
+  },
+  "peerDependencies": {
+    "@arivie/agent": "workspace:*"
+  },
+  "devDependencies": {
+    "@arivie/agent": "workspace:*",
+    "@arivie/workspace": "workspace:*",
+    "@mastra/core": "^1.35.0",
+    "@types/node": "^22.0.0",
+    "ai": "^6.0.0",
+    "tsup": "^8.5.1",
+    "typescript": "^6.0.0",
+    "vitest": "^4.1.0",
+    "zod": "^4.4.0"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  }
+}

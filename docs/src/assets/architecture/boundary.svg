@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 420" role="img" aria-labelledby="boundary-title boundary-desc">
+  <title id="boundary-title">Arivie owner instance boundary</title>
+  <desc id="boundary-desc">One Arivie instance contains the agent, owner Postgres, and Mastra Memory. No shared multi-tenant mode.</desc>
+  <style>
+    .bg { fill: #0f1419; }
+  .frame { fill: #1a2332; stroke: #3d5a80; stroke-width: 2; }
+  .box { fill: #243447; stroke: #5c7cfa; stroke-width: 1.5; rx: 8; }
+  .label { font-family: ui-sans-serif, system-ui, -apple-system, sans-serif; fill: #e8eef4; font-size: 14px; font-weight: 600; }
+  .caption { font-family: ui-sans-serif, system-ui, sans-serif; fill: #94a3b8; font-size: 13px; }
+  .title { font-family: ui-sans-serif, system-ui, sans-serif; fill: #f1f5f9; font-size: 18px; font-weight: 700; }
+  </style>
+  <rect class="bg" width="720" height="420"/>
+  <text class="caption" x="360" y="36" text-anchor="middle">One Arivie = one owner. No shared mode.</text>
+  <rect class="frame" x="80" y="56" width="560" height="300" rx="12"/>
+  <text class="title" x="360" y="88" text-anchor="middle">Owner instance</text>
+  <rect class="box" x="120" y="110" width="200" height="72"/>
+  <text class="label" x="220" y="152" text-anchor="middle">Arivie Agent</text>
+  <rect class="box" x="360" y="110" width="200" height="72"/>
+  <text class="label" x="460" y="152" text-anchor="middle">Owner Postgres</text>
+  <rect class="box" x="240" y="220" width="240" height="72"/>
+  <text class="label" x="360" y="262" text-anchor="middle">Mastra Memory</text>
+  <text class="caption" x="360" y="390" text-anchor="middle">RFC-002 sec 3.2 - single-tenant per instance</text>
+</svg>

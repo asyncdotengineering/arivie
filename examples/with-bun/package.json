@@ -1,0 +1,28 @@
+{
+  "name": "with-bun",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "bun run src/index.ts",
+    "build": "bun build src/index.ts --outdir dist --target bun",
+    "boot:smoke": "bun run scripts/boot-smoke.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@ai-sdk/anthropic": "^3.0.78",
+    "@ai-sdk/google": "^3.0.75",
+    "@ai-sdk/openai": "^3.0.64",
+    "@arivie/core": "workspace:*",
+    "@arivie/db-postgres": "workspace:*",
+    "@arivie/mcp": "workspace:*",
+    "@arivie/semantic": "workspace:*",
+    "ai": "^6.0.0"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.2.0",
+    "@types/node": "^22.0.0",
+    "postgres": "^3.4.7",
+    "typescript": "^6.0.0"
+  }
+}

@@ -1,0 +1,15 @@
+name: orders
+description: Orders placed by customers. One row per order.
+grain: one row per order
+primary_key: id
+
+measures:
+  - name: revenue
+    description: Total revenue from completed orders.
+    sql: "SUM(total_amount) FILTER (WHERE status = 'completed')"
+
+dimensions:
+  - name: status
+    sql: status
+    values: [pending, processing, completed, refunded, cancelled, draft]
+    description: Order lifecycle status.

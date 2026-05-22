@@ -1,0 +1,59 @@
+name: ticket_items
+description: |
+  Line items on a guest check. One row per (ticket, menu_item, qty) line.
+  Use for menu-engineering, item velocity, and food-cost analysis.
+  For revenue tied to items, prefer line_subtotal less the per-line adjustments.
+
+grain: one row per item line on a ticket
+primary_key: id
+
+measures:
+  - name: units_sold
+    description: Total units sold (sums qty across lines). Excludes voided lines.
+    sql: "SUM(qty) FILTER (WHERE NOT is_voided)"
+
+  - name: item_revenue
+    description: Revenue at the line level. Excludes voided and comped lines.
+    sql: "SUM(line_subtotal - discount_amount - comp_amount - void_amount) FILTER (WHERE NOT is_voided AND NOT is_comped)"
+
+  - name: theoretical_food_cost
+    description: Sum of theoretical_food_cost × qty across non-voided lines. Drives food_cost_pct.
+    sql: "SUM(qty * (SELECT theoretical_food_cost FROM menu_items mi WHERE mi.id = ticket_items.menu_item_id)) FILTER (WHERE NOT is_voided)"
+
+dimensions:
+  - name: ticket_id
+    sql: ticket_id
+    type: text
+
+  - name: menu_item_id
+    sql: menu_item_id
+    type: numeric
+
+  - name: course
+    sql: course
+    values: [starter, main, side, dessert, beverage, cocktail, wine, beer, spirit, non_alcoholic]
+
+  - name: is_voided
+    sql: is_voided
+    type: boolean
+
+  - name: is_comped
+    sql: is_comped
+    type: boolean
+
+  - name: sent_to_kitchen_at
+    sql: sent_to_kitchen_at
+    type: timestamp
+    description: When KDS received the line. Use (fired_at - sent_to_kitchen_at) for kitchen ticket time.
+
+  - name: fired_at
+    sql: fired_at
+    type: timestamp
+
+joins:
+  - to: tickets
+    on: "ticket_items.ticket_id = tickets.id"
+    type: many_to_one
+  - to: menu_items
+    on: "ticket_items.menu_item_id = menu_items.id"
+    type: many_to_one

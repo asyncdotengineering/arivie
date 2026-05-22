@@ -1,0 +1,166 @@
+name: tickets
+description: |
+  Guest checks / orders. The center of the POS data model.
+  Industry terms used interchangeably: ticket, check, order.
+  For revenue reporting, the canonical definition is:
+    net_revenue = SUM(subtotal - discount_amount - comp_amount - void_amount)
+  Filter status NOT IN ('voided') for revenue; voids stay in the table for audit.
+  The business_day field already applies the 4am cutoff — prefer it over date_trunc(opened_at).
+
+grain: one row per guest check
+primary_key: id
+
+measures:
+  - name: revenue
+    description: Net revenue (subtotal less discounts, comps, voids). Excludes tax + tip.
+    sql: "SUM(subtotal - discount_amount - comp_amount - void_amount) FILTER (WHERE status NOT IN ('voided'))"
+
+  - name: gross_sales
+    description: Pre-adjustment subtotal. Use only for top-line trend; not for accounting.
+    sql: "SUM(subtotal)"
+
+  - name: tax_collected
+    description: Sales tax accrued on closed tickets.
+    sql: "SUM(tax_amount) FILTER (WHERE status NOT IN ('voided'))"
+
+  - name: tip_total
+    description: Tips captured on tenders. Use this for tip-pool reconciliation.
+    sql: "SUM(tip_amount) FILTER (WHERE status NOT IN ('voided'))"
+
+  - name: comp_amount
+    description: Manager-comped value. Track as a percentage of gross_sales — should stay <3%.
+    sql: "SUM(comp_amount)"
+
+  - name: void_amount
+    description: Voided ticket value. Track as a percentage of gross_sales — should stay <2%.
+    sql: "SUM(void_amount)"
+
+  - name: discount_amount
+    description: Pre-tax promotional discounts.
+    sql: "SUM(discount_amount)"
+
+  - name: ticket_count
+    description: Number of closed tickets (excludes voids).
+    sql: "COUNT(*) FILTER (WHERE status NOT IN ('voided'))"
+
+  - name: void_count
+    description: Number of voided tickets.
+    sql: "COUNT(*) FILTER (WHERE status = 'voided')"
+
+  - name: comp_count
+    description: Number of comped tickets.
+    sql: "COUNT(*) FILTER (WHERE comp_amount > 0)"
+
+  - name: avg_check
+    description: Average closed-ticket total. Industry KPI; trend over weeks not days.
+    sql: "AVG(total_amount) FILTER (WHERE status NOT IN ('voided'))"
+
+  - name: covers
+    description: Total guests served. Use for covers-per-seat productivity.
+    sql: "SUM(guest_count) FILTER (WHERE status NOT IN ('voided'))"
+
+  - name: comp_pct
+    description: Comps as percent of gross sales. KPI threshold — investigate above 3%.
+    sql: "ROUND(100.0 * SUM(comp_amount) / NULLIF(SUM(subtotal), 0), 2)"
+
+  - name: void_pct
+    description: Voids as percent of gross sales. KPI threshold — investigate above 2%.
+    sql: "ROUND(100.0 * SUM(void_amount) / NULLIF(SUM(subtotal), 0), 2)"
+
+dimensions:
+  - name: id
+    sql: id
+    type: text
+
+  - name: outlet_id
+    sql: outlet_id
+    type: text
+    description: Foreign key to outlets. Always group/filter by this for multi-outlet ops.
+
+  - name: business_day
+    sql: business_day
+    type: date
+    description: The operating day (applies 4am cutoff). Prefer over opened_at::date.
+
+  - name: service_type
+    sql: service_type
+    values: [dine_in, takeout, delivery, bar, online]
+    description: Service channel of the ticket.
+
+  - name: channel
+    sql: channel
+    values: [in_house, doordash, ubereats, grubhub, own_app, phone, walk_in]
+    description: Order origin channel; non-NULL for non-dine-in.
+
+  - name: status
+    sql: status
+    values: [open, closed, voided, comped, transferred]
+
+  - name: server_id
+    sql: server_id
+    type: text
+    description: Server / bartender who owned the ticket. NULL for takeout/delivery.
+
+  - name: guest_count
+    sql: guest_count
+    type: numeric
+
+  - name: opened_at
+    sql: opened_at
+    type: timestamp
+    description: Wall-clock open time. Use business_day for daily grouping; this for daypart histograms.
+
+  - name: closed_at
+    sql: closed_at
+    type: timestamp
+    description: Wall-clock close time. Use (closed_at - opened_at) for table-turn time on dine_in.
+
+segments:
+  - name: current_business_day
+    sql: "business_day = (CURRENT_DATE - INTERVAL '1 day')::date"
+    description: |
+      Yesterday's complete business day. Today's day is still in flight, so
+      'current_business_day' for closeout / reporting is the prior calendar day.
+
+  - name: last_7_days
+    sql: "business_day >= (CURRENT_DATE - INTERVAL '7 days')::date AND business_day < CURRENT_DATE"
+    description: Rolling 7-day window ending yesterday.
+
+  - name: last_14_days
+    sql: "business_day >= (CURRENT_DATE - INTERVAL '14 days')::date AND business_day < CURRENT_DATE"
+    description: Rolling 14-day window ending yesterday. Matches the seed window.
+
+  - name: this_week
+    sql: "business_day >= date_trunc('week', CURRENT_DATE)::date AND business_day < CURRENT_DATE"
+    description: Monday-of-current-week to yesterday inclusive.
+
+  - name: dinner_only
+    sql: "EXTRACT(HOUR FROM opened_at) BETWEEN 17 AND 22"
+    description: Dinner-daypart tickets (5pm-10pm).
+
+  - name: dine_in_only
+    sql: "service_type = 'dine_in'"
+    description: Only on-premise tickets. Excludes takeout/delivery/online.
+
+  - name: third_party_delivery
+    sql: "service_type = 'delivery' AND channel IN ('doordash', 'ubereats', 'grubhub')"
+    description: 3PD orders. Use to isolate marketplace fee impact.
+
+joins:
+  - to: outlets
+    on: "tickets.outlet_id = outlets.id"
+    type: many_to_one
+  - to: ticket_items
+    on: "tickets.id = ticket_items.ticket_id"
+    type: one_to_many
+  - to: tenders
+    on: "tickets.id = tenders.ticket_id"
+    type: one_to_many
+  - to: employees
+    on: "tickets.server_id = employees.id"
+    type: many_to_one
+
+example_questions:
+  - "What was yesterday's revenue at Lumière Bistro?"
+  - "Comp rate by outlet this week"
+  - "Average dinner check vs lunch check last 14 days"

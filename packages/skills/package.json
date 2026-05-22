@@ -1,0 +1,32 @@
+{
+  "name": "@arivie/skills",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Agent Skills (per the open Agent Skills spec, Feb 2026 Mastra integration) — reusable analytical playbooks for the Arivie data agent. Each subdirectory is one skill, with a SKILL.md teaching the agent how to perform the named analysis end-to-end.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "files": [
+    "cohort-analysis",
+    "funnel-conversion",
+    "churn-investigation",
+    "revenue-attribution",
+    "anomaly-detection",
+    "dau-mau-ratio",
+    "README.md"
+  ],
+  "scripts": {
+    "test": "vitest run",
+    "lint": "markdownlint-cli2 \"README.md\" \"*/SKILL.md\""
+  },
+  "devDependencies": {
+    "@mastra/core": "^1.35.0",
+    "@types/node": "^22.0.0",
+    "markdownlint-cli2": "^0.20.0",
+    "typescript": "^6.0.0",
+    "vitest": "^4.1.0"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  }
+}

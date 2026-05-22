@@ -1,0 +1,45 @@
+---
+title: Arivie documentation
+description: Agentic analytics on Mastra — one instance, one owner.
+template: splash
+hero:
+  tagline: Production-grade agentic analytics for your application
+  actions:
+    - text: Quickstart (< 10 min)
+      link: /quickstart/
+      icon: right-arrow
+      variant: primary
+    - text: Why Arivie
+      link: /concepts/why-arivie/
+      icon: open-book
+      variant: minimal
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+## What you get
+
+Arivie is a TypeScript framework built **on Mastra** that adds an agentic analytics surface to your app. One Arivie instance serves **one owner**; multi-tenant SaaS deploys **N instances** via `@arivie/deploy` recipes (Sprint 5).
+
+<CardGrid stagger>
+  <Card title="Semantic layer" icon="document">
+    YAML entities under `semantic/` — validated, linted, and loaded into the agent via preload, browse, or RAG modes (REQ-13–17).
+  </Card>
+  <Card title="Agent loop" icon="rocket">
+    Mastra `Agent` with `explore` + `execute` tools, self-correction, and structured assumptions (REQ-9–12).
+  </Card>
+  <Card title="Boundary" icon="setting">
+    Single `owner.id` per instance with startup owner-identity assertion against Postgres (REQ-5–8).
+  </Card>
+  <Card title="Surfaces" icon="laptop">
+    HTTP handlers, MCP parity, React hooks, and a shadcn-style registry for `<AgentChat>` and dev panels (REQ-26–29).
+  </Card>
+</CardGrid>
+
+## Start here
+
+1. [Quickstart](/quickstart/) — init → setup → model key → entity → UI → streamed answer.
+2. [Concepts](/concepts/why-arivie/) — architecture grounded in RFC-002 and the project pivot doc.
+3. [Integrations](/integrations/clerk/) — Clerk, WorkOS, Better Auth, Auth.js, or custom JWT (`jose`).
+
+Canonical runnable code lives in `arivie/examples/with-*`; this site embeds those files at build time so docs stay in sync.
