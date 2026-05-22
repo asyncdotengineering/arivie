@@ -84,8 +84,10 @@ export async function getArivieRuntime(): Promise<{
       },
       model: resolveModel(),
       workspace: { rootDir: semanticPath },
+      storage: postgres,
       sources: {
         postgres: {
+          kind: "adapter",
           adapter: postgres,
           description: "Demo Postgres for the auth integration example — synthetic analytics schema.",
           useWhen: "any analytics question backed by this example's seeded tables",

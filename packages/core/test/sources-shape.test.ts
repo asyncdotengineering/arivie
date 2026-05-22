@@ -24,11 +24,13 @@ const mockPostgres = {
   ...mockAdapter("postgres"),
   url: "postgres://localhost/arivie",
   sql: {},
+  setupRole: async () => {},
 };
 
 const baseConfig = {
   owner: { id: "owner-1", name: "Acme" },
   model: mockModel,
+  storage: mockPostgres,
   workspace: { rootDir: "./semantic" },
   semantic: { path: "./semantic", mode: "auto" as const },
   resolveUser: async () => ({
@@ -38,50 +40,56 @@ const baseConfig = {
   }),
 };
 
-describe("ArivieConfigSchema sources shapes (REQ-44)", () => {
-  it("accepts { adapter, description } entries", () => {
+describe("ArivieConfigSchema sources shapes", () => {
+  it('accepts { kind: "adapter", adapter, description }', () => {
     const parsed = ArivieConfigSchema.parse({
       ...baseConfig,
       sources: {
-        postgres: {
+        commerce: {
+          kind: "adapter" as const,
           adapter: mockPostgres,
           description: "primary OLTP postgres",
         },
       },
     });
-    expect(parsed.sources.postgres).toEqual({
+    expect(parsed.sources.commerce).toEqual({
+      kind: "adapter",
       adapter: mockPostgres,
       description: "primary OLTP postgres",
     });
   });
 
-  it("accepts { adapter, description, useWhen } entries", () => {
+  it('accepts { kind: "adapter", adapter, description, useWhen }', () => {
     const parsed = ArivieConfigSchema.parse({
       ...baseConfig,
       sources: {
-        postgres: {
+        commerce: {
+          kind: "adapter" as const,
           adapter: mockPostgres,
           description: "primary OLTP postgres",
           useWhen: "any operational entity question",
         },
       },
     });
-    expect(parsed.sources.postgres).toEqual({
+    expect(parsed.sources.commerce).toEqual({
+      kind: "adapter",
       adapter: mockPostgres,
       description: "primary OLTP postgres",
       useWhen: "any operational entity question",
     });
   });
 
-  it("accepts { mcp, description } (stdio) entries", () => {
+  it('accepts { kind: "mcp", mcp, description } (stdio)', () => {
     const parsed = ArivieConfigSchema.parse({
       ...baseConfig,
       sources: {
-        postgres: {
+        commerce: {
+          kind: "adapter" as const,
           adapter: mockPostgres,
-          description: "primary OLTP postgres",
+          description: "primary",
         },
         mock: {
+          kind: "mcp" as const,
           mcp: {
             command: "tsx",
             args: ["./mock-server.ts"],
@@ -92,6 +100,7 @@ describe("ArivieConfigSchema sources shapes (REQ-44)", () => {
       },
     });
     expect(parsed.sources.mock).toEqual({
+      kind: "mcp",
       mcp: {
         command: "tsx",
         args: ["./mock-server.ts"],
@@ -101,27 +110,30 @@ describe("ArivieConfigSchema sources shapes (REQ-44)", () => {
     });
   });
 
-  it("accepts { mcp: { url }, description } entries", () => {
+  it('accepts { kind: "mcp", mcp: { url }, description }', () => {
     const parsed = ArivieConfigSchema.parse({
       ...baseConfig,
       sources: {
-        postgres: {
+        commerce: {
+          kind: "adapter" as const,
           adapter: mockPostgres,
-          description: "primary OLTP postgres",
+          description: "primary",
         },
         remote: {
+          kind: "mcp" as const,
           mcp: { url: "http://127.0.0.1:3000/mcp" },
           description: "remote mcp",
         },
       },
     });
     expect(parsed.sources.remote).toEqual({
+      kind: "mcp",
       mcp: { url: "http://127.0.0.1:3000/mcp" },
       description: "remote mcp",
     });
   });
 
-  it("rejects a bare SourceAdapter (must be wrapped in { adapter, description })", () => {
+  it("rejects a bare SourceAdapter (must use the kind-tagged wrap)", () => {
     expect(() =>
       ArivieConfigSchema.parse({
         ...baseConfig,
@@ -130,25 +142,39 @@ describe("ArivieConfigSchema sources shapes (REQ-44)", () => {
     ).toThrow(z.ZodError);
   });
 
-  it("rejects { adapter } without description", () => {
-    expect(() =>
-      ArivieConfigSchema.parse({
-        ...baseConfig,
-        sources: { postgres: { adapter: mockPostgres } },
-      }),
-    ).toThrow(z.ZodError);
-  });
-
-  it("rejects { mcp } without description", () => {
+  it("rejects { adapter } without kind", () => {
     expect(() =>
       ArivieConfigSchema.parse({
         ...baseConfig,
         sources: {
-          postgres: {
+          postgres: { adapter: mockPostgres, description: "x" },
+        },
+      }),
+    ).toThrow(z.ZodError);
+  });
+
+  it("rejects { adapter, kind } without description", () => {
+    expect(() =>
+      ArivieConfigSchema.parse({
+        ...baseConfig,
+        sources: {
+          postgres: { kind: "adapter", adapter: mockPostgres },
+        },
+      }),
+    ).toThrow(z.ZodError);
+  });
+
+  it("rejects { kind: 'mcp', mcp } without description", () => {
+    expect(() =>
+      ArivieConfigSchema.parse({
+        ...baseConfig,
+        sources: {
+          commerce: {
+            kind: "adapter",
             adapter: mockPostgres,
-            description: "primary OLTP postgres",
+            description: "primary",
           },
-          mock: { mcp: { command: "tsx" } },
+          mock: { kind: "mcp", mcp: { command: "tsx" } },
         },
       }),
     ).toThrow(z.ZodError);
@@ -158,7 +184,13 @@ describe("ArivieConfigSchema sources shapes (REQ-44)", () => {
     expect(() =>
       ArivieConfigSchema.parse({
         ...baseConfig,
-        sources: { postgres: { adapter: mockPostgres, description: "" } },
+        sources: {
+          postgres: {
+            kind: "adapter",
+            adapter: mockPostgres,
+            description: "",
+          },
+        },
       }),
     ).toThrow(z.ZodError);
   });
@@ -168,6 +200,22 @@ describe("ArivieConfigSchema sources shapes (REQ-44)", () => {
       ArivieConfigSchema.parse({
         ...baseConfig,
         sources: {},
+      }),
+    ).toThrow(z.ZodError);
+  });
+
+  it("rejects missing storage slot", () => {
+    const { storage: _storage, ...withoutStorage } = baseConfig;
+    expect(() =>
+      ArivieConfigSchema.parse({
+        ...withoutStorage,
+        sources: {
+          postgres: {
+            kind: "adapter",
+            adapter: mockPostgres,
+            description: "x",
+          },
+        },
       }),
     ).toThrow(z.ZodError);
   });

@@ -37,6 +37,11 @@ function requireDatabaseUrl(): string {
   return url;
 }
 
+const pg = postgresAdapter({
+  url: requireDatabaseUrl(),
+  readOnlyRole: "arivie_reader",
+});
+
 const config: ArivieConfig = {
   owner: {
     id: process.env.ARIVIE_OWNER_ID ?? "lumiere-chain",
@@ -46,12 +51,11 @@ const config: ArivieConfig = {
   semantic: { path: semanticPath, mode: "preload" },
   skills: skillsPath,
   skillsMode: "auto",
+  storage: pg,
   sources: {
     postgres: {
-      adapter: postgresAdapter({
-        url: requireDatabaseUrl(),
-        readOnlyRole: "arivie_reader",
-      }),
+      kind: "adapter",
+      adapter: pg,
       description:
         "Lumière F&B operational Postgres — orders, outlets, customers, products, payments, shifts. ~50k rows of synthetic restaurant chain data.",
       useWhen:

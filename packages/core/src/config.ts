@@ -5,7 +5,11 @@ import type { WorkspaceFilesystem } from "@mastra/core/workspace";
 import type { MastraVector } from "@mastra/core/vector";
 import type { LanguageModel } from "ai";
 import { z } from "zod";
-import type { ResolveUser, SourceAdapter } from "./types.js";
+import type {
+  ResolveUser,
+  SourceAdapter,
+  StorageAdapter,
+} from "./types.js";
 
 const ownerSchema = z
   .object({
@@ -141,32 +145,43 @@ const mcpServerConfigSchema = z
 // Every source must carry a `description` (one-sentence what's in it) and
 // optionally a `useWhen` (when to pick it over another source). The model
 // reads these from the system prompt to choose the right `execute_<name>`.
-const sourceEntrySchema = z.union([
+// Discriminated on `kind` — explicit and forward-compatible.
+const DESCRIPTION_MSG =
+  "sources.<name>.description is required — one sentence on what's in this source so the agent knows when to query it";
+
+const sourceEntrySchema = z.discriminatedUnion("kind", [
   z
     .object({
+      kind: z.literal("adapter"),
       adapter: sourceAdapterSchema,
-      description: z
-        .string()
-        .min(
-          1,
-          "sources.<name>.description is required — one sentence on what's in this source so the agent knows when to query it",
-        ),
+      description: z.string().min(1, DESCRIPTION_MSG),
       useWhen: z.string().optional(),
     })
     .strict(),
   z
     .object({
+      kind: z.literal("mcp"),
       mcp: mcpServerConfigSchema,
-      description: z
-        .string()
-        .min(
-          1,
-          "sources.<name>.description is required — one sentence on what's in this source so the agent knows when to query it",
-        ),
+      description: z.string().min(1, DESCRIPTION_MSG),
       useWhen: z.string().optional(),
     })
     .strict(),
 ]);
+
+// Storage adapter — Postgres for now. Same custom-check shape as
+// sourceAdapter but lives in its own top-level slot.
+const storageAdapterSchema = z.custom<StorageAdapter>(
+  (v): v is StorageAdapter =>
+    v != null &&
+    typeof v === "object" &&
+    "kind" in v &&
+    (v as { kind?: unknown }).kind === "postgres" &&
+    "url" in v &&
+    typeof (v as { url?: unknown }).url === "string" &&
+    "verifyOwnerIdentity" in v &&
+    typeof (v as { verifyOwnerIdentity?: unknown }).verifyOwnerIdentity ===
+      "function",
+);
 
 const sourcesSchema = z
   .record(z.string().min(1), sourceEntrySchema)
@@ -211,6 +226,7 @@ const lifecycleHooksSchema = z
 export const ArivieConfigSchema = z
   .object({
     owner: ownerSchema,
+    storage: storageAdapterSchema,
     model: z.custom<LanguageModel>((v) => v != null && typeof v === "object"),
     semantic: semanticSchema,
     sources: sourcesSchema,

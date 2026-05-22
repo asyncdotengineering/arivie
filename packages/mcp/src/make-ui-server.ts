@@ -5,7 +5,7 @@ import { createMcpApp, registerJsonRenderTool } from "@json-render/mcp";
 import { z } from "zod";
 
 type CreateMcpAppReturn = Awaited<ReturnType<typeof createMcpApp>>;
-import { arivieUiCatalog } from "./ui-catalog.js";
+import { arivieUiCatalog } from "@arivie/ui-catalog";
 import { DEFAULT_UI_SHELL_HTML } from "./ui-shell.js";
 import type { McpOptions } from "./types.js";
 

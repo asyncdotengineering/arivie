@@ -18,18 +18,11 @@ import { MCPServer } from "@mastra/mcp";
 import { PostgresStore } from "@mastra/pg";
 import { Hono } from "hono";
 import { z } from "zod";
-import { bunHandler } from "./adapters/bun.js";
-import { makeNextAdapter } from "./adapters/next.js";
-import { workerHandler } from "./adapters/worker.js";
 import { ArivieConfigSchema } from "./config.js";
 import { runWithUserContext } from "./context.js";
 import { ArivieConfigError } from "./errors.js";
 import { makeWebHandler } from "./handler.js";
-import {
-  extractConnectionString,
-  postgresAdapterFromSources,
-  resolveSources,
-} from "./sources.js";
+import { resolveSources } from "./sources.js";
 import type {
   ArivieConfig,
   ArivieInstance,
@@ -181,7 +174,9 @@ export async function defineArivie(
   const { sources, mcpTools, metadata: sourceMetadata } = await resolveSources(
     parsed.sources,
   );
-  const postgres = postgresAdapterFromSources(sources);
+  // Infrastructure connection (Mastra Memory + owner identity) lives on
+  // its own slot — independent of user-named domain sources.
+  const storage = parsed.storage;
 
   const semantic =
     parsed.semantic.layer ??
@@ -211,9 +206,9 @@ export async function defineArivie(
       : {}),
   });
 
-  const storage = new PostgresStore({
+  const mastraStorage = new PostgresStore({
     id: `arivie-${parsed.owner.id}`,
-    connectionString: extractConnectionString(postgres),
+    connectionString: storage.url,
   });
 
   // Single agent: text-to-SQL + workspace tools on one model. No
@@ -267,14 +262,14 @@ export async function defineArivie(
   // explicit memory storage option (docs/memory/storage.mdx).
   const mastra = new Mastra({
     agents: { arivie: agent },
-    storage,
+    storage: mastraStorage,
     workspace,
     mcpServers: { arivie: asMastraMcpServer(mcp) },
   });
 
   const handler = makeWebHandler({
     agent,
-    db: postgres,
+    db: storage,
     config: parsed,
   });
 
@@ -286,6 +281,11 @@ export async function defineArivie(
       if (adapter.close != null) {
         await adapter.close();
       }
+    }
+    // storage.sql.end() exists on the real PostgresAdapter; some test
+    // mocks ship a stub `sql: {}` without `.end`. Guard accordingly.
+    if (typeof storage.sql?.end === "function") {
+      await storage.sql.end();
     }
   }
 
@@ -334,11 +334,20 @@ export async function defineArivie(
     ask,
     mastra,
     workspace,
+    /**
+     * Web Standard request handler `(req: Request) => Promise<Response>`.
+     * Drop into ANY web host that speaks Fetch — no framework adapter
+     * needed.
+     *
+     *   Next.js App Router:  export const POST = arivie.handler;
+     *   Bun:                 Bun.serve({ fetch: arivie.handler });
+     *   Hono:                app.all("*", (c) => arivie.handler(c.req.raw));
+     *   Cloudflare Worker:   export default { fetch: arivie.handler };
+     *   TanStack Start:      return arivie.handler(request)  // in a server route
+     */
     handler,
-    next: makeNextAdapter(handler),
+    /** Pre-wired Hono app — convenience for the Hono case. */
     hono: honoApp,
-    bun: bunHandler({ handler }),
-    worker: workerHandler({ handler }),
     dispose,
   };
 }

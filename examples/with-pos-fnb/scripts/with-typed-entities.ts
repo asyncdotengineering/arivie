@@ -112,16 +112,17 @@ async function main(): Promise<void> {
   const google = createGoogleGenerativeAI({ apiKey });
   const model = google("gemini-2.5-flash");
 
+  const pg = postgresAdapter({ url: databaseUrl, readOnlyRole: "arivie_reader" });
+
   const instance = await defineArivie({
     owner: { id: "lumiere-chain", name: "Lumière Chain" },
     model,
     semantic: { layer, mode: "preload", path: "" },
+    storage: pg,
     sources: {
       postgres: {
-        adapter: postgresAdapter({
-          url: databaseUrl,
-          readOnlyRole: "arivie_reader",
-        }),
+        kind: "adapter",
+        adapter: pg,
         description:
           "Lumière F&B operational Postgres — used by the typed-entities smoke.",
         useWhen: "any orders/customers/products question in the typed-entities demo",

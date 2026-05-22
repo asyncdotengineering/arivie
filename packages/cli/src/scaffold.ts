@@ -18,18 +18,27 @@ import { defineArivie } from "@arivie/core";
 import { postgresAdapter } from "@arivie/db-postgres";
 import { anthropic } from "@ai-sdk/anthropic";
 
+// One Postgres adapter shared by storage (Mastra Memory + owner identity)
+// AND the agent's execute_<source> tool. Single DB, two roles. If you
+// want them on separate DBs, swap the \`storage:\` slot independently.
+const pg = postgresAdapter({
+  url: process.env.DATABASE_URL!,
+  readOnlyRole: "arivie_reader",
+});
+
 export const arivie = await defineArivie({
   owner: { id: ${JSON.stringify(opts.ownerId)}, name: ${JSON.stringify(opts.ownerName)} },
+  storage: pg,
   model: anthropic("claude-sonnet-4-20250514"),
   workspace: { rootDir: "./semantic" },
   sources: {
+    // Rename "postgres" to a domain noun ("commerce", "billing", "crm")
+    // — the key is the tool name the agent calls (\`execute_<key>\`).
     postgres: {
-      adapter: postgresAdapter({
-        url: process.env.DATABASE_URL!,
-        readOnlyRole: "arivie_reader",
-      }),
-      // Required — one sentence on what's in this source. The agent reads
-      // this to know when to call execute_postgres for a question.
+      kind: "adapter",
+      adapter: pg,
+      // Required — one sentence on what's in this source. The agent
+      // reads this to know when to call execute_<source> for a question.
       description: "TODO: describe your Postgres source — e.g. \\"Production OLTP — customers, orders, payments\\".",
       // Optional — when to pick this source over another. Only useful
       // when you declare 2+ sources.
@@ -64,7 +73,9 @@ export function routeTemplate(): string {
   return `/* SPDX-License-Identifier: Apache-2.0 */
 import { arivie } from "../../../arivie.config.js";
 
-export const POST = arivie.next.POST;
+// Web Standard handler — drops into any host that speaks Fetch
+// (Next.js App Router, Bun.serve, Hono, Cloudflare Workers, TanStack Start).
+export const POST = arivie.handler;
 `;
 }
 

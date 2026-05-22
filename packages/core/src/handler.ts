@@ -1,15 +1,19 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 import type { Agent } from "@mastra/core/agent";
-import type { PostgresAdapter } from "@arivie/db-postgres";
 import { ArivieBoundaryError } from "@arivie/db-postgres";
 import { runWithUserContext } from "./context.js";
 import { ArivieInternalError } from "./errors.js";
-import type { ArivieConfig } from "./types.js";
+import type { ArivieConfig, StorageAdapter } from "./types.js";
 import { isFatalBoundaryError, verifyOwnerIdentity } from "./verify.js";
 
 export interface WebHandlerDeps {
   agent: Agent;
-  db: PostgresAdapter;
+  /**
+   * Storage adapter — the handler only needs `verifyOwnerIdentity`. It
+   * does NOT need the full PostgresAdapter (no execute/introspect).
+   * Separating the surface lets the storage slot stay narrow.
+   */
+  db: StorageAdapter;
   config: ArivieConfig;
   readOnlyRole?: string;
 }

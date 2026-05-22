@@ -25,22 +25,6 @@
       "import": "./dist/index.js",
       "types": "./dist/index.d.ts"
     },
-    "./next": {
-      "import": "./dist/adapters/next.js",
-      "types": "./dist/adapters/next.d.ts"
-    },
-    "./hono": {
-      "import": "./dist/adapters/hono.js",
-      "types": "./dist/adapters/hono.d.ts"
-    },
-    "./bun": {
-      "import": "./dist/adapters/bun.js",
-      "types": "./dist/adapters/bun.d.ts"
-    },
-    "./worker": {
-      "import": "./dist/adapters/worker.js",
-      "types": "./dist/adapters/worker.d.ts"
-    },
     "./context": {
       "import": "./dist/context.js",
       "types": "./dist/context.d.ts"

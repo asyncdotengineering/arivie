@@ -2,7 +2,7 @@
   "name": "with-arivie-chat",
   "version": "0.4.0",
   "private": true,
-  "description": "Production-shaped Next.js chat starter for Arivie analytics agents — Mastra-native, Better Auth, json-render-ready artifacts (Phase 2).",
+  "description": "Production-shaped Next.js chat starter for Arivie analytics agents \u2014 Mastra-native, Better Auth, json-render-ready artifacts (Phase 2).",
   "type": "module",
   "scripts": {
     "dev": "next dev",
@@ -43,7 +43,8 @@
     "streamdown": "^1.5.0",
     "swr": "^2.3.0",
     "tailwind-merge": "^2.5.5",
-    "zod": "^4.4.3"
+    "zod": "^4.4.3",
+    "@arivie/react": "workspace:*"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.2.5",

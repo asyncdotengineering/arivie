@@ -56,6 +56,17 @@ export async function setupRole(
     await sql.unsafe(
       `ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO ${roleIdent}`,
     );
+
+    // Postgres 16+ changed the default role-membership grant semantics
+    // to INHERIT TRUE / SET FALSE — without `WITH SET TRUE`, the
+    // connecting user can't `SET ROLE <role>` even though they're a
+    // member. The Arivie execute path wraps every query with
+    // `SET LOCAL ROLE <reader>; ...` so we MUST grant SET to the
+    // current session user. Idempotent on PG14/15 (which already
+    // default to SET TRUE) and required on PG16+ / Neon.
+    await sql.unsafe(
+      `GRANT ${roleIdent} TO CURRENT_USER WITH SET TRUE`,
+    );
   } finally {
     await sql.unsafe(`SELECT pg_advisory_unlock(${SETUP_ROLE_LOCK_KEY})`);
   }

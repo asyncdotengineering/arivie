@@ -370,8 +370,10 @@ async function main(): Promise<void> {
         finalizeReport: true,
         skills: skillsPath,
       },
+      storage: postgres,
       sources: {
         postgres: {
+          kind: "adapter",
           adapter: postgres,
           description: "Demo Postgres for this example script.",
         },

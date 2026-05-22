@@ -98,13 +98,16 @@ describeIntegration.sequential("add entity orders (dogfood seed)", () => {
   });
 
   it("writes orders.yml that parseEntity accepts", async () => {
+    const pg = postgresAdapter({ url: container.getConnectionUri() });
     const config: ArivieConfig = {
       owner: { id: "dogfood-test", name: "Dogfood" },
       model: {} as LanguageModel,
       workspace: { rootDir: "./semantic" },
+      storage: pg,
       sources: {
         postgres: {
-          adapter: postgresAdapter({ url: container.getConnectionUri() }),
+          kind: "adapter",
+          adapter: pg,
           description: "Test Postgres for the CLI add-entity test.",
         },
       },

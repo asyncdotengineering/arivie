@@ -91,8 +91,10 @@ export async function getArivieRuntime(): Promise<{
       },
       model: resolveModel(),
       workspace: { rootDir: semanticPath },
+      storage: postgres,
       sources: {
         postgres: {
+          kind: "adapter",
           adapter: postgres,
           description:
             "Demo operational Postgres for the with-nextjs example — synthetic CRM/orders schema.",
@@ -100,6 +102,7 @@ export async function getArivieRuntime(): Promise<{
             "anything about customers, orders, or operational entities backed by the relational DB",
         },
         mixpanel: {
+          kind: "adapter",
           adapter: mixpanel,
           description:
             "Mixpanel event analytics via JQL — funnels, retention, behavioral events.",

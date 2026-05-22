@@ -337,7 +337,7 @@ export function makeAgent(opts: MakeAgentOptions): Agent {
     opts.config.workspace.finalizeReport,
   );
   if (registerFinalizeReport) {
-    tools.finalize_report = finalizeReportTool();
+    tools.finalize_report = finalizeReportTool(opts.workspace);
   }
 
   if (opts.bashTool !== undefined) {

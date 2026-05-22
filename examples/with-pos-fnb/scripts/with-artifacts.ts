@@ -71,18 +71,19 @@ async function main(): Promise<void> {
     dbRole: "arivie_reader",
   };
 
+  const pg = postgresAdapter({ url: databaseUrl, readOnlyRole: "arivie_reader" });
+
   const instance = await defineArivie({
     owner: { id: "lumiere-chain", name: "Lumière Chain" },
     model,
     semantic: { path: semanticPath, mode: "preload" },
     skills: skillsPath,
     skillsMode: "auto",
+    storage: pg,
     sources: {
       postgres: {
-        adapter: postgresAdapter({
-          url: databaseUrl,
-          readOnlyRole: "arivie_reader",
-        }),
+        kind: "adapter",
+        adapter: pg,
         description:
           "Lumière F&B operational Postgres — same schema as the main example.",
         useWhen:

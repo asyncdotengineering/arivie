@@ -5,7 +5,17 @@ import { InProcessSandboxFilesystem } from "@arivie/workspace";
 import type { WorkspaceConfig } from "./types.js";
 
 export interface LocalWorkspaceOptions {
-  /** Directory the workspace is rooted at. Resolved against the cwd. */
+  /**
+   * Directory the workspace is rooted at. Resolved against the cwd.
+   *
+   * **Serverless note** — on Vercel, AWS Lambda, and other read-only-fs
+   * runtimes, the path you pass here MUST live under `/tmp`. To save you
+   * the env check, this helper auto-routes to `/tmp/arivie/workspace`
+   * when it detects a serverless runtime (`process.env.VERCEL === "1"`
+   * or `process.env.AWS_LAMBDA_FUNCTION_NAME`), so the `at` you pass in
+   * code can stay as `./workspace` and it'll do the right thing in prod.
+   * Set `at` to an explicit absolute path under `/tmp/...` to override.
+   */
   at: string;
   /**
    * Opt into the `workspace_bash` tool. Requires the sandboxed filesystem
@@ -44,8 +54,29 @@ export interface LocalWorkspaceOptions {
  * single sentence at the call site. The directory is created if missing
  * (so callers don't need their own `mkdirSync` boilerplate).
  */
+/**
+ * Detect serverless runtimes whose root filesystem is read-only outside
+ * `/tmp` — currently Vercel and AWS Lambda. Other Node hosts behave
+ * normally. Override via `ARIVIE_FORCE_TMP_WORKSPACE=1`.
+ */
+function isServerlessReadOnlyFs(): boolean {
+  return (
+    process.env.ARIVIE_FORCE_TMP_WORKSPACE === "1" ||
+    process.env.VERCEL === "1" ||
+    process.env.AWS_LAMBDA_FUNCTION_NAME != null
+  );
+}
+
+function resolveWorkspaceRoot(at: string): string {
+  if (at.startsWith("/tmp/") || at.startsWith("/var/")) return resolve(at);
+  if (isServerlessReadOnlyFs()) {
+    return "/tmp/arivie/workspace";
+  }
+  return resolve(at);
+}
+
 export function localWorkspace(opts: LocalWorkspaceOptions): WorkspaceConfig {
-  const rootDir = resolve(opts.at);
+  const rootDir = resolveWorkspaceRoot(opts.at);
   mkdirSync(rootDir, { recursive: true });
   const filesystem = new InProcessSandboxFilesystem({
     rootDir,

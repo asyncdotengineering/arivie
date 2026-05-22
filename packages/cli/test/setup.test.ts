@@ -104,7 +104,7 @@ describeIntegration.sequential("setup idempotency (testcontainer)", () => {
     ]);
   });
 
-  it("setup reports friendly error for malformed entity YAML", async () => {
+  it("setup reports friendly error for malformed entity YAML", { timeout: 60_000 }, async () => {
     const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     const { printCliCommandError } = await import("../src/lib/cli-errors.js");
     const badDir = join(

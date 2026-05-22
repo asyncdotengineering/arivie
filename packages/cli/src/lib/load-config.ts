@@ -83,13 +83,16 @@ async function configFromInstance(
     );
   }
 
+  const pg = postgresAdapter({ url: dbUrl });
   return {
     owner: { id: ownerId, name: ownerId },
     model: {} as LanguageModel,
+    storage: pg,
     workspace: { rootDir: "./semantic" },
     sources: {
       postgres: {
-        adapter: postgresAdapter({ url: dbUrl }),
+        kind: "adapter",
+        adapter: pg,
         description:
           "Postgres source resolved by the Arivie CLI for ad-hoc commands.",
       },

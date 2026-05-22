@@ -87,8 +87,10 @@ export async function getArivieRuntime(env: ArivieWorkerEnv): Promise<{
       owner: { id: ownerId, name: "With Cloudflare DO Example" },
       model: resolveModel(env),
       workspace: { rootDir: "./semantic" },
+      storage: postgres,
       sources: {
         postgres: {
+          kind: "adapter",
           adapter: postgres,
           description: "Demo Postgres reached from a Cloudflare Worker — read-only role enforced via session-scoped query rewriting.",
           useWhen: "any analytics question routed through the Worker runtime",

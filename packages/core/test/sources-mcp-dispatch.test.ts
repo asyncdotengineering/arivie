@@ -31,6 +31,7 @@ describe("resolveSources MCP dispatch", () => {
 
     const resolved = await resolveSources({
       mock: {
+        kind: "mcp",
         mcp: { command: "node", args: ["server.js"] },
         description: "Mock MCP source for the dispatch test.",
       },
@@ -73,10 +74,12 @@ describe("resolveSources MCP dispatch", () => {
 
     const resolved = await resolveSources({
       linear: {
+        kind: "mcp",
         mcp: { command: "linear-mcp-server" },
         description: "Linear MCP source.",
       },
       slack: {
+        kind: "mcp",
         mcp: { command: "slack-mcp-server", env: { SLACK_TOKEN: "x" } },
         description: "Slack MCP source.",
       },

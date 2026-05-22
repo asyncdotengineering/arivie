@@ -181,16 +181,16 @@ export function detectArtifact(
  * back to a fenced code block if parsing produces an uneven row.
  */
 function csvToMarkdown(csv: string): string {
-  const rows = csv
+  const rows: string[][] = csv
     .split(/\r?\n/)
     .map((line) => line.trim())
     .filter(Boolean)
     .map((line) => line.split(","));
-  if (rows.length === 0) return "```\n" + csv + "\n```";
   const header = rows[0];
+  if (header == null) return "```\n" + csv + "\n```";
   const widths = header.length;
-  if (rows.some((r) => r.length !== widths)) {
-    return "```\n" + csv + "\n```";
+  for (const r of rows) {
+    if (r.length !== widths) return "```\n" + csv + "\n```";
   }
   const sep = header.map(() => "---");
   return [header, sep, ...rows.slice(1)]

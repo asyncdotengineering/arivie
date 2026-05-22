@@ -45,22 +45,25 @@ describe("lint (dogfood semantic)", () => {
     await import("node:fs/promises").then(({ writeFile }) =>
       writeFile(
         configPath,
-        `export const config = {
+        `const stub = {
+  kind: "postgres",
+  id: "postgres:lint",
+  url: "postgresql://localhost/x",
+  execute: async () => ({ rows: [] }),
+  introspect: async () => [],
+  setupRole: async () => {},
+  sql: { end: async () => {} },
+  verifyOwnerIdentity: async () => {},
+};
+export const config = {
   owner: { id: "lint-test", name: "Lint" },
   model: {},
+  storage: stub,
   workspace: { rootDir: "./semantic" },
   sources: {
     postgres: {
-      adapter: {
-        kind: "postgres",
-        id: "postgres:lint",
-        url: "postgresql://localhost/x",
-        execute: async () => ({ rows: [] }),
-        introspect: async () => [],
-        setupRole: async () => {},
-        sql: { end: async () => {} },
-        verifyOwnerIdentity: async () => {},
-      },
+      kind: "adapter",
+      adapter: stub,
       description: "Lint-test stub Postgres adapter.",
     },
   },

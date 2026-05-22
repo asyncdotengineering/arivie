@@ -199,8 +199,10 @@ async function main(): Promise<void> {
     semantic: { path: semanticPath, mode: "preload" },
     skills: skillsPath,
     skillsMode: "auto",
+    storage: postgres,
     sources: {
       postgres: {
+        kind: "adapter",
         adapter: postgres,
         description: "Demo Postgres for this example script.",
       },

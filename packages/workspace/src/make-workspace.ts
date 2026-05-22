@@ -257,6 +257,16 @@ async function selectSkillsProcessor(
       : "on-demand"
     : skillsMode;
 
+  // Surface the auto-mode decision exactly once per boot so debugging
+  // unexpected recall behaviour doesn't require source-diving. Honors
+  // ARIVIE_QUIET=1 for callers that want a silent boot.
+  if (skillsMode === "auto" && process.env.ARIVIE_QUIET !== "1") {
+    // eslint-disable-next-line no-console
+    console.info(
+      `[arivie] skills mode=auto → resolved to "${effectiveMode}" (${count} skill${count === 1 ? "" : "s"} discovered, threshold=6)`,
+    );
+  }
+
   if (effectiveMode === "eager") {
     return { processor: new SkillsProcessor({ workspace }), effectiveMode };
   }

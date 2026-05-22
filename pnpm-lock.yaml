@@ -117,6 +117,9 @@ importers:
       '@arivie/mcp':
         specifier: workspace:*
         version: link:../../packages/mcp
+      '@arivie/react':
+        specifier: workspace:*
+        version: link:../../packages/react
       '@arivie/semantic':
         specifier: workspace:*
         version: link:../../packages/semantic
@@ -1073,6 +1076,9 @@ importers:
       '@arivie/semantic':
         specifier: workspace:*
         version: link:../semantic
+      '@arivie/ui-catalog':
+        specifier: workspace:*
+        version: link:../ui-catalog
       '@json-render/core':
         specifier: ^0.19.0
         version: 0.19.0(zod@4.4.3)
@@ -1122,10 +1128,25 @@ importers:
 
   packages/react:
     dependencies:
+      '@arivie/ui-catalog':
+        specifier: workspace:*
+        version: link:../ui-catalog
+      '@json-render/react':
+        specifier: ^0.19.0
+        version: 0.19.0(react@19.2.6)(zod@4.4.3)
+      '@json-render/shadcn':
+        specifier: ^0.19.0
+        version: 0.19.0(@types/react-dom@19.2.3(@types/react@19.2.15))(@types/react@19.2.15)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(tailwindcss@4.3.0)(zod@4.4.3)
+      streamdown:
+        specifier: ^1.5.0
+        version: 1.6.11(@types/mdast@4.0.4)(micromark-util-types@2.0.2)(micromark@4.0.2)(react@19.2.6)
       zod:
         specifier: ^4.4.0
         version: 4.4.3
     devDependencies:
+      '@ai-sdk/react':
+        specifier: ^3.0.118
+        version: 3.0.192(react@19.2.6)(zod@4.4.3)
       '@size-limit/preset-small-lib':
         specifier: ^11.1.6
         version: 11.2.0(size-limit@11.2.0)
@@ -1141,6 +1162,9 @@ importers:
       '@types/react-dom':
         specifier: ^19.0.0
         version: 19.2.3(@types/react@19.2.15)
+      ai:
+        specifier: ^6.0.116
+        version: 6.0.190(zod@4.4.3)
       happy-dom:
         specifier: ^15.11.7
         version: 15.11.7
@@ -1281,6 +1305,34 @@ importers:
       '@arivie/semantic':
         specifier: workspace:*
         version: link:../semantic
+    devDependencies:
+      '@types/node':
+        specifier: ^22.0.0
+        version: 22.19.19
+      tsup:
+        specifier: ^8.5.1
+        version: 8.5.1(jiti@2.7.0)(postcss@8.5.15)(tsx@4.22.3)(typescript@6.0.3)(yaml@2.9.0)
+      typescript:
+        specifier: ^6.0.0
+        version: 6.0.3
+      vitest:
+        specifier: ^4.1.0
+        version: 4.1.6(@opentelemetry/api@1.9.1)(@types/node@22.19.19)(@vitest/coverage-v8@4.1.6)(happy-dom@15.11.7)(jsdom@26.1.0)(msw@2.14.6(@types/node@22.19.19)(typescript@6.0.3))(vite@8.0.13(@types/node@22.19.19)(esbuild@0.28.0)(jiti@2.7.0)(tsx@4.22.3)(yaml@2.9.0))
+
+  packages/ui-catalog:
+    dependencies:
+      '@json-render/core':
+        specifier: ^0.19.0
+        version: 0.19.0(zod@4.4.3)
+      '@json-render/react':
+        specifier: ^0.19.0
+        version: 0.19.0(react@19.2.6)(zod@4.4.3)
+      '@json-render/shadcn':
+        specifier: ^0.19.0
+        version: 0.19.0(@types/react-dom@19.2.3(@types/react@19.2.15))(@types/react@19.2.15)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(tailwindcss@4.3.0)(zod@4.4.3)
+      zod:
+        specifier: ^4.4.0
+        version: 4.4.3
     devDependencies:
       '@types/node':
         specifier: ^22.0.0
@@ -11792,7 +11844,7 @@ snapshots:
       obug: 2.1.1
       std-env: 4.1.0
       tinyrainbow: 3.1.0
-      vitest: 4.1.6(@opentelemetry/api@1.9.1)(@types/node@22.19.19)(@vitest/coverage-v8@4.1.6)(happy-dom@15.11.7)(jsdom@26.1.0)(msw@2.14.6(@types/node@22.19.19)(typescript@5.9.3))(vite@8.0.13(@types/node@22.19.19)(esbuild@0.28.0)(jiti@2.7.0)(tsx@4.22.3)(yaml@2.9.0))
+      vitest: 4.1.6(@opentelemetry/api@1.9.1)(@types/node@24.12.4)(@vitest/coverage-v8@4.1.6)(happy-dom@15.11.7)(jsdom@26.1.0)(msw@2.14.6(@types/node@24.12.4)(typescript@6.0.3))(vite@8.0.13(@types/node@24.12.4)(esbuild@0.27.7)(jiti@2.7.0)(tsx@4.22.3)(yaml@2.9.0))
 
   '@vitest/expect@4.1.6':
     dependencies:
@@ -11811,6 +11863,7 @@ snapshots:
     optionalDependencies:
       msw: 2.14.6(@types/node@22.19.19)(typescript@5.9.3)
       vite: 8.0.13(@types/node@22.19.19)(esbuild@0.28.0)(jiti@2.7.0)(tsx@4.22.3)(yaml@2.9.0)
+    optional: true
 
   '@vitest/mocker@4.1.6(msw@2.14.6(@types/node@22.19.19)(typescript@6.0.3))(vite@8.0.13(@types/node@22.19.19)(esbuild@0.28.0)(jiti@2.7.0)(tsx@4.22.3)(yaml@2.9.0))':
     dependencies:
@@ -16535,6 +16588,7 @@ snapshots:
       jsdom: 26.1.0
     transitivePeerDependencies:
       - msw
+    optional: true
 
   vitest@4.1.6(@opentelemetry/api@1.9.1)(@types/node@22.19.19)(@vitest/coverage-v8@4.1.6)(happy-dom@15.11.7)(jsdom@26.1.0)(msw@2.14.6(@types/node@22.19.19)(typescript@6.0.3))(vite@8.0.13(@types/node@22.19.19)(esbuild@0.28.0)(jiti@2.7.0)(tsx@4.22.3)(yaml@2.9.0)):
     dependencies:
