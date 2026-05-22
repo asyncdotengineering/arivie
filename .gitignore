@@ -30,3 +30,4 @@ examples/**/transcripts/
 
 # Vercel local state
 .vercel/
+.vercel

@@ -1,0 +1,7 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "pnpm install --frozen-lockfile && pnpm -C docs build",
+  "outputDirectory": "docs/dist",
+  "installCommand": "pnpm install --frozen-lockfile",
+  "framework": null
+}

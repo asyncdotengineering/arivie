@@ -19,7 +19,7 @@
 
 </div>
 
-> **Arivie** (pronounced *"ah-REE-vee"*, rhymes with *trivia*) is a TypeScript-first, source-available, self-host-first framework for building **agentic analytics** on your warehouse. The Tamil root *arivu* (அறிவு — *knowledge / intelligence*) is hidden inside the spelling. Sibling-shaped with [Ahamie](https://github.com/asyncdotengineering/ahamie) and [Porulle](https://github.com/asyncdotengineering/porulle).
+> **Arivie** (pronounced *"ah-REE-vee"*, rhymes with *trivia*) is a TypeScript-first, source-available, self-host-first framework for building **agentic analytics** on your warehouse. The Tamil root *arivu* (அறிவு — *knowledge / intelligence*) is hidden inside the spelling.
 
 You install it the way you install Next.js, Drizzle, or Inngest:
 
