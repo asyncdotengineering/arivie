@@ -1,26 +1,20 @@
 ---
 name: revenue-attribution
 description: Attribute revenue to acquisition channels / signup sources / marketing campaigns and surface the top contributors and the largest period-over-period swings.
-when_to_use: |
-  Load this skill when the user asks about:
-    - "What drove revenue this quarter" / "where is revenue coming from"
-    - "Attribution" / "by channel" / "by campaign" / "by signup source"
-    - "Which marketing channel brought our best customers"
-    - "Why did revenue spike in March"
-  DON'T load for:
-    - Pure revenue totals (no attribution dimension) → `compile_metric({metric: "revenue"})`
-    - Predictive marketing-mix modeling → out of scope
-inputs:
-  - { name: attribution_dim, type: string, default: "signup_source", description: "Customer attribute that maps users to acquisition channels (signup_source, first_referrer, campaign_id, etc.)" }
-  - { name: window, type: string, default: "current_quarter", description: "Declared segment name (e.g. 'current_quarter') OR a custom window like '2026-01-01..2026-03-31'" }
-  - { name: compare_to, type: string, default: "previous_quarter", description: "Period-over-period comparison window" }
-outputs:
-  - { name: contribution_table, type: "row[]", description: "{ channel, revenue_current, revenue_compare_to, abs_delta, pct_change, share_of_current }" }
-  - { name: top_contributors, type: "string[]", description: "Top 3 channels by current-period revenue" }
-  - { name: largest_swings, type: "string[]", description: "Top 3 channels by abs_delta" }
-sources:
-  - postgres
+license: Apache-2.0
 ---
+
+## When to use
+
+Load this skill when the user asks about:
+  - "What drove revenue this quarter" / "where is revenue coming from"
+  - "Attribution" / "by channel" / "by campaign" / "by signup source"
+  - "Which marketing channel brought our best customers"
+  - "Why did revenue spike in March"
+DON'T load for:
+  - Pure revenue totals (no attribution dimension) → `compile_metric({metric: "revenue"})`
+  - Predictive marketing-mix modeling → out of scope
+
 
 # Revenue-attribution playbook
 

@@ -1,27 +1,7 @@
 ---
 name: food-cost-variance
 description: Executive Chef's weekly food-cost audit. Compares theoretical food cost (recipe × units sold) against actual food cost (consume + waste movements). Surfaces the variance that signals theft, portion drift, or recipe error.
-when_to_use: |
-  Load this skill when the user asks about:
-    - "Food cost variance" / "Theoretical vs actual food cost"
-    - "Why is food cost up" / "Is the kitchen over-portioning"
-    - "Are we wasting more food"
-    - "Recipe vs reality"
-  DON'T load for:
-    - Just headline food cost % → query stock_movements.actual_consumption_cost directly
-    - Pour cost (bar) → use pour-cost-investigation
-audience_role: exec_chef
-cadence: weekly
-inputs:
-  - { name: window, type: string, default: "last_7_days" }
-  - { name: outlet_id, type: string, default: null }
-outputs:
-  - { name: theoretical_cost, type: numeric }
-  - { name: actual_cost, type: numeric }
-  - { name: variance_dollars, type: numeric, description: "actual - theoretical" }
-  - { name: variance_pct, type: numeric, description: "variance as % of food revenue" }
-sources:
-  - postgres
+license: Apache-2.0
 ---
 
 > ## Math discipline — read before doing anything else
@@ -51,6 +31,18 @@ sources:
 > - "I'll calculate the variance..."
 >
 > If a step truly cannot be expressed in SQL, STOP and surface that as a limitation — do not eyeball the math.
+
+
+## When to use
+
+Load this skill when the user asks about:
+  - "Food cost variance" / "Theoretical vs actual food cost"
+  - "Why is food cost up" / "Is the kitchen over-portioning"
+  - "Are we wasting more food"
+  - "Recipe vs reality"
+DON'T load for:
+  - Just headline food cost % → query stock_movements.actual_consumption_cost directly
+  - Pour cost (bar) → use pour-cost-investigation
 
 
 # Food-cost variance

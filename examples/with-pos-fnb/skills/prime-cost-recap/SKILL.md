@@ -1,26 +1,7 @@
 ---
 name: prime-cost-recap
 description: Owner-level prime-cost recap — food cost + labor cost as % of revenue, by outlet, with same-store comparison. The single most important F&B KPI the owner watches.
-when_to_use: |
-  Load this skill when the user asks about:
-    - "Prime cost" / "prime cost percent" / "prime cost ratio"
-    - "How healthy is the chain" / "Is the business making money"
-    - "Food cost + labor cost combined" / "operating ratio"
-  Industry target: prime cost ≤ 60% of revenue (full-service); ≤ 55% (fast-casual).
-  Above 65% = the business is bleeding; act this week.
-  DON'T load for:
-    - Just food cost (no labor) → use food-cost-variance
-    - Just labor (no food) → query time_entries directly
-audience_role: owner
-cadence: weekly
-inputs:
-  - { name: window, type: string, default: "last_7_days" }
-  - { name: scope, type: string, default: "all_outlets", description: "all_outlets | <outlet_id>" }
-outputs:
-  - { name: prime_cost_pct, type: numeric, description: "(COGS + Labor) / Revenue × 100" }
-  - { name: by_outlet, type: "row[]", description: "{ outlet_id, revenue, cogs, labor, prime_cost_pct }" }
-sources:
-  - postgres
+license: Apache-2.0
 ---
 
 > ## Math discipline — read before doing anything else
@@ -50,6 +31,19 @@ sources:
 > - "I'll calculate the variance..."
 >
 > If a step truly cannot be expressed in SQL, STOP and surface that as a limitation — do not eyeball the math.
+
+
+## When to use
+
+Load this skill when the user asks about:
+  - "Prime cost" / "prime cost percent" / "prime cost ratio"
+  - "How healthy is the chain" / "Is the business making money"
+  - "Food cost + labor cost combined" / "operating ratio"
+Industry target: prime cost ≤ 60% of revenue (full-service); ≤ 55% (fast-casual).
+Above 65% = the business is bleeding; act this week.
+DON'T load for:
+  - Just food cost (no labor) → use food-cost-variance
+  - Just labor (no food) → query time_entries directly
 
 
 # Prime-cost recap

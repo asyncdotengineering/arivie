@@ -1,26 +1,20 @@
 ---
 name: funnel-conversion
 description: Compute step-by-step funnel conversion rates between N events (visit → signup → first order → repeat purchase), surface absolute drop-offs and per-step conversion percentages, and name the bottleneck step.
-when_to_use: |
-  Load this skill when the user asks about:
-    - "Funnel" / "conversion rate" / "drop-off"
-    - "Where do users abandon" / "how many make it from X to Y"
-    - "Step-by-step from <event_a> to <event_b>"
-    - "What's our checkout completion rate"
-  DON'T load for:
-    - Single-step counts → use `compile_metric` or `execute`
-    - Time-series trends of one funnel rate → use this skill for one snapshot, then ask the user if they want it as a trend (next skill: `metric-over-time`)
-inputs:
-  - { name: steps, type: "string[]", description: "Ordered list of event/condition names. Each must map to a declared semantic-layer entity, measure, or event source." }
-  - { name: window, type: string, default: "30d", description: "Per-step time window — 'a user reaches step N within {window} of step N-1'" }
-  - { name: cohort_filter, type: object, default: null, description: "Optional filter on the starting cohort (country, signup_source, plan, etc.)" }
-outputs:
-  - { name: funnel, type: "row[]", description: "{ step, users_reaching, abs_dropoff, conv_pct_from_prev, conv_pct_from_top }" }
-  - { name: bottleneck, type: string, description: "The step with the worst per-step conversion percentage" }
-sources:
-  - postgres
-  - mixpanel
+license: Apache-2.0
 ---
+
+## When to use
+
+Load this skill when the user asks about:
+  - "Funnel" / "conversion rate" / "drop-off"
+  - "Where do users abandon" / "how many make it from X to Y"
+  - "Step-by-step from <event_a> to <event_b>"
+  - "What's our checkout completion rate"
+DON'T load for:
+  - Single-step counts → use `compile_metric` or `execute`
+  - Time-series trends of one funnel rate → use this skill for one snapshot, then ask the user if they want it as a trend (next skill: `metric-over-time`)
+
 
 # Funnel-conversion playbook
 

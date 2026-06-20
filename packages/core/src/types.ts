@@ -151,6 +151,12 @@ export interface ArivieConfig {
   compileMetric?: boolean;
   hooks?: LifecycleHooks;
   limits?: LimitConfig;
+  /**
+   * Recurring analytical prompts wired to Mastra's workflow scheduler.
+   * Schedules are operational runtime config — they live here, not in
+   * `SKILL.md` frontmatter.
+   */
+  schedules?: import("./schedules.js").ArivieSchedule[];
 }
 
 export interface SemanticConfig {

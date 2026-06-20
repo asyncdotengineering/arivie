@@ -1,26 +1,7 @@
 ---
 name: daily-z-out-reconciliation
 description: Bookkeeper's Z-out reconciliation. Cross-checks ticket totals against tender totals against GL totals — three independent sources of the same number. Any mismatch is a posting error that must be resolved before the close stands.
-when_to_use: |
-  Load this skill when the user asks about:
-    - "Z-out" / "Reconcile" / "Tender reconciliation"
-    - "Why doesn't the cash match" / "Find the discrepancy"
-    - "Three-way reconciliation"
-  DON'T load for:
-    - The close-packet format → use end-of-day-close
-    - Card processor disputes → out of scope
-audience_role: bookkeeper
-cadence: daily
-inputs:
-  - { name: business_day, type: date, default: "current_business_day" }
-  - { name: outlet_id, type: string, required: true }
-outputs:
-  - { name: tickets_total, type: numeric }
-  - { name: tenders_total, type: numeric }
-  - { name: gl_total, type: numeric }
-  - { name: variance, type: numeric, description: "Should be 0; flag any non-zero." }
-sources:
-  - postgres
+license: Apache-2.0
 ---
 
 > ## Math discipline — read before doing anything else
@@ -50,6 +31,17 @@ sources:
 > - "I'll calculate the variance..."
 >
 > If a step truly cannot be expressed in SQL, STOP and surface that as a limitation — do not eyeball the math.
+
+
+## When to use
+
+Load this skill when the user asks about:
+  - "Z-out" / "Reconcile" / "Tender reconciliation"
+  - "Why doesn't the cash match" / "Find the discrepancy"
+  - "Three-way reconciliation"
+DON'T load for:
+  - The close-packet format → use end-of-day-close
+  - Card processor disputes → out of scope
 
 
 # Daily Z-out reconciliation

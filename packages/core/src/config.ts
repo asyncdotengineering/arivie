@@ -5,6 +5,7 @@ import type { WorkspaceFilesystem } from "@mastra/core/workspace";
 import type { MastraVector } from "@mastra/core/vector";
 import type { LanguageModel } from "ai";
 import { z } from "zod";
+import { schedulesSchema } from "./schedules.js";
 import type {
   ResolveUser,
   SourceAdapter,
@@ -237,5 +238,6 @@ export const ArivieConfigSchema = z
     compileMetric: z.boolean().optional(),
     hooks: lifecycleHooksSchema.optional(),
     limits: limitSchema.optional(),
+    schedules: schedulesSchema,
   })
   .strict();

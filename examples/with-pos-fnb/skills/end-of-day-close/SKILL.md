@@ -1,23 +1,7 @@
 ---
 name: end-of-day-close
 description: Bookkeeper's end-of-day close packet. Per-outlet daily close — net sales by category, tender mix, processor fees, deposit envelope, GL summary. The exact format submitted to the accountant nightly.
-when_to_use: |
-  Load this skill when the user asks about:
-    - "Daily close" / "End of day" / "EOD" / "Z-out"
-    - "Close-out report" / "Nightly close packet"
-    - "Submit to accountant" / "What does the bookkeeper need"
-  DON'T load for:
-    - Cash reconciliation specifically → use daily-z-out-reconciliation
-    - Weekly P&L → use weekly-flash-report
-audience_role: bookkeeper
-cadence: daily
-inputs:
-  - { name: business_day, type: date, default: "current_business_day" }
-  - { name: outlet_id, type: string, default: null, description: "NULL for chain-wide packet (one section per outlet)." }
-outputs:
-  - { name: close_packet, type: object, description: "Section per outlet: sales_summary, tender_mix, deposit, gl_summary" }
-sources:
-  - postgres
+license: Apache-2.0
 ---
 
 > ## Math discipline — read before doing anything else
@@ -47,6 +31,17 @@ sources:
 > - "I'll calculate the variance..."
 >
 > If a step truly cannot be expressed in SQL, STOP and surface that as a limitation — do not eyeball the math.
+
+
+## When to use
+
+Load this skill when the user asks about:
+  - "Daily close" / "End of day" / "EOD" / "Z-out"
+  - "Close-out report" / "Nightly close packet"
+  - "Submit to accountant" / "What does the bookkeeper need"
+DON'T load for:
+  - Cash reconciliation specifically → use daily-z-out-reconciliation
+  - Weekly P&L → use weekly-flash-report
 
 
 # End-of-day close packet

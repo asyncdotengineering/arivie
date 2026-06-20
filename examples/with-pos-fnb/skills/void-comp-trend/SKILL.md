@@ -1,23 +1,7 @@
 ---
 name: void-comp-trend
 description: FOH Manager's loss-prevention scan. Daily void% and comp% trend over the last 14 days, by server. Surfaces servers whose comp/void rate is trending up — the leading indicator of either service issues or theft.
-when_to_use: |
-  Load this skill when the user asks about:
-    - "Void rate" / "Comp rate" / "Comp trend"
-    - "Are we comping more than usual"
-    - "Loss prevention" / "Theft signal" / "Manager comp pattern"
-  DON'T load for:
-    - Headline daily comp/void → daily-sales-recap covers this
-    - Single-server deep dive → use server-performance-scorecard
-audience_role: foh_manager
-cadence: daily (scan), weekly (deep)
-inputs:
-  - { name: outlet_id, type: string, required: true }
-  - { name: window, type: string, default: "last_14_days" }
-outputs:
-  - { name: trend, type: "row[]", description: "{ business_day, server, comp_pct, void_pct, baseline_comp_pct, deviation }" }
-sources:
-  - postgres
+license: Apache-2.0
 ---
 
 > ## Math discipline — read before doing anything else
@@ -47,6 +31,17 @@ sources:
 > - "I'll calculate the variance..."
 >
 > If a step truly cannot be expressed in SQL, STOP and surface that as a limitation — do not eyeball the math.
+
+
+## When to use
+
+Load this skill when the user asks about:
+  - "Void rate" / "Comp rate" / "Comp trend"
+  - "Are we comping more than usual"
+  - "Loss prevention" / "Theft signal" / "Manager comp pattern"
+DON'T load for:
+  - Headline daily comp/void → daily-sales-recap covers this
+  - Single-server deep dive → use server-performance-scorecard
 
 
 # Void / comp trend

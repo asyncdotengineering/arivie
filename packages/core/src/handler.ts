@@ -1,10 +1,31 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 import type { Agent } from "@mastra/core/agent";
+import type { ModelMessage } from "ai";
 import { ArivieBoundaryError } from "@arivie/db-postgres";
 import { runWithUserContext } from "./context.js";
 import { ArivieInternalError } from "./errors.js";
 import type { ArivieConfig, StorageAdapter } from "./types.js";
 import { isFatalBoundaryError, verifyOwnerIdentity } from "./verify.js";
+
+const VALID_MESSAGE_ROLES = ["user", "assistant", "system"] as const;
+type ValidMessageRole = (typeof VALID_MESSAGE_ROLES)[number];
+
+function isValidMessageRole(role: unknown): role is ValidMessageRole {
+  return VALID_MESSAGE_ROLES.includes(role as ValidMessageRole);
+}
+
+function parseMessages(input: unknown): ModelMessage[] | null {
+  if (!Array.isArray(input)) return null;
+  const out: ModelMessage[] = [];
+  for (const m of input) {
+    if (m == null || typeof m !== "object") return null;
+    if (!("role" in m) || !("content" in m)) return null;
+    const { role, content } = m as { role: unknown; content: unknown };
+    if (!isValidMessageRole(role) || typeof content !== "string") return null;
+    out.push({ role, content });
+  }
+  return out;
+}
 
 export interface WebHandlerDeps {
   agent: Agent;
@@ -78,7 +99,7 @@ function sseEvent(data: string): string {
  */
 async function streamAgentAsSse(
   agent: Agent,
-  messages: { role: string; content: string }[],
+  messages: ModelMessage[],
   memory: { thread: string; resource: string },
   abortSignal: AbortSignal,
 ): Promise<Response> {
@@ -213,7 +234,7 @@ export function makeWebHandler(deps: WebHandlerDeps): (req: Request) => Promise<
       return Response.json({ error: "unauthorized", detail: message }, { status: 401 });
     }
 
-    let body: { prompt?: string; messages?: { role: string; content: string }[]; threadId?: string };
+    let body: { prompt?: string; messages?: unknown; threadId?: string };
     try {
       // `req.json()` returns `unknown`; we cast to the union we accept. The
       // optional fields are guarded individually below before use.
@@ -224,13 +245,21 @@ export function makeWebHandler(deps: WebHandlerDeps): (req: Request) => Promise<
 
     const prompt =
       body.prompt ??
-      body.messages?.at(-1)?.content;
-    if (!prompt) {
+      (typeof body.messages === "object" &&
+        Array.isArray(body.messages) &&
+        body.messages.length > 0 &&
+        typeof body.messages.at(-1) === "object" &&
+        body.messages.at(-1) != null
+        ? (body.messages.at(-1) as { content?: unknown }).content
+        : undefined);
+    if (typeof prompt !== "string" || prompt.length === 0) {
       return Response.json({ error: "prompt or messages required" }, { status: 400 });
     }
 
-    const messages =
-      body.messages ?? [{ role: "user" as const, content: prompt }];
+    const messages = parseMessages(body.messages) ?? [{ role: "user" as const, content: prompt }];
+    if (messages.length === 0) {
+      return Response.json({ error: "messages array must not be empty" }, { status: 400 });
+    }
     const memory = {
       thread: body.threadId ?? `arivie-${user.userId}`,
       resource: user.userId,

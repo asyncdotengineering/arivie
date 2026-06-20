@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": false,
   "type": "module",
-  "description": "Arivie Mastra MCP server \u2014 ask, query, schema, and memory tools over MCPServer.",
+  "description": "Arivie Mastra MCP server — ask, query, schema, and memory tools over MCPServer.",
   "license": "Apache-2.0",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -35,15 +35,15 @@
   "dependencies": {
     "@arivie/db-postgres": "workspace:*",
     "@arivie/semantic": "workspace:*",
+    "@arivie/ui-catalog": "workspace:*",
     "@json-render/core": "^0.19.0",
     "@json-render/mcp": "^0.19.0",
     "@json-render/react": "^0.19.0",
     "@json-render/shadcn": "^0.19.0",
-    "@mastra/core": "^1.35.0",
-    "@mastra/mcp": "^1.7.0",
+    "@mastra/core": "^1.45.0",
+    "@mastra/mcp": "^1.11.0",
     "@modelcontextprotocol/sdk": "^1.29.0",
-    "zod": "^4.4.0",
-    "@arivie/ui-catalog": "workspace:*"
+    "zod": "^4.4.0"
   },
   "peerDependencies": {
     "@arivie/agent": "workspace:*"
@@ -51,7 +51,7 @@
   "devDependencies": {
     "@arivie/agent": "workspace:*",
     "@arivie/workspace": "workspace:*",
-    "@mastra/core": "^1.35.0",
+    "@mastra/core": "^1.45.0",
     "@types/node": "^22.0.0",
     "ai": "^6.0.0",
     "tsup": "^8.5.1",

@@ -1,27 +1,20 @@
 ---
 name: dau-mau-ratio
 description: Compute DAU/MAU (or WAU/MAU) stickiness ratio — what fraction of monthly users are active any given day. Standard product-engagement health metric; 20%+ = sticky, 50%+ = exceptional, < 10% = transactional.
-when_to_use: |
-  Load this skill when the user asks about:
-    - "DAU / MAU / WAU" / "stickiness"
-    - "Engagement ratio" / "active user ratio"
-    - "How often do users come back"
-    - "Are we transactional or sticky"
-  DON'T load for:
-    - Raw DAU/MAU counts without the ratio → `compile_metric` direct
-    - Cohort-by-cohort engagement → use `cohort-analysis` skill
-inputs:
-  - { name: active_event, type: string, default: "any_order", description: "What counts as 'active' on a day. Default = any order; for engagement use a page-view / session event from Mixpanel." }
-  - { name: window, type: integer, default: 90, description: "Number of days to compute the ratio over" }
-  - { name: include_trend, type: boolean, default: true, description: "Also compute the ratio per day to show whether stickiness is rising/falling" }
-outputs:
-  - { name: ratio, type: number, description: "Average DAU / MAU across the window (0..1)" }
-  - { name: trend, type: string, description: "'rising' / 'falling' / 'flat' based on linear regression of daily ratios" }
-  - { name: interpretation, type: string, description: "Named tier: 'transactional' / 'engaged' / 'sticky' / 'exceptional'" }
-sources:
-  - postgres
-  - mixpanel
+license: Apache-2.0
 ---
+
+## When to use
+
+Load this skill when the user asks about:
+  - "DAU / MAU / WAU" / "stickiness"
+  - "Engagement ratio" / "active user ratio"
+  - "How often do users come back"
+  - "Are we transactional or sticky"
+DON'T load for:
+  - Raw DAU/MAU counts without the ratio → `compile_metric` direct
+  - Cohort-by-cohort engagement → use `cohort-analysis` skill
+
 
 # DAU/MAU playbook
 

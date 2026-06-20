@@ -7,6 +7,8 @@ export {
   ArivieNotImplementedError,
 } from "./errors.js";
 export { defineArivie } from "./define.js";
+export { defineSchedule, defineSchedules } from "./schedules.js";
+export type { ArivieSchedule } from "./schedules.js";
 export { localWorkspace } from "./local-workspace.js";
 export type { LocalWorkspaceOptions } from "./local-workspace.js";
 export { adapterSource, mcpSource } from "./sources-factory.js";

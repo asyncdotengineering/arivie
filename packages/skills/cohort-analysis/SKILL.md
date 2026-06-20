@@ -1,27 +1,21 @@
 ---
 name: cohort-analysis
 description: Compute cohort retention curves by signup-period (week/month/quarter), comparing N cohorts side by side. Surfaces the retention triangle + the named trend (decay rate, cliff months, cohort comparisons).
-when_to_use: |
-  Load this skill when the user asks about:
-    - "Retention" / "retained" / "still active" over time
-    - "Cohort" / "cohort analysis" / "by signup month"
-    - "How do users from March compare to April"
-    - "When do users drop off"
-    - "Is our retention curve flattening"
-  DON'T load for:
-    - Single-period counts ("how many active users last month") → use `compile_metric` + a `monthly_active` measure
-    - Single user lookups → use `execute`
-inputs:
-  - { name: cohort_grain, type: 'enum["week","month","quarter"]', default: "month", description: "Period to bucket the signup date by" }
-  - { name: months_back, type: integer, default: 6, description: "How many cohorts to compare" }
-  - { name: retention_event, type: string, default: "completed_order", description: "Event/condition that marks 'retained'. For order-driven retention: a completed order. For engagement: a page-view or session event." }
-  - { name: max_period_offset, type: integer, default: 6, description: "Number of post-signup periods to track" }
-outputs:
-  - { name: triangle, type: "row[]", description: "cohort × period_offset matrix of retained user counts and percentages" }
-  - { name: trend, type: string, description: "Named trend: 'flat', 'decaying', 'cliff_at_month_N', 'improving_over_cohorts'" }
-sources:
-  - postgres
+license: Apache-2.0
 ---
+
+## When to use
+
+Load this skill when the user asks about:
+  - "Retention" / "retained" / "still active" over time
+  - "Cohort" / "cohort analysis" / "by signup month"
+  - "How do users from March compare to April"
+  - "When do users drop off"
+  - "Is our retention curve flattening"
+DON'T load for:
+  - Single-period counts ("how many active users last month") → use `compile_metric` + a `monthly_active` measure
+  - Single user lookups → use `execute`
+
 
 # Cohort analysis playbook
 

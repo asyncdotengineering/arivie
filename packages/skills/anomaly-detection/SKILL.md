@@ -1,27 +1,20 @@
 ---
 name: anomaly-detection
 description: Identify outliers in a time series of a metric — periods where the value is materially higher/lower than the recent trend. Computes z-scores or %-deviation from rolling baseline and surfaces the top N anomalies with hypotheses for what caused them.
-when_to_use: |
-  Load this skill when the user asks about:
-    - "Is there an anomaly" / "outliers" / "unusual" / "weird"
-    - "Why is X spiking" / "why did Y drop"
-    - "Find anything unexpected"
-    - "Did anything change this week"
-  DON'T load for:
-    - Single-period values → `compile_metric` direct
-    - Forward-looking predictions → out of scope
-inputs:
-  - { name: metric, type: string, description: "Declared measure name OR custom expression to track over time" }
-  - { name: grain, type: 'enum["hour","day","week","month"]', default: "day", description: "Time bucket" }
-  - { name: lookback, type: integer, default: 90, description: "Number of {{grain}} periods to analyze" }
-  - { name: threshold_zscore, type: number, default: 2.5, description: "Min |z-score| to flag as anomaly" }
-  - { name: top_n, type: integer, default: 5, description: "Cap on anomalies surfaced" }
-outputs:
-  - { name: anomalies, type: "row[]", description: "{ period, value, baseline_mean, baseline_stddev, zscore, direction (up/down) }" }
-  - { name: hypotheses, type: "string[]", description: "Per-anomaly LLM-generated guesses at causes (state these as guesses, not facts)" }
-sources:
-  - postgres
+license: Apache-2.0
 ---
+
+## When to use
+
+Load this skill when the user asks about:
+  - "Is there an anomaly" / "outliers" / "unusual" / "weird"
+  - "Why is X spiking" / "why did Y drop"
+  - "Find anything unexpected"
+  - "Did anything change this week"
+DON'T load for:
+  - Single-period values → `compile_metric` direct
+  - Forward-looking predictions → out of scope
+
 
 # Anomaly-detection playbook
 

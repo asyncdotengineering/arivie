@@ -234,7 +234,15 @@ describe("makeMCPSourceAdapter", () => {
       timeoutMs: 5000,
     });
 
-    expect(mockTool.execute).toHaveBeenCalledWith({ q: "users" }, {});
+    expect(mockTool.execute).toHaveBeenCalledWith(
+      { q: "users" },
+      expect.objectContaining({
+        observe: expect.objectContaining({
+          log: expect.any(Function),
+          span: expect.any(Function),
+        }),
+      }),
+    );
     expect(result.rows).toEqual([{ tool: "mock_query" }]);
     expect(result.rowCount).toBe(1);
     expect(result.truncated).toBe(false);

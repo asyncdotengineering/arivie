@@ -4,7 +4,6 @@ import os from "node:os";
 import path from "node:path";
 import type { SemanticLayer } from "@arivie/semantic";
 import type { PostgresAdapter } from "@arivie/db-postgres";
-import { SkillsProcessor } from "@mastra/core/processors";
 import {
   InProcessSandboxFilesystem,
   makeWorkspace,
@@ -277,6 +276,5 @@ describe("makeAgent", () => {
     const processors = await agent.listConfiguredInputProcessors();
     expect(processors).toHaveLength(1);
     expect(processors[0]).toBe(skillsProcessor);
-    expect(processors[0]).toBeInstanceOf(SkillsProcessor);
   });
 });

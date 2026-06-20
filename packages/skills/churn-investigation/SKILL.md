@@ -1,25 +1,20 @@
 ---
 name: churn-investigation
 description: Investigate WHY customers stopped purchasing/engaging. Compares the churned cohort against the retained cohort across dimensions (country, plan, signup_source, product_category) to surface which attributes correlate with churn.
-when_to_use: |
-  Load this skill when the user asks about:
-    - "Why did X stop" / "why are we losing customers"
-    - "Churn" / "churned" / "lapsed customers"
-    - "What's different about customers who left vs stayed"
-    - "Predict who's about to churn" (the diagnostic version — for predictive ML, route elsewhere)
-  DON'T load for:
-    - "How many churned" → that's `compile_metric` with a `churned` measure
-    - Forward predictive scoring → out of scope for v0.2
-inputs:
-  - { name: churn_definition, type: string, default: "no completed_order in last 90 days", description: "What counts as 'churned'. Default is order-driven 90-day inactivity." }
-  - { name: lookback, type: string, default: "180d", description: "How far back to look for the churned + retained cohorts" }
-  - { name: dimensions, type: "string[]", default: ["country","plan","signup_source"], description: "Customer attributes to compare across" }
-outputs:
-  - { name: comparison_table, type: "row[]", description: "Per-dimension breakdown: { dimension_value, churned_pct_of_total, retained_pct_of_total, churn_lift }" }
-  - { name: top_correlates, type: "string[]", description: "Top 3 attributes with highest churn_lift" }
-sources:
-  - postgres
+license: Apache-2.0
 ---
+
+## When to use
+
+Load this skill when the user asks about:
+  - "Why did X stop" / "why are we losing customers"
+  - "Churn" / "churned" / "lapsed customers"
+  - "What's different about customers who left vs stayed"
+  - "Predict who's about to churn" (the diagnostic version — for predictive ML, route elsewhere)
+DON'T load for:
+  - "How many churned" → that's `compile_metric` with a `churned` measure
+  - Forward predictive scoring → out of scope for v0.2
+
 
 # Churn-investigation playbook
 

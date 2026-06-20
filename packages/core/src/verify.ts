@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-import type { PostgresAdapter } from "@arivie/db-postgres";
 import { ArivieBoundaryError } from "@arivie/db-postgres";
+import type { StorageAdapter } from "./types.js";
 
 const FATAL_BOUNDARY_REASONS = new Set([
   "identity-mismatch",
@@ -47,7 +47,7 @@ export function isFatalBoundaryError(err: unknown): boolean {
 }
 
 export async function verifyOwnerIdentity(
-  db: PostgresAdapter,
+  db: StorageAdapter,
   expectedOwnerId: string,
   readOnlyRole = "arivie_reader",
 ): Promise<void> {

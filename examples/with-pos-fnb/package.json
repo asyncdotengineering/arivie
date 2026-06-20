@@ -19,7 +19,7 @@
     "@arivie/core": "workspace:*",
     "@arivie/db-postgres": "workspace:*",
     "@arivie/workspace": "workspace:*",
-    "@mastra/core": "^1.35.0",
+    "@mastra/core": "^1.45.0",
     "ai": "^6.0.0",
     "postgres": "^3.4.7",
     "zod": "^4.4.3"

@@ -1,24 +1,7 @@
 ---
 name: pour-cost-investigation
 description: Bar Manager's monthly pour-cost audit. Compares theoretical pour cost (recipe × cocktails sold) against actual liquor consumption from stock_movements. Industry healthy band 18-24%; above 28% is shrinkage, theft, or over-pouring.
-when_to_use: |
-  Load this skill when the user asks about:
-    - "Pour cost" / "Liquor cost" / "Bar cost"
-    - "Are we losing booze" / "Bar shrinkage"
-    - "Over-pouring" / "Bar theft"
-  DON'T load for:
-    - Wine-bottle inventory only → query stock_movements directly
-    - General food cost → use food-cost-variance
-audience_role: bar_manager
-cadence: weekly
-inputs:
-  - { name: outlet_id, type: string, required: true }
-  - { name: window, type: string, default: "last_7_days" }
-outputs:
-  - { name: pour_cost_pct, type: numeric, description: "actual_liquor_cost / alcohol_revenue × 100" }
-  - { name: variance_dollars, type: numeric }
-sources:
-  - postgres
+license: Apache-2.0
 ---
 
 > ## Math discipline — read before doing anything else
@@ -48,6 +31,17 @@ sources:
 > - "I'll calculate the variance..."
 >
 > If a step truly cannot be expressed in SQL, STOP and surface that as a limitation — do not eyeball the math.
+
+
+## When to use
+
+Load this skill when the user asks about:
+  - "Pour cost" / "Liquor cost" / "Bar cost"
+  - "Are we losing booze" / "Bar shrinkage"
+  - "Over-pouring" / "Bar theft"
+DON'T load for:
+  - Wine-bottle inventory only → query stock_movements directly
+  - General food cost → use food-cost-variance
 
 
 # Pour-cost investigation

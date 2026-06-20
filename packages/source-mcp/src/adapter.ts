@@ -6,6 +6,7 @@ import type {
   SourceAdapterExecuteResult,
 } from "@arivie/core/types";
 import { MCPClient, type MastraMCPServerDefinition } from "@mastra/mcp";
+import { noopObserve } from "@mastra/core/tools";
 import type { Tool } from "@mastra/core/tools";
 import { namespaceToolName } from "./namespace.js";
 import type {
@@ -125,7 +126,9 @@ export async function makeMCPSourceAdapter(
       if (!tool?.execute) {
         throw new Error(`MCP tool not found: ${executeOpts.query.toolName}`);
       }
-      const result = await tool.execute(executeOpts.query.args, {});
+      const result = await tool.execute(executeOpts.query.args, {
+        observe: noopObserve,
+      });
       const normalized = normalizeToolResult(result, Date.now() - start);
       return applyRowLimit(normalized, executeOpts.rowLimit);
     },

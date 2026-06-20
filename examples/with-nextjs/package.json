@@ -23,7 +23,7 @@
     "@arivie/skills": "workspace:*",
     "@arivie/source-mixpanel": "workspace:*",
     "@arivie/workspace": "workspace:*",
-    "@mastra/pg": "^1.11.0",
+    "@mastra/pg": "^1.14.0",
     "ai": "^6.0.0",
     "lucide-react": "^0.511.0",
     "next": "^15.3.0",

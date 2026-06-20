@@ -1,21 +1,19 @@
 ---
 name: quarterly-revenue-recap
 description: Quarterly revenue recap — headline number plus top-country contributor and outstanding-amount sanity check. For "how's revenue this quarter" / "quarterly revenue summary" type questions.
-when_to_use: |
-  Load this skill when the user asks about:
-    - "What is our revenue this quarter"
-    - "How's revenue this quarter" / "Quarterly revenue recap"
-    - "Revenue summary for the quarter"
-  DON'T load for:
-    - Attribution by marketing channel → use revenue-attribution
-    - Pure single-number lookups with no breakdown desired → just `compile_metric({metric: "revenue", segments: ["current_quarter"]})`
-inputs:
-  - { name: window, type: string, default: "current_quarter", description: "Declared segment to scope the recap" }
-outputs:
-  - { name: headline, type: string, description: "One-line recap: total revenue + top-contributing country + outstanding amount" }
-sources:
-  - postgres
+license: Apache-2.0
 ---
+
+## When to use
+
+Load this skill when the user asks about:
+  - "What is our revenue this quarter"
+  - "How's revenue this quarter" / "Quarterly revenue recap"
+  - "Revenue summary for the quarter"
+DON'T load for:
+  - Attribution by marketing channel → use revenue-attribution
+  - Pure single-number lookups with no breakdown desired → just `compile_metric({metric: "revenue", segments: ["current_quarter"]})`
+
 
 # Quarterly revenue recap
 

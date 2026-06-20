@@ -1,10 +1,10 @@
 # @arivie/skills
 
-Reusable analytical playbooks for the Arivie agent, packaged per the [Agent Skills spec](https://github.com/mastra-ai/skills) (Mastra Workspaces, Feb 2026).
+Reusable analytical playbooks for the Arivie agent, packaged per the [Agent Skills spec](https://agentskills.io/specification).
 
 ## What's a skill?
 
-A `SKILL.md` file with YAML frontmatter (`name`, `description`, `when_to_use`, optional `inputs[]`, `outputs[]`, `sources[]`) plus a markdown body teaching the agent a multi-step analytical workflow. Mastra's Workspace `skills` resolver discovers them at boot; the agent loads them on demand via auto-injected skill tools.
+A directory containing a `SKILL.md` file with YAML frontmatter (`name`, `description`, optional `license`, `compatibility`, `metadata`, `allowed-tools`) plus a markdown body teaching the agent a multi-step analytical workflow. Mastra's Workspace `skills` resolver discovers them at boot; the agent loads them on demand via auto-injected skill tools.
 
 ## Why externalise these?
 
@@ -51,24 +51,18 @@ packages/skills/<my-skill>/
 ---
 name: my-skill
 description: <one-line summary the agent uses to decide whether to load>
-when_to_use: |
-  Multi-line guidance on which question shapes trigger this skill.
-inputs:
-  - { name: foo, type: string, description: "..." }
-outputs:
-  - { name: result, type: object, description: "..." }
-sources:                    # optional — which Arivie adapters this skill touches
-  - postgres
-  - mixpanel
+license: Apache-2.0
 ---
 
-# Skill body — the playbook
+## When to use
+
+Multi-line guidance on which question shapes trigger this skill.
 
 ## Plan
 1. ...
 ```
 
-Arivie's system prompt advertises the skill's `name` + `description` + `when_to_use` to the agent. The agent calls a skill-loader tool that returns the full `SKILL.md` body, then follows the playbook.
+Arivie's system prompt advertises the skill's `name` + `description` to the agent. The agent calls a skill-loader tool that returns the full `SKILL.md` body, then follows the playbook.
 
 ## v0.3+ ideas
 

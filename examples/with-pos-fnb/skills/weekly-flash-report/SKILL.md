@@ -1,22 +1,7 @@
 ---
 name: weekly-flash-report
 description: GM's Monday-morning weekly recap. 7-day revenue, prime-cost, labor %, comp/void trend, day-over-day vs prior week. The headline brief sent to ownership every Monday.
-when_to_use: |
-  Load this skill when the user asks about:
-    - "Weekly flash" / "Weekly report" / "Monday recap"
-    - "How did we do last week" / "This week vs last week"
-    - "Weekly KPI dashboard" / "Weekly variance"
-  DON'T load for:
-    - Single-day reporting → use daily-sales-recap
-    - Pure cost-of-goods deep dive → use food-cost-variance
-audience_role: gm
-cadence: weekly
-inputs:
-  - { name: outlet_id, type: string, default: null }
-outputs:
-  - { name: weekly, type: object, description: "{ revenue, cogs, labor, prime_cost_pct, comp_pct, void_pct, wow_delta }" }
-sources:
-  - postgres
+license: Apache-2.0
 ---
 
 > ## Math discipline — read before doing anything else
@@ -46,6 +31,17 @@ sources:
 > - "I'll calculate the variance..."
 >
 > If a step truly cannot be expressed in SQL, STOP and surface that as a limitation — do not eyeball the math.
+
+
+## When to use
+
+Load this skill when the user asks about:
+  - "Weekly flash" / "Weekly report" / "Monday recap"
+  - "How did we do last week" / "This week vs last week"
+  - "Weekly KPI dashboard" / "Weekly variance"
+DON'T load for:
+  - Single-day reporting → use daily-sales-recap
+  - Pure cost-of-goods deep dive → use food-cost-variance
 
 
 # Weekly flash report

@@ -1,24 +1,7 @@
 ---
 name: menu-engineering-matrix
 description: Kasavana & Smith menu-engineering matrix. Classifies every menu item into star/plowhorse/puzzle/dog based on contribution margin × popularity. The chef + GM use this quarterly to decide which items to promote, re-price, re-cost, or cut.
-when_to_use: |
-  Load this skill when the user asks about:
-    - "Menu engineering" / "Which menu items should we cut" / "Top performers"
-    - "Star / plowhorse / puzzle / dog"
-    - "Quarterly menu review" / "Menu mix analysis"
-    - "What's selling and what's losing money"
-  DON'T load for:
-    - Just unit velocity → simpler ticket_items query
-    - Cost variance vs theoretical → use food-cost-variance
-audience_role: exec_chef
-cadence: quarterly
-inputs:
-  - { name: window, type: string, default: "last_14_days" }
-  - { name: outlet_id, type: string, default: null }
-outputs:
-  - { name: matrix, type: "row[]", description: "{ item, units, revenue, margin_per_unit, popularity_pct, margin_class, popularity_class, classification }" }
-sources:
-  - postgres
+license: Apache-2.0
 ---
 
 > ## Math discipline — read before doing anything else
@@ -48,6 +31,18 @@ sources:
 > - "I'll calculate the variance..."
 >
 > If a step truly cannot be expressed in SQL, STOP and surface that as a limitation — do not eyeball the math.
+
+
+## When to use
+
+Load this skill when the user asks about:
+  - "Menu engineering" / "Which menu items should we cut" / "Top performers"
+  - "Star / plowhorse / puzzle / dog"
+  - "Quarterly menu review" / "Menu mix analysis"
+  - "What's selling and what's losing money"
+DON'T load for:
+  - Just unit velocity → simpler ticket_items query
+  - Cost variance vs theoretical → use food-cost-variance
 
 
 # Menu-engineering matrix

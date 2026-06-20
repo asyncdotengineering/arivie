@@ -69,34 +69,6 @@ export interface MakeAgentOptions {
 
 const DEFAULT_MAX_STEPS = 25;
 
-function applyMaxStepsDefault(agent: Agent, maxSteps: number): Agent {
-  const originalGenerate = agent.generate.bind(agent);
-  const originalStream = agent.stream.bind(agent);
-  type GenLike = (
-    ...args: [unknown, Record<string, unknown> | undefined]
-  ) => unknown;
-  const withDefault = (fn: GenLike): GenLike => {
-    return (messages, options) => {
-      const merged = {
-        ...(options ?? {}),
-        maxSteps:
-          options != null && "maxSteps" in options && options.maxSteps != null
-            ? options.maxSteps
-            : maxSteps,
-      };
-      return fn(messages, merged);
-    };
-  };
-  // Mastra Agent typings omit maxSteps on generate/stream; patch via narrow unknown bridge.
-  (agent as unknown as { generate: GenLike }).generate = withDefault(
-    originalGenerate as unknown as GenLike,
-  );
-  (agent as unknown as { stream: GenLike }).stream = withDefault(
-    originalStream as unknown as GenLike,
-  );
-  return agent;
-}
-
 function asPostgresAdapter(adapter: SourceAdapter<unknown>): PostgresAdapter {
   if (adapter.kind !== "postgres" || !("url" in adapter) || !("sql" in adapter)) {
     throw new Error("expected postgres SourceAdapter");
@@ -385,17 +357,10 @@ export function makeAgent(opts: MakeAgentOptions): Agent {
     ];
   }
 
-  if (registerFinalizeReport) {
-    agentConfig.defaultOptions = { stopWhen: finalizeReportStopWhen };
-  }
-
-  const agent = new Agent(agentConfig) as Agent;
-
-  // Mastra replaces stopWhen with stepCountIs(maxSteps) when maxSteps is set on stream/generate.
-  if (registerFinalizeReport) {
-    return agent;
-  }
-
   const maxSteps = limits.maxSteps ?? DEFAULT_MAX_STEPS;
-  return applyMaxStepsDefault(agent, maxSteps);
+  agentConfig.defaultOptions = registerFinalizeReport
+    ? { stopWhen: finalizeReportStopWhen }
+    : { maxSteps };
+
+  return new Agent(agentConfig) as Agent;
 }

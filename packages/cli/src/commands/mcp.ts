@@ -66,6 +66,7 @@ export async function runMcpCommand(opts: RunOptions): Promise<number> {
       agent: instance.agent,
       db,
       semantic,
+      ownerId: config.owner.id,
       ownerName: config.owner.name,
     });
 
@@ -185,8 +186,8 @@ export const mcpCommand = defineCommand({
   async run({ args }) {
     return runMcpCommand({
       configPath: args.config as string,
-      http: args.http === true || args.http === "true",
-      ui: args.ui === true || args.ui === "true",
+      http: args.http === true,
+      ui: args.ui === true,
       ...(args.port !== undefined ? { port: Number(args.port) } : {}),
       ...(args.host !== undefined ? { host: args.host as string } : {}),
       ...(args.path !== undefined ? { path: args.path as string } : {}),
@@ -212,14 +213,13 @@ async function runUiServer(opts: {
     agent: opts.instance.agent,
     db: opts.db,
     semantic: opts.semantic,
+    ownerId: opts.ownerId,
     ownerName: opts.ownerName,
   });
 
   if (opts.http) {
     const httpServer = createServer(async (req, res) => {
-      const transport = new StreamableHTTPServerTransport({
-        sessionIdGenerator: undefined,
-      });
+      const transport = new StreamableHTTPServerTransport();
       res.on("close", () => {
         transport.close().catch(() => undefined);
       });

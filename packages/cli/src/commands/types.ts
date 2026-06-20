@@ -128,9 +128,9 @@ export const typesCommand = defineCommand({
   },
   async run({ args }) {
     return await runTypesCommand({
-      semantic: args.semantic as string | undefined,
-      skills: args.skills as string | undefined,
-      out: args.out as string | undefined,
+      ...(args.semantic !== undefined ? { semantic: args.semantic as string } : {}),
+      ...(args.skills !== undefined ? { skills: args.skills as string } : {}),
+      ...(args.out !== undefined ? { out: args.out as string } : {}),
     });
   },
 });

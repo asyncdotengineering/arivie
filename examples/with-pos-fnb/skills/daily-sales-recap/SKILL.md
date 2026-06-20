@@ -1,23 +1,7 @@
 ---
 name: daily-sales-recap
 description: GM's morning report. Yesterday's revenue + cover count + avg check + comps/voids + top items, per outlet. The single brief a GM reads before the line opens.
-when_to_use: |
-  Load this skill when the user asks about:
-    - "How did we do yesterday" / "Daily sales recap" / "Last night's numbers"
-    - "Yesterday's revenue" / "What were yesterday's sales"
-    - "Morning report" / "Open-the-restaurant report"
-  DON'T load for:
-    - Multi-day trends → use weekly-flash-report
-    - Live in-shift numbers → those need real-time queries, not this end-of-day skill
-audience_role: gm
-cadence: daily
-inputs:
-  - { name: business_day, type: date, default: "current_business_day", description: "Defaults to yesterday." }
-  - { name: outlet_id, type: string, default: null, description: "Single outlet, or NULL for chain-level." }
-outputs:
-  - { name: recap, type: object, description: "{ revenue, ticket_count, covers, avg_check, comp_pct, void_pct, top_items }" }
-sources:
-  - postgres
+license: Apache-2.0
 ---
 
 > ## Math discipline — read before doing anything else
@@ -47,6 +31,17 @@ sources:
 > - "I'll calculate the variance..."
 >
 > If a step truly cannot be expressed in SQL, STOP and surface that as a limitation — do not eyeball the math.
+
+
+## When to use
+
+Load this skill when the user asks about:
+  - "How did we do yesterday" / "Daily sales recap" / "Last night's numbers"
+  - "Yesterday's revenue" / "What were yesterday's sales"
+  - "Morning report" / "Open-the-restaurant report"
+DON'T load for:
+  - Multi-day trends → use weekly-flash-report
+  - Live in-shift numbers → those need real-time queries, not this end-of-day skill
 
 
 # Daily sales recap

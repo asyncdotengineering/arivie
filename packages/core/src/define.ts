@@ -16,6 +16,7 @@ import { makeWorkspace } from "@arivie/workspace";
 import { Mastra } from "@mastra/core";
 import { MCPServer } from "@mastra/mcp";
 import { PostgresStore } from "@mastra/pg";
+import { createStep, createWorkflow } from "@mastra/core/workflows";
 import { Hono } from "hono";
 import { z } from "zod";
 import { ArivieConfigSchema } from "./config.js";
@@ -32,14 +33,6 @@ import type {
 } from "./types.js";
 
 export { ArivieConfigError } from "./errors.js";
-
-type MastraMcpServer = NonNullable<
-  NonNullable<ConstructorParameters<typeof Mastra>[0]>["mcpServers"]
->[string];
-
-function asMastraMcpServer(server: MCPServer): MastraMcpServer {
-  return server as unknown as MastraMcpServer;
-}
 
 function emptySemanticLayer(): SemanticLayer {
   return {
@@ -257,6 +250,60 @@ export async function defineArivie(
     tools: {},
   });
 
+  // Build scheduled workflows for each ArivieSchedule. Each workflow has
+  // one step that asks the Arivie agent as the owner user and a Mastra
+  // cron schedule that supplies the prompt via inputData.
+  const ownerUser = {
+    userId: parsed.owner.id,
+    permissions: ["read"],
+    dbRole: "arivie_reader",
+  };
+  const scheduleWorkflows: Record<string, ReturnType<typeof createWorkflow>> =
+    {};
+  for (const schedule of parsed.schedules ?? []) {
+    const step = createStep({
+      id: `arivie-schedule-${schedule.id}`,
+      description: `Scheduled Arivie run: ${schedule.prompt}`,
+      inputSchema: z.object({ prompt: z.string() }),
+      outputSchema: z.object({ text: z.string() }),
+      execute: async ({ inputData }) => {
+        const result = await runWithUserContext(ownerUser, async () =>
+          agent.generate(inputData.prompt, {
+            memory: {
+              thread: `schedule-${schedule.id}`,
+              resource: parsed.owner.id,
+            },
+          }),
+        );
+        const text =
+          result != null && typeof result === "object" && "text" in result
+            ? String(result.text)
+            : "";
+        return { text };
+      },
+    });
+
+    const workflow = createWorkflow({
+      id: `arivie-schedule-${schedule.id}`,
+      description: `Arivie schedule: ${schedule.id}`,
+      inputSchema: z.object({ prompt: z.string() }),
+      outputSchema: z.object({ text: z.string() }),
+      steps: [step],
+      schedule: {
+        cron: schedule.cron,
+        ...(schedule.timezone !== undefined
+          ? { timezone: schedule.timezone }
+          : {}),
+        inputData: { prompt: schedule.prompt },
+        ...(schedule.metadata !== undefined
+          ? { metadata: schedule.metadata }
+          : {}),
+      },
+    });
+
+    scheduleWorkflows[workflow.id] = workflow;
+  }
+
   // Single agent registered as `arivie`. Mastra's storage flows through
   // to the agent's Memory because the Agent is constructed without an
   // explicit memory storage option (docs/memory/storage.mdx).
@@ -264,7 +311,8 @@ export async function defineArivie(
     agents: { arivie: agent },
     storage: mastraStorage,
     workspace,
-    mcpServers: { arivie: asMastraMcpServer(mcp) },
+    mcpServers: { arivie: mcp },
+    workflows: scheduleWorkflows,
   });
 
   const handler = makeWebHandler({
@@ -301,27 +349,8 @@ export async function defineArivie(
       `arivie-${new Date().toISOString().replace(/[:.]/g, "").slice(0, 17)}`;
     const resource = opts.resource ?? opts.user.userId;
 
-    // Mastra's generate signature accepts `{ memory: { thread, resource } }`
-    // among many other options. `applyMaxStepsDefault` (in make-agent.ts)
-    // patches `agent.generate` at runtime; the static signature at this
-    // consumer site narrows to a one-arg overload. We re-type to Mastra's
-    // real two-arg shape here so the cast lives inside the framework, not
-    // in user code — every user that doesn't use `ask()` would otherwise
-    // have to write it themselves.
-    //
-    // Note: we MUST call this as `agent.generate(...)` (method dispatch),
-    // not via a hoisted variable, because Mastra reads `this._Agent` at
-    // call time and an unbound reference loses it.
-    type LooseGen = (
-      prompt: string,
-      options: { memory: { thread: string; resource: string } },
-    ) => Promise<unknown>;
     const result = await runWithUserContext(opts.user, async () =>
-      (agent.generate as unknown as LooseGen).call(
-        agent,
-        opts.prompt,
-        { memory: { thread, resource } },
-      ),
+      agent.generate(opts.prompt, { memory: { thread, resource } }),
     );
 
     const record = result as Record<string, unknown>;

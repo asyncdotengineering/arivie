@@ -1,24 +1,7 @@
 ---
 name: server-performance-scorecard
 description: FOH Manager's weekly performance scorecard for servers + bartenders. Average check, covers handled, comp/void rate, tip percentage. Surfaces the strong and weak performers behind the floor.
-when_to_use: |
-  Load this skill when the user asks about:
-    - "Server performance" / "Best server" / "Worst server"
-    - "Server scorecard" / "Who's selling the most"
-    - "Server comp rate" / "Server void rate" — these are FOH integrity signals
-    - "Tip-out audit"
-  DON'T load for:
-    - Headline outlet revenue → use daily-sales-recap
-    - Specific ticket investigation → query tickets directly
-audience_role: foh_manager
-cadence: weekly
-inputs:
-  - { name: outlet_id, type: string, required: true }
-  - { name: window, type: string, default: "last_7_days" }
-outputs:
-  - { name: scorecard, type: "row[]", description: "{ server_name, tickets, covers, revenue, avg_check, comp_pct, void_pct, declared_tips, tip_pct }" }
-sources:
-  - postgres
+license: Apache-2.0
 ---
 
 > ## Math discipline — read before doing anything else
@@ -48,6 +31,18 @@ sources:
 > - "I'll calculate the variance..."
 >
 > If a step truly cannot be expressed in SQL, STOP and surface that as a limitation — do not eyeball the math.
+
+
+## When to use
+
+Load this skill when the user asks about:
+  - "Server performance" / "Best server" / "Worst server"
+  - "Server scorecard" / "Who's selling the most"
+  - "Server comp rate" / "Server void rate" — these are FOH integrity signals
+  - "Tip-out audit"
+DON'T load for:
+  - Headline outlet revenue → use daily-sales-recap
+  - Specific ticket investigation → query tickets directly
 
 
 # Server performance scorecard
