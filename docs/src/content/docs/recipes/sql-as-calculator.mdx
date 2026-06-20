@@ -45,7 +45,7 @@ One `execute_postgres` call. Final shape — value, delta, pct, verdict — all 
 
 ### 1. A math-discipline preamble on every skill
 
-Every skill in `examples/with-pos-fnb/skills/*/SKILL.md` opens with:
+Every skill in `examples/with-pos-fnb/skills/*/SKILL.md` follows the Agent Skills spec: a `name`, `description`, and `license` frontmatter block, a `## When to use` section, and then the playbook body. The math-discipline reminder lives inside that body:
 
 ```markdown
 > ## Math discipline — read before doing anything else
@@ -67,7 +67,7 @@ Every skill in `examples/with-pos-fnb/skills/*/SKILL.md` opens with:
 > limitation — do not eyeball the math.
 ```
 
-The skill loader (`SkillsProcessor` or `SkillSearchProcessor`) injects this into the agent context when the skill is loaded. The model sees it before it sees the Phase blocks.
+The skill loader (`SkillsProcessor` or `SkillSearchProcessor`) injects the full skill body into the agent context when the skill is loaded. The model sees the math discipline before it sees the Phase blocks.
 
 ### 2. A system-rule prefix on every user prompt
 

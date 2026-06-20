@@ -27,7 +27,7 @@ The pivot lists the same behaviours: zero-row investigate, implausible-result re
 
 ## Memory and observability
 
-Inside one instance, memory uses `@mastra/pg` (REQ-23) with two scopes (REQ-24): **instance-global** (`resourceId = "__instance__"`) and **personal** (per-user `resourceId`). Lifecycle hooks `onMemorySave` and `onMemoryDelete` make memory auditable (REQ-25). Mastra observability (OTEL) is on by default per the pivot.
+Inside one instance, memory uses `@mastra/pg` (REQ-23) with two scopes (REQ-24): **instance-global** (`resourceId = "__instance__"`) and **personal** (per-user `resourceId`). Lifecycle hooks `onMemorySave` and `onMemoryDelete` make memory auditable (REQ-25). You can also pass a Mastra `observability` instance through `ArivieConfig.observability` to forward OTEL traces to your own collector.
 
 ## Optional compile_metric
 

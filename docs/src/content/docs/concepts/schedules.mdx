@@ -1,0 +1,49 @@
+---
+title: Schedules
+description: Run recurring analyses with defineSchedule and Mastra cron workflows.
+---
+
+Arivie supports **scheduled workflows** through `defineSchedule` / `defineSchedules` in `ArivieConfig`. Schedules compile to Mastra Workflows with cron triggers, so the same agent that answers ad-hoc questions can also run recurring reports.
+
+## When to use
+
+- Daily/weekly metric recaps emailed to leadership.
+- Automated anomaly alerts when a KPI crosses a threshold.
+- Periodic data-quality checks against the semantic layer.
+
+## Configuration
+
+```ts
+import { defineArivie } from "@arivie/core";
+
+defineArivie({
+  // ...
+  schedules: {
+    dailyRecap: {
+      cron: "0 9 * * 1-5", // 9 AM UTC, weekdays
+      prompt:
+        "Run the daily-recap skill for yesterday and write the result to reports/daily-recap.md",
+      memory: {
+        thread: "daily-recap",
+        resource: "__instance__",
+      },
+    },
+  },
+});
+```
+
+Schedules share the same agent, sources, semantic layer, and skills as the rest of the instance. The `memory` option lets you store schedule state in an instance-global or per-user thread.
+
+## CLI helper
+
+The CLI can scaffold a schedule file for you:
+
+```bash
+pnpm dlx arivie add schedule daily-recap
+```
+
+This creates `schedules/daily-recap.ts` with the boilerplate and wires it into `arivie.config.ts`.
+
+## Runtime
+
+Mastra's workflow engine evaluates the cron expression and invokes the agent with the configured prompt. The host app is responsible for deploying the workflow scheduler in production (e.g. Mastra's built-in runner, a separate worker, or a platform cron service).

@@ -352,7 +352,7 @@ If you get `column ... does not exist`, the agent guessed a column name that doe
 
 ## 5. Add an SOP skill (10 min)
 
-A **skill** is a Markdown playbook the agent reads on demand. It contains a frontmatter block (when to load this skill), a math-discipline preamble (covered in the [SQL is the calculator](/recipes/sql-as-calculator/) recipe), and a single consolidated SQL CTE that returns the final answer shape.
+A **skill** is a Markdown playbook the agent reads on demand. It contains a frontmatter block (name, description, license) and a `When to use` section followed by the playbook body. The math-discipline convention (covered in the [SQL is the calculator](/recipes/sql-as-calculator/) recipe) lives inside the body.
 
 `skills/daily-recap/SKILL.md`:
 
@@ -360,14 +360,16 @@ A **skill** is a Markdown playbook the agent reads on demand. It contains a fron
 ---
 name: daily-recap
 description: Yesterday's recap — revenue, ticket count, comp rate per outlet.
-when_to_use: |
-  Load this skill when the user asks about:
-    - "How did we do yesterday" / "Daily sales recap" / "Last night's numbers"
-    - "Yesterday's revenue" / "Morning report"
-  DON'T load for:
-    - Multi-day trends (use a weekly query instead)
-sources: [postgres]
+license: Apache-2.0
 ---
+
+## When to use
+
+Load this skill when the user asks about:
+  - "How did we do yesterday" / "Daily sales recap" / "Last night's numbers"
+  - "Yesterday's revenue" / "Morning report"
+DON'T load for:
+  - Multi-day trends (use a weekly query instead)
 
 > ## Math discipline
 >
