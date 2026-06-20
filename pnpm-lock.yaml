@@ -127,6 +127,9 @@ importers:
         specifier: ^4.4.0
         version: 4.4.3
     devDependencies:
+      '@arivie/cli':
+        specifier: workspace:*
+        version: link:../../packages/cli
       '@types/node':
         specifier: ^22.0.0
         version: 22.19.19
@@ -676,6 +679,9 @@ importers:
         specifier: ^3.4.7
         version: 3.4.9
     devDependencies:
+      '@arivie/cli':
+        specifier: workspace:*
+        version: link:../../packages/cli
       '@types/node':
         specifier: ^22.0.0
         version: 22.19.19

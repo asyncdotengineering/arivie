@@ -1,3 +1,15 @@
+## 1.1.0
+
+### Minor Changes
+
+- Release Hono server composition, trigger/channel subscriptions, target builds, and the GitHub push channel package.
+
+### Patch Changes
+
+- @arivie/agent@0.2.1
+- @arivie/db-postgres@0.1.2
+- @arivie/source-mcp@0.2.1
+
 ## 1.0.0
 
 ### Minor Changes

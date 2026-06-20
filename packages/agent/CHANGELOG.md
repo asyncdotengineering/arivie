@@ -1,3 +1,11 @@
+## 0.2.1
+
+### Patch Changes
+
+- Updated dependencies
+  - @arivie/core@1.1.0
+  - @arivie/db-postgres@0.1.2
+
 ## 0.2.0
 
 ### Minor Changes
