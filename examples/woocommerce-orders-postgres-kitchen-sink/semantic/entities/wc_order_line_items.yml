@@ -1,0 +1,70 @@
+name: wc_order_line_items
+description: WooCommerce order line items normalized from line_items. Use for product, SKU, simple-vs-variant, quantity, and product revenue analysis.
+grain: one row per WooCommerce order line item
+primary_key: line_item_id
+
+measures:
+  - name: gross_sales
+    description: Pre-discount line subtotal for paid order statuses.
+    sql: "SUM(subtotal) FILTER (WHERE wc_orders.status IN ('completed', 'processing', 'refunded'))"
+  - name: net_sales
+    description: Line-item revenue after line/order discounts allocated by WooCommerce, excluding line tax.
+    sql: "SUM(total) FILTER (WHERE wc_orders.status IN ('completed', 'processing'))"
+  - name: units_sold
+    description: Quantity sold on completed and processing orders.
+    sql: "SUM(quantity) FILTER (WHERE wc_orders.status IN ('completed', 'processing'))"
+  - name: variant_revenue
+    description: Revenue from line items with variation_id present.
+    sql: "SUM(total) FILTER (WHERE product_type = 'variant' AND wc_orders.status IN ('completed', 'processing'))"
+  - name: simple_product_revenue
+    description: Revenue from line items with variation_id null or 0 in source.
+    sql: "SUM(total) FILTER (WHERE product_type = 'simple' AND wc_orders.status IN ('completed', 'processing'))"
+  - name: line_tax_amount
+    description: Line-item tax total.
+    sql: "SUM(total_tax) FILTER (WHERE wc_orders.status IN ('completed', 'processing', 'refunded'))"
+
+dimensions:
+  - name: order_id
+    sql: order_id
+    type: numeric
+  - name: line_item_id
+    sql: line_item_id
+    type: numeric
+  - name: product_id
+    sql: product_id
+    type: numeric
+  - name: variation_id
+    sql: variation_id
+    type: numeric
+  - name: sku
+    sql: sku
+  - name: product_name
+    sql: name
+  - name: product_type
+    sql: product_type
+    values: [simple, variant]
+  - name: tax_class
+    sql: tax_class
+
+segments:
+  - name: variant_line_items
+    sql: "product_type = 'variant'"
+  - name: simple_product_line_items
+    sql: "product_type = 'simple'"
+  - name: paid_line_items
+    sql: "wc_orders.status IN ('completed', 'processing', 'refunded')"
+
+joins:
+  - to: wc_orders
+    on: "wc_order_line_items.order_id = wc_orders.order_id"
+    type: many_to_one
+  - to: wc_products
+    on: "wc_order_line_items.product_id = wc_products.product_id"
+    type: many_to_one
+  - to: wc_product_variants
+    on: "wc_order_line_items.product_id = wc_product_variants.product_id AND wc_order_line_items.variation_id = wc_product_variants.variation_id"
+    type: many_to_one
+
+hints:
+  - "Treat variation_id null as a simple product; variation_id > 0 is the WooCommerce variant key."
+  - "Use line-item totals for product revenue. Do not use wc_orders.total for product rankings."

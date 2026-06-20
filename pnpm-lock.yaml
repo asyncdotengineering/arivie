@@ -655,6 +655,37 @@ importers:
         specifier: ^5.9.0
         version: 5.9.3
 
+  examples/woocommerce-orders-postgres-kitchen-sink:
+    dependencies:
+      '@ai-sdk/openai':
+        specifier: ^3.0.64
+        version: 3.0.64(zod@4.4.3)
+      '@arivie/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@arivie/db-postgres':
+        specifier: workspace:*
+        version: link:../../packages/db-postgres
+      '@hono/node-server':
+        specifier: ^1.19.14
+        version: 1.19.14(hono@4.12.21)
+      hono:
+        specifier: ^4.12.0
+        version: 4.12.21
+      postgres:
+        specifier: ^3.4.7
+        version: 3.4.9
+    devDependencies:
+      '@types/node':
+        specifier: ^22.0.0
+        version: 22.19.19
+      tsx:
+        specifier: ^4.20.5
+        version: 4.22.3
+      typescript:
+        specifier: ^6.0.0
+        version: 6.0.3
+
   packages/agent:
     dependencies:
       '@arivie/core':

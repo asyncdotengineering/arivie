@@ -1,0 +1,29 @@
+name: wc_order_shipping_lines
+description: Shipping lines from WooCommerce shipping_lines arrays.
+grain: one row per WooCommerce shipping line
+primary_key: shipping_line_id
+
+measures:
+  - name: shipping_amount
+    description: Shipping charges excluding tax.
+    sql: "SUM(total)"
+  - name: shipping_tax_amount
+    description: Shipping tax.
+    sql: "SUM(total_tax)"
+
+dimensions:
+  - name: order_id
+    sql: order_id
+    type: numeric
+  - name: shipping_line_id
+    sql: shipping_line_id
+    type: numeric
+  - name: method_title
+    sql: method_title
+  - name: method_id
+    sql: method_id
+
+joins:
+  - to: wc_orders
+    on: "wc_order_shipping_lines.order_id = wc_orders.order_id"
+    type: many_to_one

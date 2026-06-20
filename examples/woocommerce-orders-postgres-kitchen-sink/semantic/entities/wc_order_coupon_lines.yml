@@ -1,0 +1,33 @@
+name: wc_order_coupon_lines
+description: Coupon lines from WooCommerce order coupon_lines arrays. Use for promotion and discount impact analysis.
+grain: one row per WooCommerce coupon line
+primary_key: coupon_line_id
+
+measures:
+  - name: discount_amount
+    description: Coupon discount excluding discount tax.
+    sql: "SUM(discount)"
+  - name: discount_tax_amount
+    description: Coupon discount tax.
+    sql: "SUM(discount_tax)"
+  - name: coupon_order_count
+    description: Count of distinct orders using coupons.
+    sql: "COUNT(DISTINCT order_id)"
+
+dimensions:
+  - name: order_id
+    sql: order_id
+    type: numeric
+  - name: coupon_line_id
+    sql: coupon_line_id
+    type: numeric
+  - name: coupon_code
+    sql: code
+
+joins:
+  - to: wc_orders
+    on: "wc_order_coupon_lines.order_id = wc_orders.order_id"
+    type: many_to_one
+
+hints:
+  - "Coupon discount is stored as a positive discount amount in WooCommerce coupon_lines."

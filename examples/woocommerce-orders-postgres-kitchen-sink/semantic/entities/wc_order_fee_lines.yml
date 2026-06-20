@@ -1,0 +1,29 @@
+name: wc_order_fee_lines
+description: Fee lines from WooCommerce fee_lines arrays such as rush handling or surcharges.
+grain: one row per WooCommerce fee line
+primary_key: fee_line_id
+
+measures:
+  - name: fee_amount
+    description: Fee amount excluding tax.
+    sql: "SUM(total)"
+  - name: fee_tax_amount
+    description: Fee tax amount.
+    sql: "SUM(total_tax)"
+
+dimensions:
+  - name: order_id
+    sql: order_id
+    type: numeric
+  - name: fee_line_id
+    sql: fee_line_id
+    type: numeric
+  - name: fee_name
+    sql: name
+  - name: tax_status
+    sql: tax_status
+
+joins:
+  - to: wc_orders
+    on: "wc_order_fee_lines.order_id = wc_orders.order_id"
+    type: many_to_one

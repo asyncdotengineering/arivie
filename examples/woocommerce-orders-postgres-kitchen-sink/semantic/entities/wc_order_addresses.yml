@@ -1,0 +1,41 @@
+name: wc_order_addresses
+description: Billing and shipping addresses from WooCommerce order payloads. Use for country, state, region, and guest email analysis.
+grain: one row per order and address type
+primary_key: order_id
+
+measures:
+  - name: addressed_order_count
+    description: Count of distinct addressed orders.
+    sql: "COUNT(DISTINCT order_id)"
+
+dimensions:
+  - name: order_id
+    sql: order_id
+    type: numeric
+  - name: address_type
+    sql: address_type
+    values: [billing, shipping]
+  - name: billing_country
+    sql: "CASE WHEN address_type = 'billing' THEN country END"
+  - name: billing_state
+    sql: "CASE WHEN address_type = 'billing' THEN state END"
+  - name: shipping_country
+    sql: "CASE WHEN address_type = 'shipping' THEN country END"
+  - name: shipping_state
+    sql: "CASE WHEN address_type = 'shipping' THEN state END"
+  - name: country
+    sql: country
+  - name: state
+    sql: state
+  - name: city
+    sql: city
+  - name: email
+    sql: email
+
+joins:
+  - to: wc_orders
+    on: "wc_order_addresses.order_id = wc_orders.order_id"
+    type: many_to_one
+
+hints:
+  - "Filter address_type = 'billing' for billing geography and address_type = 'shipping' for fulfillment geography."

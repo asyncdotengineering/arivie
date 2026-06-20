@@ -1,0 +1,14 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: arivie_woocommerce_orders
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - woocommerce_orders_pg:/var/lib/postgresql/data
+
+volumes:
+  woocommerce_orders_pg:

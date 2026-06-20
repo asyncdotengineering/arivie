@@ -1,0 +1,111 @@
+name: wc_orders
+description: |
+  WooCommerce order headers. One row per WooCommerce order ID. Use order totals for
+  order-level metrics like AOV, payment-method performance, status trends, tax,
+  shipping, and refund-adjusted revenue. Do not sum wc_orders.total after joining
+  to line items unless you de-duplicate order_id first.
+grain: one row per WooCommerce order
+primary_key: order_id
+
+measures:
+  - name: gross_sales
+    description: Sum of WooCommerce order totals for paid sales statuses. Includes line totals, shipping, fees, and tax according to WooCommerce total.
+    sql: "SUM(total) FILTER (WHERE status IN ('completed', 'processing'))"
+  - name: net_sales
+    description: Order total less shipping and tax for completed/processing orders. Discounts are already reflected in WooCommerce total.
+    sql: "SUM(total - shipping_total - shipping_tax - total_tax) FILTER (WHERE status IN ('completed', 'processing'))"
+  - name: refund_adjusted_revenue
+    description: Paid order total minus absolute refund totals. Includes tax/shipping according to order total.
+    sql: "SUM(total) FILTER (WHERE status IN ('completed', 'processing', 'refunded')) - COALESCE((SELECT SUM(ABS(total)) FROM wc_order_refunds), 0)"
+  - name: discount_amount
+    description: Cart discount excluding discount tax.
+    sql: "SUM(discount_total)"
+  - name: shipping_amount
+    description: Shipping charges excluding shipping tax.
+    sql: "SUM(shipping_total)"
+  - name: tax_amount
+    description: Total tax collected on orders.
+    sql: "SUM(total_tax)"
+  - name: order_count
+    description: Count of WooCommerce orders.
+    sql: "COUNT(*)"
+  - name: completed_order_count
+    description: Count of completed orders.
+    sql: "COUNT(*) FILTER (WHERE status = 'completed')"
+  - name: refunded_order_count
+    description: Count of refunded orders.
+    sql: "COUNT(*) FILTER (WHERE status = 'refunded')"
+  - name: cancelled_order_count
+    description: Count of cancelled orders.
+    sql: "COUNT(*) FILTER (WHERE status = 'cancelled')"
+  - name: average_order_value
+    description: Average WooCommerce order total for completed and processing orders.
+    sql: "ROUND(AVG(total) FILTER (WHERE status IN ('completed', 'processing')), 2)"
+
+dimensions:
+  - name: order_id
+    sql: order_id
+    type: numeric
+  - name: order_status
+    sql: status
+    values: [completed, processing, refunded, failed, cancelled]
+  - name: order_date
+    sql: date_created
+    type: timestamp
+  - name: modified_date
+    sql: date_modified
+    type: timestamp
+  - name: paid_date
+    sql: date_paid
+    type: timestamp
+  - name: completed_date
+    sql: date_completed
+    type: timestamp
+  - name: currency
+    sql: currency
+  - name: payment_method
+    sql: payment_method
+  - name: payment_method_title
+    sql: payment_method_title
+  - name: customer_id
+    sql: customer_id
+    type: numeric
+  - name: order_number
+    sql: number
+  - name: created_via
+    sql: created_via
+
+segments:
+  - name: completed_orders
+    sql: "status = 'completed'"
+  - name: paid_orders
+    sql: "status IN ('completed', 'processing', 'refunded') AND date_paid IS NOT NULL"
+  - name: refunded_orders
+    sql: "status = 'refunded'"
+  - name: cancelled_orders
+    sql: "status IN ('cancelled', 'failed')"
+  - name: last_30_days
+    sql: "date_created >= CURRENT_DATE - INTERVAL '30 days'"
+  - name: current_month
+    sql: "date_created >= date_trunc('month', CURRENT_DATE)"
+  - name: previous_month
+    sql: "date_created >= date_trunc('month', CURRENT_DATE - INTERVAL '1 month') AND date_created < date_trunc('month', CURRENT_DATE)"
+
+joins:
+  - to: wc_order_line_items
+    on: "wc_orders.order_id = wc_order_line_items.order_id"
+    type: one_to_many
+  - to: wc_customers
+    on: "wc_orders.customer_id = wc_customers.customer_id"
+    type: many_to_one
+  - to: wc_order_coupon_lines
+    on: "wc_orders.order_id = wc_order_coupon_lines.order_id"
+    type: one_to_many
+  - to: wc_order_refunds
+    on: "wc_orders.order_id = wc_order_refunds.order_id"
+    type: one_to_many
+
+hints:
+  - "Use wc_orders for order-level totals, AOV, payment methods, countries, status trends, tax, and shipping."
+  - "Use wc_order_line_items for product-level revenue to avoid allocating order totals across products."
+  - "WooCommerce total includes tax and shipping in this sample; net_sales subtracts shipping and tax."

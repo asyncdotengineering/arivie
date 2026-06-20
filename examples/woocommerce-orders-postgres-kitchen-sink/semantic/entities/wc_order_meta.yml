@@ -1,0 +1,30 @@
+name: wc_order_meta
+description: Flexible WooCommerce order metadata, preserving plugin-specific key/value pairs.
+grain: one row per WooCommerce order metadata item
+primary_key: meta_id
+
+measures:
+  - name: metadata_count
+    description: Count of order metadata rows.
+    sql: "COUNT(*)"
+
+dimensions:
+  - name: order_id
+    sql: order_id
+    type: numeric
+  - name: meta_id
+    sql: meta_id
+    type: numeric
+  - name: key
+    sql: key
+  - name: value
+    sql: value
+    type: text
+
+joins:
+  - to: wc_orders
+    on: "wc_order_meta.order_id = wc_orders.order_id"
+    type: many_to_one
+
+hints:
+  - "Metadata is plugin-specific. Prefer normalized columns when available, then inspect raw JSON metadata for extension fields."

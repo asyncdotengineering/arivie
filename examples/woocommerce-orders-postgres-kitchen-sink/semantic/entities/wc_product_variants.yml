@@ -1,0 +1,42 @@
+name: wc_product_variants
+description: WooCommerce product variations observed from line items. Variation attributes are extracted from line item metadata such as pa_color and pa_size.
+grain: one row per product_id and variation_id
+primary_key: variation_id
+
+measures:
+  - name: variant_count
+    description: Count of product variants observed in synced orders.
+    sql: "COUNT(*)"
+
+dimensions:
+  - name: product_id
+    sql: product_id
+    type: numeric
+  - name: variation_id
+    sql: variation_id
+    type: numeric
+  - name: sku
+    sql: sku
+  - name: variant_name
+    sql: name
+  - name: attributes
+    sql: attributes
+    type: text
+  - name: first_seen_at
+    sql: first_seen_at
+    type: timestamp
+  - name: last_seen_at
+    sql: last_seen_at
+    type: timestamp
+
+joins:
+  - to: wc_products
+    on: "wc_product_variants.product_id = wc_products.product_id"
+    type: many_to_one
+  - to: wc_order_line_items
+    on: "wc_product_variants.product_id = wc_order_line_items.product_id AND wc_product_variants.variation_id = wc_order_line_items.variation_id"
+    type: one_to_many
+
+hints:
+  - "Use product_id plus variation_id as the stable WooCommerce variant identity."
+  - "Attributes are JSON because WooCommerce plugins and taxonomies vary by store."

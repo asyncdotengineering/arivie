@@ -1,0 +1,41 @@
+name: wc_customers
+description: WooCommerce customer identities inferred from order payloads. Guest checkout orders have customer_id = 0 and are not inserted here.
+grain: one row per WooCommerce customer_id
+primary_key: customer_id
+
+measures:
+  - name: customer_count
+    description: Count of identified WooCommerce customers.
+    sql: "COUNT(*)"
+  - name: repeat_customer_count
+    description: Customers with more than one synced order.
+    sql: "COUNT(*) FILTER (WHERE order_count > 1)"
+
+dimensions:
+  - name: customer_id
+    sql: customer_id
+    type: numeric
+  - name: email
+    sql: email
+  - name: first_name
+    sql: first_name
+  - name: last_name
+    sql: last_name
+  - name: first_seen_at
+    sql: first_seen_at
+    type: timestamp
+  - name: last_seen_at
+    sql: last_seen_at
+    type: timestamp
+
+segments:
+  - name: repeat_customers
+    sql: "order_count > 1"
+
+joins:
+  - to: wc_orders
+    on: "wc_customers.customer_id = wc_orders.customer_id"
+    type: one_to_many
+
+hints:
+  - "For guest-checkout analysis, use billing email from wc_order_addresses rather than wc_customers."

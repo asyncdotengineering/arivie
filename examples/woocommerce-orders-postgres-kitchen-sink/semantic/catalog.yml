@@ -1,0 +1,31 @@
+entities:
+  - name: wc_orders
+    description: WooCommerce order header rows with raw order JSON, status, totals, payment, customer, dates, and currency.
+    keywords: [woocommerce, orders, revenue, status, payments, aov]
+  - name: wc_order_line_items
+    description: WooCommerce order line items normalized from line_items, including product_id, variation_id, SKU, quantity, line totals, taxes, and raw line JSON.
+    keywords: [line_items, products, variants, sku, units, product_revenue]
+  - name: wc_products
+    description: Product references observed in WooCommerce order line items.
+    keywords: [products, catalog, product_id, simple]
+  - name: wc_product_variants
+    description: Product variation references observed in WooCommerce order line items, keyed by product_id and variation_id with variation attributes from metadata.
+    keywords: [variants, variation_id, attributes, sku]
+  - name: wc_customers
+    description: Customer identities derived from WooCommerce order payloads.
+    keywords: [customers, repeat_customers, email]
+  - name: wc_order_coupon_lines
+    description: Coupon lines normalized from WooCommerce coupon_lines arrays.
+    keywords: [coupons, discounts, promo_codes]
+  - name: wc_order_refunds
+    description: Refund references normalized from WooCommerce refunds arrays.
+    keywords: [refunds, returns, refund_adjusted_revenue]
+  - name: wc_order_shipping_lines
+    description: Shipping lines normalized from WooCommerce shipping_lines arrays.
+    keywords: [shipping, freight, delivery]
+  - name: wc_order_taxes
+    description: Tax lines normalized from WooCommerce tax_lines arrays.
+    keywords: [tax, taxes, vat, sales_tax]
+  - name: wc_order_fee_lines
+    description: Fee lines normalized from WooCommerce fee_lines arrays.
+    keywords: [fees, handling, surcharges]

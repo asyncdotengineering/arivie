@@ -1,0 +1,34 @@
+name: wc_order_line_item_meta
+description: Flexible WooCommerce line-item metadata, including variant attributes such as pa_color and pa_size.
+grain: one row per WooCommerce line item metadata item
+primary_key: meta_id
+
+measures:
+  - name: line_item_metadata_count
+    description: Count of line item metadata rows.
+    sql: "COUNT(*)"
+
+dimensions:
+  - name: order_id
+    sql: order_id
+    type: numeric
+  - name: line_item_id
+    sql: line_item_id
+    type: numeric
+  - name: meta_id
+    sql: meta_id
+    type: numeric
+  - name: key
+    sql: key
+  - name: display_key
+    sql: display_key
+  - name: display_value
+    sql: display_value
+
+joins:
+  - to: wc_order_line_items
+    on: "wc_order_line_item_meta.order_id = wc_order_line_items.order_id AND wc_order_line_item_meta.line_item_id = wc_order_line_items.line_item_id"
+    type: many_to_one
+
+hints:
+  - "Use line item metadata for variation attribute display and plugin-specific fields."

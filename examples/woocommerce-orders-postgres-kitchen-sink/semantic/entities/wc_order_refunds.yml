@@ -1,0 +1,31 @@
+name: wc_order_refunds
+description: Refund references from WooCommerce order refunds arrays. WooCommerce stores refund totals as negative amounts in the order payload.
+grain: one row per WooCommerce refund reference
+primary_key: refund_id
+
+measures:
+  - name: refund_amount
+    description: Absolute refund amount. Source refunds usually store totals as negative values.
+    sql: "SUM(ABS(total))"
+  - name: refund_count
+    description: Count of refund references.
+    sql: "COUNT(*)"
+
+dimensions:
+  - name: order_id
+    sql: order_id
+    type: numeric
+  - name: refund_id
+    sql: refund_id
+    type: numeric
+  - name: reason
+    sql: reason
+
+joins:
+  - to: wc_orders
+    on: "wc_order_refunds.order_id = wc_orders.order_id"
+    type: many_to_one
+
+hints:
+  - "Use ABS(total) when reporting refund dollars."
+  - "Refund-adjusted revenue should clearly say whether taxes and shipping are included."

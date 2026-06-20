@@ -1,0 +1,35 @@
+name: wc_order_taxes
+description: Tax lines from WooCommerce tax_lines arrays.
+grain: one row per WooCommerce tax line
+primary_key: tax_line_id
+
+measures:
+  - name: tax_amount
+    description: Order tax amount excluding shipping tax.
+    sql: "SUM(tax_total)"
+  - name: shipping_tax_amount
+    description: Shipping tax amount from tax lines.
+    sql: "SUM(shipping_tax_total)"
+
+dimensions:
+  - name: order_id
+    sql: order_id
+    type: numeric
+  - name: tax_line_id
+    sql: tax_line_id
+    type: numeric
+  - name: rate_code
+    sql: rate_code
+  - name: rate_id
+    sql: rate_id
+    type: numeric
+  - name: label
+    sql: label
+  - name: rate_percent
+    sql: rate_percent
+    type: numeric
+
+joins:
+  - to: wc_orders
+    on: "wc_order_taxes.order_id = wc_orders.order_id"
+    type: many_to_one

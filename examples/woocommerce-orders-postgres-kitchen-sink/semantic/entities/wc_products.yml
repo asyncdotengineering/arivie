@@ -1,0 +1,38 @@
+name: wc_products
+description: Product references observed from WooCommerce order line items. Products can be simple or variable depending on whether any variation lines were seen.
+grain: one row per WooCommerce product_id
+primary_key: product_id
+
+measures:
+  - name: product_count
+    description: Count of products observed in synced orders.
+    sql: "COUNT(*)"
+
+dimensions:
+  - name: product_id
+    sql: product_id
+    type: numeric
+  - name: product_name
+    sql: name
+  - name: sku
+    sql: sku
+  - name: product_type
+    sql: product_type
+    values: [simple, variant]
+  - name: first_seen_at
+    sql: first_seen_at
+    type: timestamp
+  - name: last_seen_at
+    sql: last_seen_at
+    type: timestamp
+
+joins:
+  - to: wc_order_line_items
+    on: "wc_products.product_id = wc_order_line_items.product_id"
+    type: one_to_many
+  - to: wc_product_variants
+    on: "wc_products.product_id = wc_product_variants.product_id"
+    type: one_to_many
+
+hints:
+  - "Product rows are created from order line items, not the WooCommerce Products endpoint. Preserve raw line JSON for plugin-specific fields."
