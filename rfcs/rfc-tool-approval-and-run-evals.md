@@ -3,7 +3,7 @@
 **Category:** New Feature
 **Author:** opencode
 **Date:** 2026-06-20
-**Status:** Draft
+**Status:** Shipped (C11 mock-eval smoke blocked by missing Docker in this environment)
 **Reviewers:** (self-driven, approved by user inline)
 **Related:**
 - `packages/core/src/define.ts` — `defineArivie`, `ask`, schedule workflows
