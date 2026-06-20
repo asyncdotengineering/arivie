@@ -64,10 +64,9 @@ export function createDogfoodScorer(opts: DogfoodScorerOptions) {
       "SQL semantic equivalence + probe-specific validation rules",
     type: "agent",
   }).generateScore(async ({ run }) => {
-    const requestContext = run.requestContext as
-      | Record<string, unknown>
+    const metadata = run.requestContext?.get("probe") as
+      | ProbeMetadata
       | undefined;
-    const metadata = requestContext?.probe as ProbeMetadata | undefined;
     const output = run.output as unknown;
     const text = textFromMessages(output);
     const toolResults = output;

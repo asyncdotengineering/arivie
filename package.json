@@ -27,6 +27,8 @@
     "@arivie/mcp": "workspace:*",
     "@arivie/semantic": "workspace:*",
     "@changesets/cli": "^2.31.0",
+    "@electric-sql/pglite": "^0.5.3",
+    "@electric-sql/pglite-socket": "^0.2.4",
     "@mastra/core": "^1.45.0",
     "@mastra/mcp": "^1.11.0",
     "@mastra/observability": "^1.15.0",

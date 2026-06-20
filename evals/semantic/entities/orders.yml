@@ -35,11 +35,6 @@ segments:
     sql: "created_at >= date_trunc('quarter', CURRENT_DATE)"
     description: Orders placed in the current calendar quarter.
 
-joins:
-  - to: customers
-    on: "orders.customer_id = customers.id"
-    type: many_to_one
-
 example_questions:
   - "What is my total revenue this quarter?"
   - "How many orders did we get last month?"

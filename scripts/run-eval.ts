@@ -3,18 +3,19 @@
  * Sprint 1 lightweight dogfood eval runner (12 golden-SQL probes).
  * Runs probes through Mastra `runEvals` with a composite scorer that checks
  * SQL semantic equivalence and probe-specific validation rules.
+ *
+ * Database backend: PGlite (in-process Postgres, no Docker) by default.
+ * Set `USE_TESTCONTAINERS=1` to use the original testcontainers Postgres.
  */
-import { execSync } from "node:child_process";
 import { readFile, readdir } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { PostgreSqlContainer } from "@testcontainers/postgresql";
 import { parse as parseYaml } from "yaml";
 import { anthropic } from "@ai-sdk/anthropic";
 import { openai } from "@ai-sdk/openai";
 import { runEvals } from "@mastra/core/evals";
+import { RequestContext } from "@mastra/core/di";
 import type { LanguageModel } from "ai";
-import { postgresAdapter } from "@arivie/db-postgres";
 import { runWithUserContext } from "@arivie/core/context";
 import { defineArivie } from "@arivie/core";
 import {
@@ -22,6 +23,7 @@ import {
   extractExecuteSql,
   type ValidationRule,
 } from "@arivie/core/eval";
+import { createEvalAdapters } from "./eval-adapters.js";
 import { createEvalMockModel } from "./eval-mock-model.js";
 
 /**
@@ -92,15 +94,6 @@ interface ProbeRun {
   durationMs: number;
 }
 
-function dockerAvailable(): boolean {
-  try {
-    execSync("docker info", { stdio: "ignore" });
-    return true;
-  } catch {
-    return false;
-  }
-}
-
 async function loadEnvFiles(): Promise<void> {
   const { readFile: readEnv } = await import("node:fs/promises");
   const candidates = [
@@ -160,13 +153,6 @@ function resolveModel(probes: Probe[]): {
   );
 }
 
-function readerConnectionUrl(superuserUrl: string): string {
-  const url = new URL(superuserUrl);
-  url.username = "arivie_reader";
-  url.password = "test-arivie-reader";
-  return url.toString();
-}
-
 async function loadProbes(): Promise<Probe[]> {
   const files = (await readdir(PROBES_DIR))
     .filter((name) => name.endsWith(".yml"))
@@ -208,18 +194,6 @@ export async function runDogfoodEval(options: {
     lines.push(line);
   };
 
-  if (!dockerAvailable()) {
-    log("ERROR: Docker is required for testcontainers Postgres.");
-    await writeArtifact(lines);
-    return {
-      passed: 0,
-      total: 0,
-      exitCode: 1,
-      mode: options.mode,
-      lines,
-    };
-  }
-
   await loadEnvFiles();
   const probes = await loadProbes();
   const { model, label } = resolveModel(probes);
@@ -235,215 +209,219 @@ export async function runDogfoodEval(options: {
   }
   log("");
 
-  const container = await new PostgreSqlContainer("postgres:16-alpine").start();
-  const connectionUrl = container.getConnectionUri();
-  const readerUrl = readerConnectionUrl(connectionUrl);
+  const { db, readerDb, cleanup } = await createEvalAdapters();
 
-  const setupDb = postgresAdapter({ url: connectionUrl });
   try {
-    await setupDb.setupRole("arivie_reader");
-    await setupDb.sql.unsafe(
+    await db.setupRole("arivie_reader");
+    await db.sql.unsafe(
       `ALTER ROLE arivie_reader WITH LOGIN PASSWORD 'test-arivie-reader'`,
     );
     const seedSql = await readFile(SEED_SQL, "utf8");
-    await setupDb.sql.unsafe(seedSql);
-    await setupDb.sql`
+    await db.sql.unsafe(seedSql);
+    await db.sql`
       INSERT INTO arivie_owner_identity (key, value)
       VALUES ('owner_id', 'dogfood-owner')
       ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value
     `;
-    await setupDb.sql.unsafe(`GRANT SELECT ON TABLE orders TO arivie_reader`);
-  } finally {
-    await setupDb.sql.end();
-  }
+    await db.sql.unsafe(`GRANT SELECT ON TABLE orders TO arivie_reader`);
 
-  const db = postgresAdapter({ url: connectionUrl });
-  const readerDb = postgresAdapter({ url: readerUrl });
-  const instance = defineArivie({
-    owner: { id: "dogfood-owner", name: "Dogfood" },
-    model,
-    db,
-    semantic: { path: SEMANTIC_DIR, mode: arivieMode },
-    resolveUser: async () => ({
-      userId: "eval-user",
-      permissions: [],
-      dbRole: "arivie_reader",
-    }),
-    limits: { rowsPerQuery: 500, queryTimeoutMs: 30_000 },
-  });
-
-  const storage = instance.mastra.getStorage();
-  if (
-    storage != null &&
-    "init" in storage &&
-    typeof storage.init === "function"
-  ) {
-    await storage.init();
-  }
-
-  await runWithUserContext(
-    {
-      userId: "eval-user",
-      permissions: [],
-      dbRole: "arivie_reader",
-    },
-    async () => {
-      await instance.agent.generate("warmup", {
-        memory: { thread: "eval-warmup", resource: "eval-user" },
-      });
-    },
-  );
-
-  const setupForMastra = postgresAdapter({ url: connectionUrl });
-  const mastraTables = await setupForMastra.sql<{ tablename: string }[]>`
-    SELECT tablename
-    FROM pg_tables
-    WHERE schemaname = 'public' AND tablename LIKE 'mastra_%'
-  `;
-  for (const row of mastraTables) {
-    await setupForMastra.sql.unsafe(
-      `ALTER TABLE public.${row.tablename} OWNER TO arivie_reader`,
-    );
-    await setupForMastra.sql.unsafe(
-      `GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.${row.tablename} TO arivie_reader`,
-    );
-  }
-  await setupForMastra.sql.unsafe(
-    `GRANT USAGE, CREATE ON SCHEMA public TO arivie_reader`,
-  );
-  await setupForMastra.sql.end();
-
-  const user = {
-    userId: "eval-user",
-    permissions: [] as string[],
-    dbRole: "arivie_reader",
-  };
-
-  const results: ProbeRun[] = [];
-  const startedByProbe = new Map<string, number>();
-
-  async function executeSql(sql: string): Promise<Record<string, unknown>[]> {
-    const executed = await readerDb.execute({
-      query: sql,
-      runAsRole: user.dbRole,
-      userId: user.userId,
-      rowLimit: 500,
-      timeoutMs: 30_000,
+    const instance = await defineArivie({
+      owner: { id: "dogfood-owner", name: "Dogfood" },
+      model,
+      storage: db,
+      sources: {
+        orders: {
+          kind: "adapter",
+          adapter: db,
+          description: "Order records for S1 dogfood eval",
+        },
+      },
+      semantic: { path: SEMANTIC_DIR, mode: arivieMode },
+      resolveUser: async () => ({
+        userId: "eval-user",
+        permissions: [],
+        dbRole: "arivie_reader",
+      }),
+      limits: { rowsPerQuery: 500, queryTimeoutMs: 30_000 },
     });
-    return executed.rows;
-  }
 
-  const scorer = createDogfoodScorer({ executeSql });
+    const storage = instance.mastra.getStorage();
+    if (
+      storage != null &&
+      "init" in storage &&
+      typeof storage.init === "function"
+    ) {
+      await storage.init();
+    }
 
-  const data = probes.map((probe) => {
-    startedByProbe.set(probe.id, Date.now());
-    return {
-      input: probe.question,
-      groundTruth: probe.golden_sql.trim(),
-      requestContext: { probe } as Record<string, unknown>,
+    await runWithUserContext(
+      {
+        userId: "eval-user",
+        permissions: [],
+        dbRole: "arivie_reader",
+      },
+      async () => {
+        await instance.agent.generate("warmup", {
+          memory: { thread: "eval-warmup", resource: "eval-user" },
+        });
+      },
+    );
+
+    const mastraTables = await db.sql<{ tablename: string }[]>`
+      SELECT tablename
+      FROM pg_tables
+      WHERE schemaname = 'public' AND tablename LIKE 'mastra_%'
+    `;
+    for (const row of mastraTables) {
+      await db.sql.unsafe(
+        `ALTER TABLE public.${row.tablename} OWNER TO arivie_reader`,
+      );
+      await db.sql.unsafe(
+        `GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.${row.tablename} TO arivie_reader`,
+      );
+    }
+    await db.sql.unsafe(
+      `GRANT USAGE, CREATE ON SCHEMA public TO arivie_reader`,
+    );
+
+    const user = {
+      userId: "eval-user",
+      permissions: [] as string[],
+      dbRole: "arivie_reader",
     };
-  });
 
-  await runEvals({
-    data,
-    scorers: [scorer],
-    target: instance.agent,
-    targetOptions: {
-      memory: { thread: "eval-run", resource: user.userId },
-    },
-    concurrency: 1,
-    onItemComplete: ({ item, targetResult, scorerResults }) => {
-      const requestContext = item.requestContext as
-        | Record<string, unknown>
-        | undefined;
-      const probe = requestContext?.probe as Probe | undefined;
-      const probeId = probe?.id ?? "unknown";
-      const category = probe?.category ?? "normal";
-      const started = startedByProbe.get(probeId) ?? Date.now();
-      const durationMs = Date.now() - started;
-      const output = targetResult as unknown as Record<string, unknown>;
-      const text = typeof output?.text === "string" ? output.text : "";
-      const toolResults = output?.toolResults;
-      const steps = output?.steps;
-      const agentSql = extractExecuteSql(toolResults, steps);
+    const results: ProbeRun[] = [];
+    const startedByProbe = new Map<string, number>();
 
-      const composite = scorerResults["dogfood-composite"] as
-        | { score: number; reason?: string }
-        | undefined;
-      const pass = composite?.score === 1;
-      const failures: string[] = [];
-      if (!pass) {
-        failures.push(
-          composite?.reason ?? "dogfood-composite scorer returned 0",
-        );
-      }
+    async function executeSql(
+      sql: string,
+    ): Promise<Record<string, unknown>[]> {
+      const executed = await readerDb.execute({
+        query: sql,
+        runAsRole: user.dbRole,
+        userId: user.userId,
+        rowLimit: 500,
+        timeoutMs: 30_000,
+      });
+      return executed.rows;
+    }
 
-      const run: ProbeRun = {
-        id: probeId,
-        category,
-        pass,
-        failures,
-        agentSql,
-        durationMs,
+    const scorer = createDogfoodScorer({ executeSql });
+    // Register the scorer with Mastra so runEvals can persist scores without
+    // emitting "scorer not found" warnings.
+    (instance.mastra as unknown as { addScorer?: (s: typeof scorer) => void })
+      .addScorer?.(scorer);
+
+    const data = probes.map((probe) => {
+      startedByProbe.set(probe.id, Date.now());
+      const requestContext = new RequestContext();
+      requestContext.set("probe", probe);
+      return {
+        input: probe.question,
+        groundTruth: probe.golden_sql.trim(),
+        requestContext,
       };
-      results.push(run);
+    });
 
-      log(`--- ${run.id} (${run.category}) ---`);
-      log(`Q: ${String(item.input)}`);
-      if (run.agentSql) {
-        log(
-          `SQL: ${run.agentSql.slice(0, 200)}${run.agentSql.length > 200 ? "…" : ""}`,
-        );
-      }
-      if (run.pass) {
-        log(`PASS (${run.durationMs}ms)`);
-      } else {
-        log(`FAIL (${run.durationMs}ms)`);
-        for (const failure of run.failures) {
-          log(`  - ${failure}`);
+    await runEvals({
+      data,
+      scorers: [scorer],
+      target: instance.agent,
+      targetOptions: {
+        memory: { thread: "eval-run", resource: user.userId },
+      },
+      concurrency: 1,
+      onItemComplete: ({ item, targetResult, scorerResults }) => {
+        const probe = item.requestContext?.get("probe") as Probe | undefined;
+        const probeId = probe?.id ?? "unknown";
+        const category = probe?.category ?? "normal";
+        const started = startedByProbe.get(probeId) ?? Date.now();
+        const durationMs = Date.now() - started;
+        const output = targetResult as unknown as Record<string, unknown>;
+        const toolResults = output?.toolResults;
+        const steps = output?.steps;
+        const agentSql = extractExecuteSql(toolResults, steps);
+
+        const composite = scorerResults["dogfood-composite"] as
+          | { score: number; reason?: string }
+          | undefined;
+        const pass = composite?.score === 1;
+        const failures: string[] = [];
+        if (!pass) {
+          failures.push(
+            composite?.reason ?? "dogfood-composite scorer returned 0",
+          );
         }
-      }
-      log("");
-    },
-  });
 
-  // Sort results in probe order so the summary matches the original order.
-  const resultsById = new Map(results.map((r) => [r.id, r]));
-  const orderedResults = probes.map((probe) => resultsById.get(probe.id)!);
+        const run: ProbeRun = {
+          id: probeId,
+          category,
+          pass,
+          failures,
+          agentSql,
+          durationMs,
+        };
+        results.push(run);
 
-  const passed = orderedResults.filter((r) => r.pass).length;
-  const total = orderedResults.length;
-  const passRate = total > 0 ? (passed / total) * 100 : 0;
+        log(`--- ${run.id} (${run.category}) ---`);
+        log(`Q: ${String(item.input)}`);
+        if (run.agentSql) {
+          log(
+            `SQL: ${run.agentSql.slice(0, 200)}${run.agentSql.length > 200 ? "…" : ""}`,
+          );
+        }
+        if (run.pass) {
+          log(`PASS (${run.durationMs}ms)`);
+        } else {
+          log(`FAIL (${run.durationMs}ms)`);
+          for (const failure of run.failures) {
+            log(`  - ${failure}`);
+          }
+        }
+        log("");
+      },
+    });
 
-  log("=== Summary ===");
-  log(`Passed: ${passed}/${total} (${passRate.toFixed(1)}%)`);
-  log(`${passed}/${total} probes passed (${options.mode} mode)`);
-  log(`Threshold: 9/12 (75%) — ${passed >= 9 ? "MET" : "NOT MET"}`);
+    // Sort results in probe order so the summary matches the original order.
+    const resultsById = new Map(results.map((r) => [r.id, r]));
+    const orderedResults = probes.map((probe) => resultsById.get(probe.id)!);
 
-  if (
-    storage != null &&
-    "close" in storage &&
-    typeof storage.close === "function"
-  ) {
-    await storage.close();
+    const passed = orderedResults.filter((r) => r.pass).length;
+    const total = orderedResults.length;
+    const passRate = total > 0 ? (passed / total) * 100 : 0;
+
+    log("=== Summary ===");
+    log(`Passed: ${passed}/${total} (${passRate.toFixed(1)}%)`);
+    log(`${passed}/${total} probes passed (${options.mode} mode)`);
+    log(`Threshold: 9/12 (75%) — ${passed >= 9 ? "MET" : "NOT MET"}`);
+
+    if (
+      storage != null &&
+      "close" in storage &&
+      typeof storage.close === "function"
+    ) {
+      await storage.close();
+    }
+    if (instance.mastra.shutdown) {
+      await instance.mastra.shutdown();
+    }
+
+    await cleanup();
+
+    await writeArtifact(lines);
+
+    const exitCode = passed < 9 ? 1 : 0;
+    return {
+      passed,
+      total,
+      exitCode,
+      mode: options.mode,
+      lines,
+    };
+  } catch (err) {
+    await cleanup().catch(() => {});
+    throw err;
   }
-  if (instance.mastra.shutdown) {
-    await instance.mastra.shutdown();
-  }
-  await db.sql.end();
-  await readerDb.sql.end();
-  await container.stop();
-
-  await writeArtifact(lines);
-
-  const exitCode = passed < 9 ? 1 : 0;
-  return {
-    passed,
-    total,
-    exitCode,
-    mode: options.mode,
-    lines,
-  };
 }
 
 async function main(): Promise<void> {

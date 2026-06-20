@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 import { describe, expect, it } from "vitest";
+import { RequestContext } from "@mastra/core/di";
 import { createDogfoodScorer } from "../src/eval/dogfood-scorer.js";
 
 function makeToolInvocationMessage(sql: string) {
@@ -41,13 +42,13 @@ function probeMetadata(
   category: "normal" | "ambiguous" | "zero-row" = "normal",
   validation: Record<string, unknown>[] = [],
 ) {
-  return {
-    probe: {
-      probeId: "p1",
-      category,
-      validation,
-    },
-  };
+  const ctx = new RequestContext();
+  ctx.set("probe", {
+    probeId: "p1",
+    category,
+    validation,
+  });
+  return ctx;
 }
 
 describe("createDogfoodScorer", () => {
