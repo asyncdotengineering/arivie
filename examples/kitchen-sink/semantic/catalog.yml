@@ -1,0 +1,16 @@
+entities:
+  - name: outlets
+    description: Restaurant locations operated by Northstar Hospitality.
+    keywords: [outlets, restaurants, stores, locations]
+  - name: tickets
+    description: Guest checks/orders used for revenue, covers, comps, voids, and service mix.
+    keywords: [tickets, orders, revenue, covers, comps, voids]
+  - name: ticket_items
+    description: Line-item sales used for item velocity and menu margin analysis.
+    keywords: [line_items, menu_mix, item_velocity, margin]
+  - name: menu_items
+    description: Menu catalog with price and theoretical cost.
+    keywords: [menu, items, theoretical_cost, margin]
+  - name: close_events
+    description: POS closeout alerts and exception events.
+    keywords: [closeout, alerts, exceptions, void_rate]

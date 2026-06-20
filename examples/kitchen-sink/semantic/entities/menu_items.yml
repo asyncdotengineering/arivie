@@ -1,0 +1,26 @@
+name: menu_items
+description: Menu catalog with price, category, and theoretical food cost.
+grain: one row per menu item
+primary_key: id
+
+measures:
+  - name: avg_price
+    description: Average selling price across menu items.
+    sql: "ROUND(AVG(price), 2)"
+  - name: avg_theoretical_cost
+    description: Average theoretical unit cost across menu items.
+    sql: "ROUND(AVG(theoretical_cost), 2)"
+
+dimensions:
+  - name: id
+    sql: id
+    type: text
+  - name: name
+    sql: name
+    type: text
+  - name: category
+    sql: category
+    values: [food, alcohol, beverage]
+
+example_questions:
+  - "What food items have the highest theoretical cost?"

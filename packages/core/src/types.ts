@@ -434,6 +434,13 @@ export interface AskOptions {
   prompt: string;
   /** User identity + permissions + DB role for this turn. */
   user: UserContext;
+  /** Product-level conversation identity. Maps to Mastra Memory thread/resource. */
+  conversation?: {
+    /** Conversation/thread id. */
+    id: string;
+    /** Memory resource owner. Defaults to `user.userId`. */
+    resource?: string;
+  };
   /** Thread ID for Mastra Memory persistence. Defaults to a generated one. */
   thread?: string;
   /** Resource ID for Mastra Memory persistence. Defaults to `user.userId`. */

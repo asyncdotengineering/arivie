@@ -1,0 +1,22 @@
+name: outlets
+description: Restaurant locations operated by Northstar Hospitality.
+grain: one row per outlet
+primary_key: id
+
+dimensions:
+  - name: id
+    sql: id
+    type: text
+  - name: name
+    sql: name
+    type: text
+  - name: city
+    sql: city
+    type: text
+  - name: concept
+    sql: concept
+    values: [full_service, fast_casual, bar_late_night]
+
+example_questions:
+  - "Which outlet has the highest revenue?"
+  - "Compare fast casual vs full service sales."

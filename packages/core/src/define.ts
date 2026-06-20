@@ -349,9 +349,10 @@ export async function defineArivie(
    */
   async function ask(opts: AskOptions): Promise<AskResult> {
     const thread =
+      opts.conversation?.id ??
       opts.thread ??
       `arivie-${new Date().toISOString().replace(/[:.]/g, "").slice(0, 17)}`;
-    const resource = opts.resource ?? opts.user.userId;
+    const resource = opts.conversation?.resource ?? opts.resource ?? opts.user.userId;
 
     const result = await runWithUserContext(opts.user, async () =>
       agent.generate(opts.prompt, { memory: { thread, resource } }),

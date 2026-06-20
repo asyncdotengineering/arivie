@@ -1,0 +1,40 @@
+name: ticket_items
+description: Line items on a ticket. Use for menu mix and margin analysis.
+grain: one row per sold menu item line
+primary_key: id
+
+measures:
+  - name: units_sold
+    description: Units sold, excluding voided lines.
+    sql: "SUM(qty) FILTER (WHERE NOT is_voided)"
+  - name: item_revenue
+    description: Line-item revenue, excluding voided lines.
+    sql: "SUM(line_subtotal) FILTER (WHERE NOT is_voided)"
+  - name: theoretical_margin
+    description: Item revenue less theoretical food/beverage cost.
+    sql: "SUM(line_subtotal - (qty * menu_items.theoretical_cost)) FILTER (WHERE NOT is_voided)"
+
+dimensions:
+  - name: id
+    sql: id
+    type: text
+  - name: ticket_id
+    sql: ticket_id
+    type: text
+  - name: menu_item_id
+    sql: menu_item_id
+    type: text
+  - name: is_voided
+    sql: is_voided
+    type: boolean
+
+joins:
+  - to: tickets
+    on: "ticket_items.ticket_id = tickets.id"
+    type: many_to_one
+  - to: menu_items
+    on: "ticket_items.menu_item_id = menu_items.id"
+    type: many_to_one
+
+example_questions:
+  - "Which menu item had the highest theoretical margin yesterday?"

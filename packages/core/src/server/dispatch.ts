@@ -28,6 +28,11 @@ export async function dispatchEvent(
         ? await target.instanceId(event)
         : target.instanceId ?? event.metadata.conversationKey ?? "default";
 
+    const resourceId =
+      typeof target.resourceId === "function"
+        ? await target.resourceId(event)
+        : target.resourceId ?? event.metadata.resourceKey ?? instanceId;
+
     const input =
       typeof target.input === "function"
         ? await target.input(event)
@@ -36,7 +41,7 @@ export async function dispatchEvent(
     if (target.kind === "agent") {
       const agent = instance.mastra.getAgent(target.id);
       await agent.generate(input as Parameters<typeof agent.generate>[0], {
-        memory: { thread: instanceId, resource: instanceId },
+        memory: { thread: instanceId, resource: resourceId },
       });
     } else if (target.kind === "workflow") {
       const workflow = instance.mastra.getWorkflow(target.id);

@@ -9,6 +9,7 @@ export interface TriggerEvent<TType extends string = string, TPayload = unknown>
     provider: string;
     deliveryId?: string;
     conversationKey?: string;
+    resourceKey?: string;
     rawRequest?: Request;
   };
 }

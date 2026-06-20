@@ -1,0 +1,35 @@
+name: close_events
+description: POS closeout alerts and exception events emitted after end-of-day close.
+grain: one row per closeout exception event
+primary_key: id
+
+measures:
+  - name: alert_count
+    description: Number of closeout exception events.
+    sql: "COUNT(*)"
+
+dimensions:
+  - name: id
+    sql: id
+    type: text
+  - name: outlet_id
+    sql: outlet_id
+    type: text
+  - name: business_day
+    sql: business_day
+    type: date
+  - name: event_type
+    sql: event_type
+    values: [void_rate_breach, comp_rate_breach, tender_mismatch]
+
+segments:
+  - name: current_business_day
+    sql: "business_day = (CURRENT_DATE - INTERVAL '1 day')::date"
+
+joins:
+  - to: outlets
+    on: "close_events.outlet_id = outlets.id"
+    type: many_to_one
+
+example_questions:
+  - "What closeout alerts fired yesterday?"

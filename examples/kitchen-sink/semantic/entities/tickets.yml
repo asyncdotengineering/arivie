@@ -1,0 +1,74 @@
+name: tickets
+description: |
+  Guest checks/orders. Use business_day for daily reporting; it represents
+  restaurant operating day rather than raw calendar date.
+grain: one row per guest check
+primary_key: id
+
+measures:
+  - name: revenue
+    description: Net sales excluding tax and tip; excludes voided tickets.
+    sql: "SUM(subtotal - discount_amount - comp_amount - void_amount) FILTER (WHERE status != 'voided')"
+  - name: gross_sales
+    description: Pre-adjustment ticket subtotal.
+    sql: "SUM(subtotal)"
+  - name: ticket_count
+    description: Closed ticket count; excludes voided checks.
+    sql: "COUNT(*) FILTER (WHERE status != 'voided')"
+  - name: covers
+    description: Guest count on closed checks.
+    sql: "SUM(guest_count) FILTER (WHERE status != 'voided')"
+  - name: avg_check
+    description: Average ticket subtotal for non-voided checks.
+    sql: "ROUND(AVG(subtotal) FILTER (WHERE status != 'voided'), 2)"
+  - name: comp_pct
+    description: Comps as percent of gross sales; investigate above 3%.
+    sql: "ROUND(100.0 * SUM(comp_amount) / NULLIF(SUM(subtotal), 0), 2)"
+  - name: void_pct
+    description: Voids as percent of gross sales; investigate above 2%.
+    sql: "ROUND(100.0 * SUM(void_amount) / NULLIF(SUM(subtotal), 0), 2)"
+  - name: tip_total
+    description: Captured tips on closed checks.
+    sql: "SUM(tip_amount) FILTER (WHERE status != 'voided')"
+
+dimensions:
+  - name: id
+    sql: id
+    type: text
+  - name: outlet_id
+    sql: outlet_id
+    type: text
+  - name: business_day
+    sql: business_day
+    type: date
+  - name: service_type
+    sql: service_type
+    values: [dine_in, takeout, delivery, bar]
+  - name: channel
+    sql: channel
+    values: [walk_in, own_app, doordash, phone]
+  - name: status
+    sql: status
+    values: [closed, voided]
+
+segments:
+  - name: current_business_day
+    sql: "business_day = (CURRENT_DATE - INTERVAL '1 day')::date"
+  - name: last_7_days
+    sql: "business_day >= (CURRENT_DATE - INTERVAL '7 days')::date AND business_day < CURRENT_DATE"
+  - name: dine_in_only
+    sql: "service_type = 'dine_in'"
+  - name: third_party_delivery
+    sql: "service_type = 'delivery' AND channel = 'doordash'"
+
+joins:
+  - to: outlets
+    on: "tickets.outlet_id = outlets.id"
+    type: many_to_one
+  - to: ticket_items
+    on: "tickets.id = ticket_items.ticket_id"
+    type: one_to_many
+
+example_questions:
+  - "What was yesterday's revenue by outlet?"
+  - "Which outlet breached the void percentage target yesterday?"

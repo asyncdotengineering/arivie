@@ -3,6 +3,7 @@ dist/
 .next/
 .turbo/
 *.local
+.env
 .env.local
 .env.*.local
 coverage/
@@ -31,3 +32,4 @@ examples/**/transcripts/
 # Vercel local state
 .vercel/
 .vercel
+.vercel-docs/

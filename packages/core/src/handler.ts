@@ -234,7 +234,12 @@ export function makeWebHandler(deps: WebHandlerDeps): (req: Request) => Promise<
       return Response.json({ error: "unauthorized", detail: message }, { status: 401 });
     }
 
-    let body: { prompt?: string; messages?: unknown; threadId?: string };
+    let body: {
+      prompt?: string;
+      messages?: unknown;
+      threadId?: string;
+      conversation?: { id?: unknown };
+    };
     try {
       // `req.json()` returns `unknown`; we cast to the union we accept. The
       // optional fields are guarded individually below before use.
@@ -260,8 +265,15 @@ export function makeWebHandler(deps: WebHandlerDeps): (req: Request) => Promise<
     if (messages.length === 0) {
       return Response.json({ error: "messages array must not be empty" }, { status: 400 });
     }
+    const conversationId =
+      body.conversation != null &&
+      typeof body.conversation === "object" &&
+      typeof body.conversation.id === "string" &&
+      body.conversation.id.length > 0
+        ? body.conversation.id
+        : undefined;
     const memory = {
-      thread: body.threadId ?? `arivie-${user.userId}`,
+      thread: conversationId ?? body.threadId ?? `arivie-${user.userId}`,
       resource: user.userId,
     };
     const streamRequested = wantsEventStream(req);

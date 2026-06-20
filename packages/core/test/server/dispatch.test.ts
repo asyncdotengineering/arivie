@@ -138,4 +138,55 @@ describe("dispatchEvent", () => {
       { memory: { thread: "repo/2", resource: "repo/2" } },
     );
   });
+
+  it("resolves memory resource separately from conversation thread", async () => {
+    const instance = makeInstance();
+    const sub = defineSubscription({
+      source: channel,
+      target: { kind: "agent", id: "arivie" },
+    });
+
+    const event: TriggerEvent = {
+      type: "github.issue.opened",
+      payload: { text: "hello" },
+      metadata: {
+        provider: "github",
+        conversationKey: "repo/issue-7",
+        resourceKey: "github-installation-42",
+      },
+    };
+
+    await dispatchEvent(event, "github", instance, [sub]);
+    const agent = instance.mastra.getAgent("arivie");
+    expect(agent.generate).toHaveBeenCalledWith(
+      event.payload,
+      { memory: { thread: "repo/issue-7", resource: "github-installation-42" } },
+    );
+  });
+
+  it("lets subscription targets override resource id", async () => {
+    const instance = makeInstance();
+    const sub = defineSubscription({
+      source: channel,
+      target: {
+        kind: "agent",
+        id: "arivie",
+        instanceId: "conversation-1",
+        resourceId: (event) => `tenant:${event.metadata.provider}`,
+      },
+    });
+
+    const event: TriggerEvent = {
+      type: "github.issue.opened",
+      payload: {},
+      metadata: { provider: "github" },
+    };
+
+    await dispatchEvent(event, "github", instance, [sub]);
+    const agent = instance.mastra.getAgent("arivie");
+    expect(agent.generate).toHaveBeenCalledWith(
+      event.payload,
+      { memory: { thread: "conversation-1", resource: "tenant:github" } },
+    );
+  });
 });

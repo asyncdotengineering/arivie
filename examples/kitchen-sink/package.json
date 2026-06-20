@@ -1,0 +1,28 @@
+{
+  "name": "@arivie/example-kitchen-sink",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "setup-db": "tsx scripts/setup-db.ts",
+    "api": "tsx scripts/api-server.ts",
+    "chat": "tsx scripts/chat.ts",
+    "spike": "tsx scripts/run-spike.ts",
+    "build:node": "pnpm --filter @arivie/cli exec tsx -e \"import { runCli } from './src/index.ts'; void (async () => process.exit(await runCli(['build', '--target', 'node', '--config', '../../examples/kitchen-sink/arivie.config.ts', '--output', '../../examples/kitchen-sink/dist'])) )();\"",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@ai-sdk/openai": "^3.0.64",
+    "@arivie/core": "workspace:*",
+    "@arivie/db-postgres": "workspace:*",
+    "@arivie/github": "workspace:*",
+    "@hono/node-server": "^1.19.14",
+    "hono": "^4.12.0",
+    "zod": "^4.4.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsx": "^4.20.5",
+    "typescript": "^6.0.0"
+  }
+}
