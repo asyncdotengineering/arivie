@@ -9,9 +9,9 @@ import {
   makeWorkspace,
 } from "@arivie/workspace";
 import { MockLanguageModelV3 } from "ai/test";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { assertToolShape } from "../src/contract-invariants.js";
-import { makeAgent } from "../src/make-agent.js";
+import { makeAgent, normalizeRequireToolApproval } from "../src/make-agent.js";
 
 function emptySemantic(): SemanticLayer {
   return {
@@ -276,5 +276,47 @@ describe("makeAgent", () => {
     const processors = await agent.listConfiguredInputProcessors();
     expect(processors).toHaveLength(1);
     expect(processors[0]).toBe(skillsProcessor);
+  });
+});
+
+describe("normalizeRequireToolApproval", () => {
+  it("returns undefined for undefined", () => {
+    expect(normalizeRequireToolApproval(undefined)).toBeUndefined();
+  });
+
+  it("returns undefined for false", () => {
+    expect(normalizeRequireToolApproval(false)).toBeUndefined();
+  });
+
+  it("returns true for true", () => {
+    expect(normalizeRequireToolApproval(true)).toBe(true);
+  });
+
+  it("allowlist gates only listed tools", async () => {
+    const policy = normalizeRequireToolApproval({ tools: ["execute_postgres", "workspace_bash"] });
+    expect(policy).toBeTypeOf("function");
+    if (typeof policy !== "function") return;
+    expect(await policy({ toolName: "execute_postgres", args: {} })).toBe(true);
+    expect(await policy({ toolName: "workspace_bash", args: {} })).toBe(true);
+    expect(await policy({ toolName: "compile_metric", args: {} })).toBe(false);
+  });
+
+  it("denylist exempts only listed tools", async () => {
+    const policy = normalizeRequireToolApproval({ exceptTools: ["compile_metric"] });
+    expect(policy).toBeTypeOf("function");
+    if (typeof policy !== "function") return;
+    expect(await policy({ toolName: "execute_postgres", args: {} })).toBe(true);
+    expect(await policy({ toolName: "workspace_bash", args: {} })).toBe(true);
+    expect(await policy({ toolName: "compile_metric", args: {} })).toBe(false);
+  });
+
+  it("function policy receives toolName and args", async () => {
+    const fn = vi.fn((toolName: string) => toolName === "execute_postgres");
+    const policy = normalizeRequireToolApproval(fn);
+    expect(policy).toBeTypeOf("function");
+    if (typeof policy !== "function") return;
+    expect(await policy({ toolName: "execute_postgres", args: { sql: "SELECT 1" } })).toBe(true);
+    expect(await policy({ toolName: "workspace_bash", args: { argv: ["ls"] } })).toBe(false);
+    expect(fn).toHaveBeenCalledWith("execute_postgres", { sql: "SELECT 1" }, undefined);
   });
 });

@@ -344,12 +344,32 @@ export interface MemoryDeleteCtx {
   ownerId?: string;
 }
 
+/**
+ * Policy for requiring human approval before a tool call runs.
+ * - `false` / omitted — no gate.
+ * - `true` — every tool call requires approval.
+ * - `{ tools: string[] }` — only listed tools require approval.
+ * - `{ exceptTools: string[] }` — all tools except listed require approval.
+ * - function — custom predicate evaluated per call.
+ */
+export type ToolApprovalPolicy =
+  | boolean
+  | { tools: string[] }
+  | { exceptTools: string[] }
+  | ((
+      toolName: string,
+      args: Record<string, unknown>,
+      requestContext?: unknown,
+    ) => boolean | Promise<boolean>);
+
 export interface LimitConfig {
   rowsPerQuery?: number;
   queryTimeoutMs?: number;
   tokensPerRequest?: number;
   tokensPerUserPerMonth?: number;
   maxSteps?: number;
+  /** Require human approval before selected tool calls run. */
+  requireToolApproval?: ToolApprovalPolicy;
 }
 
 /** Options passed to {@link SourceAdapter.execute}. */

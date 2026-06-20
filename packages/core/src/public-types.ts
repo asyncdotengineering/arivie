@@ -28,6 +28,7 @@ export type {
   SourceConfigEntry,
   SourceMetadata,
   StorageAdapter,
+  ToolApprovalPolicy,
   WorkspaceConfig,
   SemanticConfig,
   ToolCallEvent,

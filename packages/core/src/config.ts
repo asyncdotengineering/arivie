@@ -11,6 +11,7 @@ import type {
   ResolveUser,
   SourceAdapter,
   StorageAdapter,
+  ToolApprovalPolicy,
 } from "./types.js";
 
 const ownerSchema = z
@@ -199,13 +200,23 @@ const sourcesSchema = z
     message: "sources must contain at least one entry",
   });
 
+const toolApprovalPolicySchema: z.ZodType<ToolApprovalPolicy> = z.union([
+  z.boolean(),
+  z.object({ tools: z.array(z.string().min(1)) }).strict(),
+  z.object({ exceptTools: z.array(z.string().min(1)) }).strict(),
+  z.custom<ToolApprovalPolicy>(
+    (v): v is ToolApprovalPolicy => typeof v === "function",
+  ),
+]);
+
 const limitSchema = z
   .object({
     rowsPerQuery: z.number().optional(),
     queryTimeoutMs: z.number().optional(),
     tokensPerRequest: z.number().optional(),
-    tokensPerUserPerMonth: z.number().nullable().optional(),
+    tokensPerUserPerMonth: z.number().optional(),
     maxSteps: z.number().optional(),
+    requireToolApproval: toolApprovalPolicySchema.optional(),
   })
   .strict();
 

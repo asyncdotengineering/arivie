@@ -1,5 +1,10 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-import type { LifecycleHooks, LimitConfig, SourceAdapter } from "@arivie/core/types";
+import type {
+  LifecycleHooks,
+  LimitConfig,
+  SourceAdapter,
+  ToolApprovalPolicy,
+} from "@arivie/core/types";
 import type { PostgresAdapter } from "@arivie/db-postgres";
 import type { EmbeddingProvider } from "@arivie/embeddings";
 import type { SemanticLayer } from "@arivie/semantic";
@@ -13,6 +18,7 @@ import type { Workspace } from "@mastra/core/workspace";
 import { Memory } from "@mastra/memory";
 import type { LanguageModel } from "ai";
 import { createTool, type Tool } from "@mastra/core/tools";
+import type { RequireToolApproval } from "@mastra/core/tools";
 import { z } from "zod";
 import { getCurrentUserContext } from "@arivie/core/context";
 
@@ -57,6 +63,8 @@ export interface MakeAgentOptions {
   compileMetric?: boolean;
   mcpTools?: Record<string, Tool>;
   bashTool?: Tool;
+  /** Global tool-approval policy forwarded to Mastra agent execution. */
+  requireToolApproval?: ToolApprovalPolicy;
   /**
    * How skills are presented to the agent. Drives whether the prompt
    * renders the eager or on-demand SKILL_DISCIPLINE block. Defaults to
@@ -68,6 +76,25 @@ export interface MakeAgentOptions {
 }
 
 const DEFAULT_MAX_STEPS = 25;
+
+export function normalizeRequireToolApproval(
+  policy: ToolApprovalPolicy | undefined,
+): RequireToolApproval | undefined {
+  if (policy == null || policy === false) {
+    return undefined;
+  }
+  if (policy === true) {
+    return true;
+  }
+  if ("tools" in policy) {
+    return ({ toolName }) => policy.tools.includes(toolName);
+  }
+  if ("exceptTools" in policy) {
+    return ({ toolName }) => !policy.exceptTools.includes(toolName);
+  }
+  return ({ toolName, args, requestContext }) =>
+    policy(toolName, args, requestContext);
+}
 
 function asPostgresAdapter(adapter: SourceAdapter<unknown>): PostgresAdapter {
   if (adapter.kind !== "postgres" || !("url" in adapter) || !("sql" in adapter)) {
@@ -358,9 +385,17 @@ export function makeAgent(opts: MakeAgentOptions): Agent {
   }
 
   const maxSteps = limits.maxSteps ?? DEFAULT_MAX_STEPS;
-  agentConfig.defaultOptions = registerFinalizeReport
-    ? { stopWhen: finalizeReportStopWhen }
-    : { maxSteps };
+  const requireToolApproval = normalizeRequireToolApproval(
+    opts.requireToolApproval ?? opts.limits?.requireToolApproval,
+  );
+  agentConfig.defaultOptions = {
+    ...(registerFinalizeReport
+      ? { stopWhen: finalizeReportStopWhen }
+      : { maxSteps }),
+    ...(requireToolApproval !== undefined
+      ? { requireToolApproval }
+      : {}),
+  };
 
   return new Agent(agentConfig) as Agent;
 }
