@@ -1,0 +1,93 @@
+---
+title: Kitchen-sink example
+description: Full feature walkthrough — skills, schedules, triggers, channels, conversation continuity, and workspace artifacts.
+sidebar:
+  order: 3
+---
+
+The `examples/kitchen-sink` example is the canonical feature showcase for Arivie. It models a hospitality operations copilot ("Northstar Hospitality") that demonstrates every major framework capability in a single project.
+
+## What it demonstrates
+
+| Feature | How |
+|---------|-----|
+| **Semantic layer** | Hospitality entities (outlets, tickets, ticket_items) in YAML |
+| **Skills** | Multiple SOP skills (daily-recap, weekly-trends) with eager loading |
+| **Schedules** | Cron-driven recurring analyses compiled to Mastra workflows |
+| **Triggers & channels** | Ops-alert webhook trigger + GitHub push channel |
+| **Subscriptions** | Routes critical alerts to the agent with dynamic thread scoping |
+| **Conversation continuity** | CLI chat with conversation history picker and `/new` command |
+| **Workspace artifacts** | Agent writes Markdown/HTML reports to the sandbox |
+| **Server** | `createArivieServer` with auto-discovered channels + subscriptions |
+| **API** | Production Hono server with `/chat`, `/health` |
+
+## Structure
+
+```
+examples/kitchen-sink/
+├── arivie.config.ts          # defineArivie with all features wired
+├── semantic/
+│   └── *.yml                  # Hospitality entity definitions
+├── skills/
+│   └── */SKILL.md             # SOP playbooks
+├── channels/
+│   └── ops-alert.ts           # Webhook trigger channel
+├── subscriptions/
+│   ├── critical-alert.ts      # Route critical alerts to agent
+│   └── github-push.ts         # Route GitHub pushes to agent
+├── scripts/
+│   ├── api-server.ts          # Production API server
+│   ├── chat.ts                # CLI chat with conversation history
+│   ├── demo.ts                # End-to-end demo script
+│   └── validate.ts            # Validation checks
+└── workspace/                 # Agent-generated artifacts (gitignored)
+```
+
+## Running it
+
+```bash
+# Install dependencies
+pnpm install
+
+# Set up the database
+pnpm --filter kitchen-sink db:setup
+
+# Run validation
+pnpm --filter kitchen-sink validate
+
+# Start the API server
+pnpm --filter kitchen-sink api
+
+# Start the CLI chat
+pnpm --filter kitchen-sink chat
+```
+
+## API server
+
+The API server uses `createArivieServer` to auto-discover channels and subscriptions:
+
+```
+POST /chat              → Agent generate with conversation continuity
+GET  /health            → Health check
+POST /channels/ops-alert/alert  → Ops alert webhook
+POST /channels/github.push/push → GitHub webhook
+```
+
+## CLI chat
+
+The CLI chat script demonstrates conversation history:
+
+- Lists previous conversations on startup
+- `/new` starts a fresh conversation
+- Selecting a previous conversation resumes it with full memory context
+- Conversations are persisted to `workspace/conversation-history.json`
+
+## WooCommerce variant
+
+`examples/woocommerce-orders-postgres-kitchen-sink` demonstrates the same patterns with a WooCommerce Orders API data source:
+
+- 5 realistic order payloads with variants, refunds, coupons, fees
+- 15 normalized Postgres tables with idempotent sync
+- 13 semantic YAML entities
+- Backfill and incremental sync modes
+- Sales analyst and reconciliation skills

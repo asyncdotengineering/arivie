@@ -1,34 +1,43 @@
 ---
 title: The agent loop
-description: Mastra Agent, explore/execute tools, self-correction, and structured assumptions.
-source: "RFC-002 §3.3 + PIVOT.md §5"
+description: Mastra Agent, execute tools, workspace tools, self-correction, and structured assumptions.
 ---
 
-The **agent loop** in Arivie is the Mastra `Agent` primitive — not a custom orchestrator. RFC-002 §3.3 (REQ-9–12) and the pivot's agent-loop section define the tools, guardrails, and answer shape consumers can rely on.
+The **agent loop** in Arivie is the Mastra `Agent` primitive — not a custom orchestrator. Arivie attaches analytics and workspace tools directly to this single agent; there is no supervisor or sub-agent layer.
+
+## Single-agent architecture
+
+One agent handles the full pipeline: SQL execution, workspace file operations, skill loading, and report generation. Rows stay in one scratchpad from SQL through to file write, eliminating the prose-handoff boundary that lets weak models fabricate numbers. See [The single agent](/concepts/the-single-agent/) for the rationale.
 
 ## Tools
 
-**REQ-9** exposes exactly **two tools by default**: `explore` and `execute`. A third tool, `compile_metric`, may be enabled with `compileMetric: true` in `defineArivie` config for owners who maintain a metric registry (the underlying tool name remains `compile_metric` — only the TS field is camelCase). No other tools ship in the default loop.
+The agent gets some combination of these tools depending on configuration:
 
-- **`explore`** talks to the configured context-loading mode (`preload`, `browse`, or `rag`). In preload mode it returns the flattened semantic prompt; in browse mode it uses Mastra Workspace filesystem reads; in rag mode it queries the Vector index.
-- **`execute`** runs read-only SQL against the owner's Postgres connection.
+| Tool | When active | Purpose |
+|------|-------------|---------|
+| `execute_<source>` | Always (one per source) | Runs validated read-only SQL against a source. Tool name is derived from the source key (e.g., `execute_postgres`, `execute_mixpanel`). |
+| `compile_metric` | `compileMetric: true` | Lets the agent invoke canonical metric definitions instead of ad-hoc SQL. |
+| `mastra_workspace_*` | When `workspace` is configured | Read/write/grep/edit/list/mkdir/delete/stat files in the sandbox. |
+| `workspace_bash` | `workspace.bash: true` | Opt-in shell access for `jq`, `awk`, `python3`, etc. inside the sandbox. |
+| `finalize_report` | When workspace + sandboxed FS | Signals report completion with SQL, CSV results, and narrative. |
+| `search_skills` / `load_skill` / `skill_read` | When `skillsMode: "on-demand"` | Lazy-load SOP skills from the skills directory. |
 
-**REQ-10** requires `execute` to reject any SQL that does not begin with `SELECT` or `WITH` (case-insensitive after trim). This is defence-in-depth on top of the read-only database role.
+### SQL guard
+
+`execute_<source>` rejects any SQL that does not begin with `SELECT` or `WITH` (case-insensitive after trim). This is defence-in-depth on top of the read-only database role. The guard also rejects multi-statement queries, CTE-DML hybrids, and DML/DDL operations.
 
 ## Self-correction
 
-**REQ-11** mandates self-correction when results are suspicious: **zero-row** results, **all-null** columns, **single-group GROUP BY**, and **implausible numeric** results (configurable threshold). The agent must **investigate** rather than return the questionable result unchanged.
+The agent must self-correct when results are suspicious: **zero-row** results, **all-null** columns, **single-group GROUP BY**, and **implausible numeric** results. Instead of returning questionable data, the agent re-investigates.
 
-The pivot lists the same behaviours: zero-row investigate, implausible-result re-check, GROUP BY single-group check, and all-null check. These rules are embedded in the agent system prompt configured by `@arivie/agent`.
+These rules are embedded in the agent system prompt configured by `@arivie/agent`.
 
 ## Assumptions
 
-**REQ-12** requires structured assumptions when the user's question was ambiguous. Assumptions are `{ key: string, value: string }[]`, not prose-only, so UIs (for example `<AgentChat>`) can render them as a list. The pivot calls this **assumption-stating**: pick a sensible default, run, and state the assumption in the final answer.
+When the user's question is ambiguous, the agent picks a sensible default, runs, and states the assumption in the final answer. Assumptions are structured so UIs can render them as a list.
 
-## Memory and observability
+## Memory
 
-Inside one instance, memory uses `@mastra/pg` (REQ-23) with two scopes (REQ-24): **instance-global** (`resourceId = "__instance__"`) and **personal** (per-user `resourceId`). Lifecycle hooks `onMemorySave` and `onMemoryDelete` make memory auditable (REQ-25). You can also pass a Mastra `observability` instance through `ArivieConfig.observability` to forward OTEL traces to your own collector.
+Inside one instance, memory uses `@mastra/pg` with two scopes: **instance-global** (`resource: "__instance__"`) and **personal** (per-user `resource`). See [Conversation continuity](/concepts/conversation-continuity/) for the full memory model.
 
-## Optional compile_metric
-
-When enabled, `compile_metric` lets owners register reusable SQL metrics the agent can invoke instead of ad-hoc `execute` strings. Sprint 2 shipped the compiler; it remains opt-in so simple deployments keep the two-tool default.
+Lifecycle hooks `onMemorySave` and `onMemoryDelete` make memory auditable. You can also pass a Mastra `observability` instance through `ArivieConfig.observability` to forward OTEL traces to your own collector.

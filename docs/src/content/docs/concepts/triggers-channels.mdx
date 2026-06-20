@@ -1,0 +1,164 @@
+---
+title: Triggers, channels & subscriptions
+description: Route webhook events to the agent with defineTrigger, defineChannel, and defineSubscription.
+---
+
+Arivie's event pipeline lets external systems push events into the agent. Webhooks (GitHub pushes, monitoring alerts, Stripe events) arrive on **channels**, and **subscriptions** route matching events to the agent, a workflow, or a skill.
+
+## The pipeline
+
+```
+HTTP request → Trigger (validates + parses) → Channel (named binding) → Subscription (filters) → Target (agent/workflow/skill)
+```
+
+### Triggers
+
+A **trigger** defines how to receive and validate an HTTP event. It declares one or more routes (method + path) and a config schema (standard schema).
+
+```ts
+import { defineTrigger } from "@arivie/core/triggers";
+import { z } from "zod";
+
+const alertTrigger = defineTrigger({
+  id: "ops-alert",
+  configSchema: z.object({
+    apiKey: z.string().min(1),
+  }),
+  routes: [
+    {
+      method: "POST",
+      path: "/alert",
+      async handler({ c, config, emit }) {
+        const authHeader = c.req.header("authorization");
+        if (authHeader !== `Bearer ${config.apiKey}`) {
+          return c.json({ error: "unauthorized" }, 401);
+        }
+        const body = await c.req.json();
+        await emit({
+          type: "ops-alert",
+          payload: body,
+          metadata: { provider: "pagerduty" },
+        });
+        return c.json({ ok: true }, 200);
+      },
+    },
+  ],
+});
+```
+
+The `emit()` function fires the event into the subscription dispatcher.
+
+### Channels
+
+A **channel** binds a trigger to a named mount point on the server. Channels are discovered automatically from a `channels/` directory, or passed explicitly to `createArivieServer`.
+
+```ts
+import { defineChannel } from "@arivie/core/triggers";
+
+const alertChannel = defineChannel({
+  name: "ops-alert",
+  trigger: alertTrigger,
+  config: { apiKey: process.env.ALERT_API_KEY! },
+});
+```
+
+Each channel mounts at `POST /channels/:name` (and `/channels/:name/:suffix` for sub-paths).
+
+### Subscriptions
+
+A **subscription** routes events from a channel to a target — the agent, a workflow, or a skill. Subscriptions can filter events and resolve runtime parameters from the event payload.
+
+```ts
+import { defineSubscription } from "@arivie/core/triggers";
+
+const criticalAlertSub = defineSubscription({
+  source: "ops-alert", // channel name or definition
+  filter: (event) => event.payload.severity === "critical",
+  target: {
+    kind: "agent",
+    id: "arivie", // agent registered name
+    input: (event) =>
+      `Critical ops alert: ${event.payload.title}. Investigate immediately.`,
+  },
+});
+```
+
+The `target.input` becomes the prompt passed to `agent.generate()`. It can be a string, a data structure, or a function that receives the event and returns either.
+
+### Target kinds
+
+| Kind | Behavior | Status |
+|------|----------|--------|
+| `agent` | Calls `agent.generate(input)` with memory scoped to the resolved thread/resource | Production |
+| `workflow` | Creates a workflow run with `inputData: input` | Production |
+| `skill` | Invokes a skill | Stub (throws "not yet implemented") |
+
+### Dynamic instanceId and resourceId
+
+For multi-conversation routing (e.g., per-repository GitHub webhooks), `instanceId` and `resourceId` can be functions that read from the event:
+
+```ts
+defineSubscription({
+  source: "github.push",
+  target: {
+    kind: "agent",
+    id: "arivie",
+    instanceId: (event) => `repo-${event.payload.repository}`,
+    resourceId: (event) => event.payload.repository ?? "default",
+    input: (event) =>
+      `New push to ${event.payload.repository} on ${event.payload.ref}. ${event.payload.commits.length} commits.`,
+  },
+});
+```
+
+This maps each repository to its own memory thread so conversations are isolated.
+
+## Server setup
+
+### Auto-discovery (convention-based)
+
+Place channel and subscription files in `channels/` and `subscriptions/` directories at your project root. Each channel module exports `channel`; each subscription module exports `subscription`.
+
+```
+project/
+├── channels/
+│   └── ops-alert.ts    → export const channel = defineChannel(...)
+├── subscriptions/
+│   └── critical-alert.ts → export const subscription = defineSubscription(...)
+└── api-server.ts
+```
+
+```ts
+import { createArivieServer } from "@arivie/core/server";
+
+const { instance, app } = await createArivieServer(instance);
+// app is a Hono instance — mount or serve directly
+```
+
+`createArivieServer` auto-discovers `channels/` and `subscriptions/` from the working directory.
+
+### Explicit (programmatic)
+
+```ts
+import { arivie } from "@arivie/core/server";
+
+const app = await arivie({
+  instance,
+  channels: [alertChannel],
+  subscriptions: [criticalAlertSub],
+});
+```
+
+## `@arivie/github`
+
+The `@arivie/github` package ships a ready-made GitHub push-event trigger with HMAC-SHA256 signature verification:
+
+```ts
+import { createGithubPushChannel } from "@arivie/github";
+
+const githubChannel = createGithubPushChannel({
+  webhookSecret: process.env.GITHUB_WEBHOOK_SECRET!,
+});
+```
+
+This mounts at `POST /channels/github.push/push` and emits `GithubPushEvent` with repository, ref, and commit metadata. See the [kitchen-sink example](https://github.com/openscoped/data-agent/tree/main/arivie/examples/kitchen-sink) for a full end-to-end demo.

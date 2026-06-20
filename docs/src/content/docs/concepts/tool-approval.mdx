@@ -1,15 +1,15 @@
 ---
 title: Tool approval
-description: Gate dangerous tool calls with Mastra's native requireToolApproval flow.
+description: Gate tool calls with requireToolApproval policies.
 ---
 
-Arivie exposes a configurable **tool-approval policy** through `ArivieConfig.limits.requireToolApproval`. When a policy is active, the agent pauses before calling a gated tool and emits a `tool-suspension` event that the host app can resolve.
+Arivie exposes a configurable **tool-approval policy** through `ArivieConfig.limits.requireToolApproval`. When a policy is active, the agent pauses before calling a gated tool and emits a suspension that the host app can resolve.
 
 ## Use cases
 
 - **Destructive SQL** — require human confirmation before any `execute_<source>` call in production.
 - **Regulated environments** — gate all tool calls by default, then explicitly allow safe tools like `compile_metric`.
-- **Per-user policies** — vary approval by user role inside `resolveUser`.
+- **Per-user policies** — vary approval by user role or permissions.
 
 ## Policy shapes
 
@@ -23,38 +23,40 @@ defineArivie({
     requireToolApproval: true,
 
     // Gate only these tools
-    requireToolApproval: { tools: ["execute_postgres", "mastra_workspace_write_file"] },
+    requireToolApproval: {
+      tools: ["execute_postgres", "mastra_workspace_write_file"],
+    },
 
     // Gate everything except safe tools
-    requireToolApproval: { exceptTools: ["compile_metric"] },
+    requireToolApproval: {
+      exceptTools: ["compile_metric"],
+    },
 
-    // Custom function
-    requireToolApproval: ({ toolName, user }) => {
-      if (user.permissions.includes("auto-execute")) return false;
+    // Custom predicate: (toolName, args, requestContext?) => boolean
+    requireToolApproval: (toolName, _args) => {
+      if (toolName === "compile_metric") return false;
       return toolName.startsWith("execute_");
     },
   },
 });
 ```
 
-The function form receives the tool name and the resolved user context, so you can vary policy by role, environment, or request metadata.
+The function form receives the tool name, its arguments, and an optional request context, so you can vary policy by role, environment, or request metadata.
 
-## Tool-level override
+## How it works
 
-A tool can opt out of the global policy by setting `requireApproval: false` in its definition. This is useful for read-only tools that should never suspend:
+Arivie forwards the policy to Mastra's native `requireToolApproval` option on the Agent. When the agent hits a gated tool, Mastra emits a suspension that the host app resolves by approving or denying the call. See the [Mastra tool suspension docs](https://mastra.ai/docs/agents/agent-tools#tool-approval) for the exact runtime shape.
 
-```ts
-makeAgent({
-  // ...
-  tools: {
-    mySafeTool: {
-      // ...
-      requireApproval: false,
-    },
-  },
-});
-```
+## Other limits
 
-## Handling suspensions
+The `limits` config also enforces hard ceilings:
 
-Arivie forwards the policy to Mastra's native `requireToolApproval` option. When the agent hits a gated tool, Mastra emits a suspension that the host app resolves by approving or denying the call. See the [Mastra tool suspension docs](https://mastra.ai/docs/agents/agent-tools#tool-approval) for the exact runtime shape.
+| Field | Effect |
+|-------|--------|
+| `rowsPerQuery` | Max rows returned per `execute_<source>` call |
+| `queryTimeoutMs` | SQL statement timeout |
+| `tokensPerRequest` | Max tokens per agent turn |
+| `tokensPerUserPerMonth` | Monthly token budget per user |
+| `maxSteps` | Max agent steps per turn |
+
+These are enforced inside `@arivie/agent` tools, not advisory.

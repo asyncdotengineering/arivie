@@ -1,37 +1,74 @@
 ---
 title: The semantic layer
-description: YAML entities, catalog index, lint/codegen, and three context-loading modes.
-source: "RFC-002 §3.4–3.5 + PIVOT.md §4"
+description: YAML entities, catalog index, lint/codegen, and context-loading modes.
 ---
 
-The **semantic layer** is the curated map between business language and your Postgres schema. Agents do not guess table names from raw `information_schema` dumps alone — they consult entity files you version in git. RFC-002 §3.5 (REQ-18–22) and the pivot's context-mode table define how those files are shaped, validated, and loaded.
+The **semantic layer** is the curated map between business language and your Postgres schema. Agents do not guess table names from raw `information_schema` dumps alone — they consult entity files you version in git.
 
 ## Files on disk
 
-**REQ-18** places semantic-layer files as YAML under `<consumer-repo>/semantic/`, **one file per entity**, filename = entity name + `.yml`. **REQ-19** requires a Zod schema at `@arivie/semantic` to validate every file at lint time and runtime; the schema is the source of truth for allowed and required fields.
+Semantic-layer files live as YAML under `<consumer-repo>/semantic/`, **one file per entity**, filename = entity name + `.yml`. A Zod schema at `@arivie/semantic` validates every file at lint time and runtime; the schema is the source of truth for allowed and required fields.
 
-**REQ-20** mandates `semantic/catalog.yml`, auto-generated from entity files by `arivie lint`. The catalog is the index the agent consults first in `preload` and `rag` modes.
+Minimum fields per entity: `name`, `description`, `grain`, `primary_key`, `measures[]`, `dimensions[]`, `segments[]`, `joins[]`, `example_questions[]`, `example_queries[]`, `columns[]`, `hints[]`, with per-column `pii: boolean` (default `false`).
 
-**REQ-21** lists minimum fields: `name`, `description`, `grain`, `primary_key`, `measures[]`, `dimensions[]`, `segments[]`, `joins[]`, `example_questions[]`, `example_queries[]`, `columns[]`, `hints[]`, with per-column `pii: boolean` (default `false`). **REQ-22** requires TypeScript declarations emitted to `semantic/.generated/index.ts` so React consumers can autocomplete entity names.
+The CLI command `arivie add entity <name>` scaffolds a starter entity; `arivie lint` validates the layer.
 
-The CLI command `arivie add entity <name>` scaffolds a starter entity; `arivie lint` validates and regenerates the catalog and generated types.
+## Context-loading modes
 
-## Three context-loading modes (v0.1)
+Mode is auto-detected from semantic-layer token count; consumers override via `semantic.mode` in config.
 
-**REQ-13** requires all three modes in v0.1: `preload`, `browse`, and `rag`. Mode is auto-detected by `arivie lint` from semantic-layer token count; consumers override via `semantic.mode` in config.
+| Mode | When | Mechanism |
+|------|------|-----------|
+| **preload** | Few entities (< ~30; ~10k tokens) | Entire layer flattened into agent system prompt |
+| **indexed** | Large catalogs | Mastra `Vector` over chunked paragraphs; agent retrieves on demand |
 
-| Mode | When | Mechanism (REQ / pivot) |
-|------|------|-------------------------|
-| **preload** | Few entities (&lt; ~30; ~10k tokens) | Entire layer flattened into agent `instructions` (REQ-14: hard 10,000-token cap; exceed → lint error, force browse) |
-| **browse** | Medium catalogs | Mastra `Workspace` + `WorkspaceFilesystem` reads `./semantic` on demand (REQ-15) |
-| **rag** | Large catalogs | Mastra `Vector` over chunked paragraphs; reindex via `arivie lint --reindex` (REQ-16) |
+In preload mode, the full semantic layer is injected into the agent's instructions. In indexed mode, the agent uses embedding-based retrieval to pull relevant entity definitions on demand.
 
-**REQ-17** requires the same `explore` tool interface across modes (query string + optional entity hint → text chunks with provenance). Only the internal mechanism differs; the agent contract does not.
+Set mode explicitly in config:
+
+```ts
+defineArivie({
+  // ...
+  semantic: {
+    path: "./semantic",
+    mode: "auto", // "preload" | "indexed" | "auto"
+  },
+});
+```
+
+When mode is `"indexed"` (or `"auto"` resolves to it), you must also provide an `embeddings` config with a provider, vector store, and index name.
 
 ## Read-only workspace
 
-`@arivie/workspace` implements `SemanticLayerFilesystem` over the semantic directory as **read-only**. Write attempts throw immediately — the semantic layer is text in the consumer's repo, not a studio UI (RFC-002 problem background §2).
+`@arivie/workspace` implements `SemanticLayerFilesystem` over the semantic directory as **read-only**. Write attempts throw immediately — the semantic layer is text in the consumer's repo, not a studio UI.
 
-## Dogfood example
+## Authoring entities in TypeScript
 
-The `examples/with-nextjs/semantic/` directory is the canonical reference: five entities (`customers`, `orders`, `products`, `line_items`, `invoices`) plus `catalog.yml`, seeded by `seed.sql` for local and CI runs.
+For programmatic use, `defineEntity` and `composeSemantic` let you build the semantic layer in TypeScript instead of YAML:
+
+```ts
+import { defineEntity, composeSemantic } from "@arivie/core";
+
+const orders = defineEntity({
+  name: "orders",
+  description: "Customer order records",
+  grain: "one row per order",
+  primary_key: "order_id",
+  measures: [
+    { name: "revenue", type: "numeric", sql: "SUM(amount)" },
+  ],
+  dimensions: [
+    { name: "order_date", type: "timestamp", column: "created_at" },
+  ],
+});
+
+const layer = composeSemantic({ entities: [orders], outputDir: "./semantic" });
+```
+
+This writes validated `.yml` files to disk and returns the in-memory `SemanticLayer` for direct use in `defineArivie`.
+
+## Dogfood examples
+
+- `examples/with-nextjs/semantic/` — five entities (`customers`, `orders`, `products`, `line_items`, `invoices`).
+- `examples/kitchen-sink/semantic/` — hospitality ops entities with schedules, skills, and triggers.
+- `examples/woocommerce-orders-postgres-kitchen-sink/semantic/` — 13 WooCommerce analytics entities.

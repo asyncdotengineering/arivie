@@ -1,0 +1,187 @@
+---
+title: Package reference
+description: "@arivie/db-postgres, @arivie/github, @arivie/mcp, @arivie/source-mcp, @arivie/source-mixpanel, @arivie/semantic, @arivie/workspace, @arivie/react, @arivie/embeddings"
+---
+
+## `@arivie/db-postgres`
+
+Postgres source adapter + infrastructure storage. Role-scoped read-only execution, owner-identity verification, introspection.
+
+```bash
+pnpm add @arivie/db-postgres
+```
+
+```ts
+import { postgresAdapter } from "@arivie/db-postgres";
+
+const adapter = postgresAdapter({
+  url: process.env.DATABASE_URL!,
+  readOnlyRole: "arivie_reader",
+  allowedSchemas: ["public"],
+  maxConnections: 10,
+  idleTimeoutMs: 30_000,
+});
+```
+
+Key exports:
+
+| Export | Purpose |
+|--------|---------|
+| `postgresAdapter(opts)` | Creates a Postgres source adapter |
+| `validateExecuteSql(sql)` | SQL guard (rejects non-SELECT/WITH, DML, DDL) |
+| `compileMetricForPostgres` | Metric-to-SQL compiler |
+| `ArivieBoundaryError` | Thrown when DB role is not read-only |
+
+---
+
+## `@arivie/github`
+
+GitHub push-event trigger channel with HMAC-SHA256 webhook verification.
+
+```bash
+pnpm add @arivie/github
+```
+
+```ts
+import { createGithubPushChannel } from "@arivie/github";
+
+const channel = createGithubPushChannel({
+  webhookSecret: process.env.GITHUB_WEBHOOK_SECRET!,
+});
+```
+
+| Export | Purpose |
+|--------|---------|
+| `githubPushTrigger` | Raw trigger definition |
+| `createGithubPushChannel(config)` | Configured channel for `createArivieServer` |
+| `GithubPushPayload` | Event payload type (repository, ref, commits) |
+| `GithubPushEvent` | Full trigger event type |
+
+---
+
+## `@arivie/mcp`
+
+MCP server exposing Arivie analytics tools to MCP clients (Claude Desktop, Cursor).
+
+```bash
+pnpm add @arivie/mcp
+```
+
+Subpath exports:
+
+| Path | Exports |
+|------|---------|
+| `@arivie/mcp` | `makeMcpServer(opts)` — `ask`, `query`, `schema`, `memory` tools |
+| `@arivie/mcp/next` | `makeMcpRouteHandler(mcp)` — Next.js App Router adapter |
+| `@arivie/mcp/stdio` | `startStdioServer({ mcp })` — stdio transport |
+
+---
+
+## `@arivie/source-mcp`
+
+Wraps `@mastra/mcp` `MCPClient` as a `SourceAdapter` so remote MCP servers become named `execute_<source>` tools.
+
+```bash
+pnpm add @arivie/source-mcp
+```
+
+```ts
+import { makeMCPSourceAdapter } from "@arivie/source-mcp";
+
+const { adapter, tools } = makeMCPSourceAdapter({
+  server: { command: "npx", args: ["-y", "@some/mcp-server"] },
+});
+```
+
+---
+
+## `@arivie/source-mixpanel`
+
+Mixpanel Query API source adapter for segmentation analytics.
+
+```bash
+pnpm add @arivie/source-mixpanel
+```
+
+```ts
+import { mixpanelAdapter } from "@arivie/source-mixpanel";
+
+const adapter = mixpanelAdapter({
+  serviceAccount: process.env.MIXPANEL_SERVICE_ACCOUNT!,
+  projectToken: process.env.MIXPANEL_PROJECT_TOKEN!,
+});
+```
+
+Includes `compileMetricForMixpanel` for metric-to-segmentation-query compilation.
+
+---
+
+## `@arivie/semantic`
+
+YAML semantic layer: parser, validator, linter, TypeScript codegen.
+
+```bash
+pnpm add @arivie/semantic
+```
+
+| Export | Purpose |
+|--------|---------|
+| `parseEntity(yaml)` | Parse a single entity YAML string |
+| `defineEntity(definition)` | Build an entity in TypeScript |
+| `composeSemantic(opts)` | Build + write a full semantic layer |
+| `loadSemanticLayer(dir)` | Load all entities from a directory |
+| `loadSemanticLayerSync(dir)` | Synchronous variant |
+| `lint(layer, opts)` | Lint a semantic layer |
+| `estimateTokens(layer)` | Estimate token count |
+| `codegen(layer)` | Generate TypeScript declarations |
+
+Zod schemas: `EntitySchema`, `MeasureSchema`, `DimensionSchema`, `SegmentSchema`, `JoinSchema`, `ColumnSchema`, `CatalogSchema`.
+
+---
+
+## `@arivie/workspace`
+
+Filesystem sandboxes + Mastra workspace factory.
+
+```bash
+pnpm add @arivie/workspace
+```
+
+| Export | Purpose |
+|--------|---------|
+| `makeWorkspace(opts)` | Build workspace + skills processor + optional bash |
+| `InProcessSandboxFilesystem` | Local filesystem sandbox |
+| `DockerSandboxFilesystem` | Docker-isolated sandbox |
+| `VercelSandboxFilesystem` | Vercel Firecracker sandbox |
+| `SemanticLayerFilesystem` | Read-only FS over semantic layer |
+| `workspaceBashTool(opts)` | Opt-in bash tool |
+| `resolveWithinRoot(path, root)` | Path guard utility |
+
+---
+
+## `@arivie/react`
+
+React UI — headless hooks and drop-in chat component.
+
+```bash
+pnpm add @arivie/react
+```
+
+| Path | Exports |
+|------|---------|
+| `@arivie/react` | `useAgent`, `useSchema`, `useMemory` hooks |
+| `@arivie/react/chat` | `<ArivieChat>`, `<ArtifactPane>`, `<ThreadList>` |
+
+---
+
+## `@arivie/embeddings`
+
+Embedding providers + chunking/indexing.
+
+```bash
+pnpm add @arivie/embeddings
+```
+
+Providers: `openAIEmbeddings`, `cohereEmbeddings`, `voyageEmbeddings`.
+
+Chunking: `ParagraphChunker`, `buildIndex`, `retrieve`.

@@ -37,6 +37,11 @@ export default defineConfig({
             { slug: "concepts/the-semantic-layer" },
             { slug: "concepts/the-agent-loop" },
             { slug: "concepts/the-single-agent" },
+            { slug: "concepts/skills" },
+            { slug: "concepts/schedules" },
+            { slug: "concepts/tool-approval" },
+            { slug: "concepts/conversation-continuity" },
+            { slug: "concepts/triggers-channels" },
             { slug: "concepts/mcp-equivalence" },
             { slug: "concepts/evaluation" },
           ],
@@ -44,10 +49,7 @@ export default defineConfig({
         {
           label: "Integrations",
           items: [
-            { slug: "integrations/clerk" },
-            { slug: "integrations/workos" },
             { slug: "integrations/better-auth" },
-            { slug: "integrations/authjs" },
             { slug: "integrations/custom-jose" },
           ],
         },
@@ -56,6 +58,7 @@ export default defineConfig({
           items: [
             { slug: "recipes/sql-as-calculator" },
             { slug: "recipes/file-artifacts" },
+            { slug: "recipes/kitchen-sink" },
             { slug: "recipes/nextjs" },
             { slug: "recipes/hono" },
             { slug: "recipes/cloudflare-do" },
@@ -66,7 +69,13 @@ export default defineConfig({
         },
         {
           label: "Reference",
-          items: [{ slug: "comparison" }],
+          items: [
+            { slug: "comparison" },
+            { slug: "reference/core" },
+            { slug: "reference/agent" },
+            { slug: "reference/cli" },
+            { slug: "reference/packages" },
+          ],
         },
       ],
       head: [

@@ -1,0 +1,106 @@
+---
+title: Skills
+description: SOP playbooks that teach the agent domain-specific analytical procedures.
+---
+
+Skills are Markdown playbooks (`SKILL.md`) that teach the agent standard operating procedures for analytical tasks. Each skill is a directory containing a `SKILL.md` file with YAML frontmatter and a teaching body.
+
+## What a skill looks like
+
+```
+skills/
+├── daily-recap/
+│   └── SKILL.md
+├── cohort-analysis/
+│   └── SKILL.md
+└── anomaly-detection/
+    └── SKILL.md
+```
+
+The `SKILL.md` file has frontmatter (metadata) and a body (the procedure):
+
+```markdown
+---
+name: daily-recap
+description: Generate yesterday's revenue and operations summary
+---
+
+## Phase 1: Pull yesterday's metrics
+
+Query the `orders` entity for:
+- Total revenue
+- Order count
+- Average order value
+
+## Phase 2: Compare to prior period
+
+Calculate day-over-day and week-over-week deltas...
+
+## Phase 3: Write the report
+
+Write a Markdown file to `reports/daily-recap-YYYY-MM-DD.md` with...
+```
+
+## Loading modes
+
+Skills load in one of two modes, controlled by `skillsMode` in config:
+
+| Mode | When | Behavior |
+|------|------|----------|
+| **eager** | ≤6 skills (or explicit `"eager"`) | Full skill bodies injected into every agent turn as system-prompt context |
+| **on-demand** | >6 skills (or explicit `"on-demand"`) | Agent gets `search_skills`, `load_skill`, and `skill_read` tools to fetch skills lazily |
+| **auto** | Default | Picks: ≤6 skills → eager, >6 → on-demand |
+
+```ts
+defineArivie({
+  // ...
+  skills: "./skills",           // path to skills directory
+  skillsMode: "auto",           // "eager" | "on-demand" | "auto"
+});
+```
+
+In on-demand mode, the agent first searches for relevant skills, loads the ones it needs, then follows the procedure. This keeps the system prompt small when you have many skills.
+
+## Built-in skills
+
+`@arivie/skills` ships six analytical playbooks:
+
+| Skill | Purpose |
+|-------|---------|
+| `cohort-analysis` | Build retention cohorts from event data |
+| `funnel-conversion` | Measure conversion through multi-step funnels |
+| `churn-investigation` | Identify and investigate customer churn signals |
+| `revenue-attribution` | Attribute revenue to acquisition channels |
+| `anomaly-detection` | Detect statistical anomalies in time-series metrics |
+| `dau-mau-ratio` | Calculate and interpret daily/monthly active user ratios |
+
+Add them via CLI:
+
+```bash
+pnpm dlx arivie add skill cohort-analysis
+```
+
+## Authoring custom skills
+
+A skill is just a directory with a `SKILL.md`. The frontmatter requires `name` and `description`; the body is free-form Markdown that the agent reads as a procedure.
+
+Key conventions for effective skills:
+
+1. **All arithmetic lives in SQL** — never compute in the agent's head. See [SQL as calculator](/recipes/sql-as-calculator/).
+2. **One CTE per phase** — consolidate multi-step calculations into a single SQL CTE.
+3. **State assumptions explicitly** — when a parameter is ambiguous, pick a sensible default and declare it.
+4. **Write artifacts to the workspace** — reports go to `reports/` via `mastra_workspace_write_file`.
+
+## Skills vs schedules
+
+Skills are reusable expertise. Schedules are operational runtime config. A schedule can invoke a skill by name in its prompt:
+
+```ts
+const dailyRecap = defineSchedule({
+  id: "daily-recap",
+  cron: "0 9 * * 1-5",
+  prompt: "Run the daily-recap skill for yesterday",
+});
+```
+
+The agent sees the skill in its context (eager mode) or can load it (on-demand mode) and follows the procedure.

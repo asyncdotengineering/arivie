@@ -1,0 +1,166 @@
+---
+title: "@arivie/core API"
+description: Core framework API — defineArivie, config types, instance, handler, and subpath exports.
+---
+
+`@arivie/core` is the orchestrator package. It provides the `defineArivie()` factory, config schema, HTTP handler, context propagation, schedules, triggers/channels/subscriptions, and the server module.
+
+## Installation
+
+```bash
+pnpm add @arivie/core
+```
+
+## `defineArivie(config)`
+
+The factory. Validates config, resolves sources, loads the semantic layer, builds the agent + Mastra runtime + Memory + MCP stub + scheduled workflows, and wires the Hono app.
+
+```ts
+import { defineArivie } from "@arivie/core";
+
+const instance = await defineArivie({
+  owner: { id: "acme", name: "Acme Analytics" },
+  storage: postgresAdapter({ url: process.env.DATABASE_URL! }),
+  model: google("gemini-2.5-flash"),
+  semantic: { path: "./semantic", mode: "auto" },
+  sources: {
+    postgres: {
+      kind: "adapter",
+      adapter: postgresAdapter({ url: process.env.DATABASE_URL! }),
+      description: "Primary analytics database",
+    },
+  },
+  resolveUser: async (req) => ({
+    userId: "u1",
+    permissions: ["read"],
+    dbRole: "arivie_reader",
+  }),
+});
+```
+
+Returns an `ArivieInstance`.
+
+### Subpath exports
+
+| Import path | Exports |
+|-------------|---------|
+| `@arivie/core` | `defineArivie`, `defineSchedule`, `defineSchedules`, `localWorkspace`, `adapterSource`, `mcpSource`, `composeSemantic`, `defineEntity`, `verifyOwnerIdentity`, `runWithUserContext`, `getCurrentUserContext`, context + types |
+| `@arivie/core/triggers` | `defineTrigger`, `defineChannel`, `defineSubscription`, trigger/channel/subscription types |
+| `@arivie/core/server` | `arivie`, `createArivieServer` |
+| `@arivie/core/context` | `runWithUserContext`, `getCurrentUserContext`, `setCurrentUserContext` |
+| `@arivie/core/types` | All public type exports |
+| `@arivie/core/errors` | `ArivieBoundaryError`, `ArivieConfigError`, `ArivieInternalError`, `ArivieNotImplementedError` |
+| `@arivie/core/eval` | `createDogfoodScorer`, `createSqlSemanticScorer`, `runValidationRules`, `extractExecuteSql`, `countExecuteCalls`, `answerClaimsZeroRevenue`, `resultsEqual` |
+
+## ArivieInstance
+
+```ts
+interface ArivieInstance {
+  agent: Agent;              // Mastra agent
+  mastra: Mastra;            // Mastra runtime
+  workspace: Workspace;      // Filesystem sandbox
+  ask(opts: AskOptions): Promise<AskResult>;  // Typed facade
+  handler: (req: Request) => Promise<Response>; // Web-standard handler
+  hono: Hono;                // Pre-wired Hono app
+  app: Hono;                 // Mountable Hono sub-app (Mastra + channels)
+  dispose(): Promise<void>;  // Close adapters + pools
+}
+```
+
+### `ask(opts)`
+
+Typed one-shot facade over `agent.generate()`:
+
+```ts
+const result = await instance.ask({
+  prompt: "Revenue last week?",
+  user: { userId: "u1", permissions: ["read"], dbRole: "arivie_reader" },
+  conversation: { id: "conv-1" },
+});
+
+// result.text        → string (final answer)
+// result.toolCalls   → ToolCallTrace[]
+// result.sql         → string[] (SQL executed)
+// result.artifacts   → string[] (file paths written)
+// result.raw         → unknown (full agent.generate response)
+```
+
+### `handler(req)`
+
+Web-standard request handler. Works with any Fetch-compatible host:
+
+```ts
+// Next.js App Router
+export const POST = arivie.handler;
+
+// Bun
+Bun.serve({ fetch: arivie.handler });
+
+// Hono
+app.all("*", (c) => arivie.handler(c.req.raw));
+
+// Cloudflare Worker
+export default { fetch: arivie.handler };
+```
+
+Accepts JSON body `{ prompt }` or `{ messages }`, plus optional `{ conversation: { id } }` and `{ threadId }`. Supports SSE streaming via `Accept: text/event-stream`.
+
+## ArivieConfig
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `owner` | `{ id: string, name: string }` | Yes | Instance owner identity |
+| `storage` | `StorageAdapter` | Yes | Infrastructure Postgres (memory + identity) |
+| `model` | `LanguageModel` | Yes | AI SDK language model |
+| `semantic` | `SemanticConfig` | Yes | Semantic layer config |
+| `sources` | `SourcesConfig` | Yes | Named data sources |
+| `resolveUser` | `(req: Request) => Promise<UserContext>` | Yes | User resolution from request |
+| `workspace` | `WorkspaceConfig` | No | Sandbox config |
+| `skills` | `string \| string[]` | No | Path(s) to skill directories |
+| `skillsMode` | `"eager" \| "on-demand" \| "auto"` | No | Skill loading mode |
+| `compileMetric` | `boolean` | No | Register `compile_metric` tool |
+| `hooks` | `LifecycleHooks` | No | Lifecycle event hooks |
+| `limits` | `LimitConfig` | No | Hard ceilings |
+| `schedules` | `ArivieSchedule[]` | No | Recurring analysis schedules |
+| `observability` | `Observability` | No | Mastra observability instance |
+
+## Sources
+
+Sources are user-named domain databases. Each source gets an `execute_<name>` tool on the agent.
+
+```ts
+sources: {
+  postgres: {
+    kind: "adapter",
+    adapter: postgresAdapter({ url: DB_URL }),
+    description: "Primary analytics database",
+    useWhen: "For orders, revenue, and customer questions",
+  },
+  mixpanel: {
+    kind: "adapter",
+    adapter: mixpanelAdapter({ serviceAccount: "...", projectToken: "..." }),
+    description: "Product analytics events",
+    useWhen: "For funnel and retention questions",
+  },
+  remote: {
+    kind: "mcp",
+    mcp: { command: "npx", args: ["-y", "@some/mcp-server"] },
+    description: "External MCP tools",
+  },
+}
+```
+
+### `adapterSource(opts)` / `mcpSource(config)`
+
+One-line factories for source config entries:
+
+```ts
+import { adapterSource } from "@arivie/core";
+
+sources: {
+  db: adapterSource({
+    adapter: postgresAdapter({ url: DB_URL }),
+    description: "Primary database",
+  }),
+}
+```

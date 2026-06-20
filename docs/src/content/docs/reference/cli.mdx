@@ -1,0 +1,112 @@
+---
+title: "arivie CLI"
+description: Command reference for the arivie CLI — init, setup, add, lint, eval, dev, build, deploy, types, mcp.
+---
+
+The `@arivie/cli` package provides the `arivie` command for scaffolding, building, and deploying Arivie projects.
+
+## Installation
+
+```bash
+pnpm add -D @arivie/cli
+# or use directly
+pnpm dlx arivie <command>
+```
+
+## Commands
+
+### `arivie init`
+
+Scaffolds a new project. Creates `arivie.config.ts`, `semantic/` directory stubs, and CLI wiring.
+
+```bash
+arivie init
+```
+
+### `arivie setup`
+
+Configures the database and owner identity. Creates the read-only DB role, runs Mastra Memory migrations, and performs the owner-identity smoke check.
+
+```bash
+arivie setup
+```
+
+### `arivie add`
+
+Add components to an existing project. Subcommands:
+
+| Subcommand | Purpose |
+|------------|---------|
+| `add entity <name>` | Scaffold a new semantic-layer entity YAML |
+| `add schedule <name>` | Create a schedule file |
+| `add skill <name>` | Add an SOP skill from the built-in library |
+| `add ui <component>` | Add a React UI component (e.g., `agent-chat`) |
+
+```bash
+arivie add entity orders
+arivie add skill cohort-analysis
+arivie add ui agent-chat
+```
+
+### `arivie lint`
+
+Validates the semantic layer. Checks entity YAML against the Zod schema, reports errors and warnings.
+
+```bash
+arivie lint
+```
+
+### `arivie eval`
+
+Runs the evaluation suite (golden-SQL probes, dogfood questions).
+
+```bash
+arivie eval
+```
+
+### `arivie dev`
+
+Starts a local development server with hot reload.
+
+```bash
+arivie dev
+```
+
+### `arivie build`
+
+Builds the project for a target runtime. Generates the server or worker entry point and bundles with esbuild/rollup/vite.
+
+```bash
+arivie build --target node        # Node.js server
+arivie build --target cloudflare  # Cloudflare Worker
+```
+
+### `arivie deploy`
+
+Deploys the built project to the target platform.
+
+```bash
+arivie deploy
+```
+
+### `arivie types`
+
+Generates TypeScript declarations from the semantic layer (entity name types for React consumers).
+
+```bash
+arivie types
+```
+
+### `arivie mcp`
+
+Runs the MCP server in stdio mode for integration with Claude Desktop, Cursor, or other MCP clients.
+
+```bash
+arivie mcp
+```
+
+## Global options
+
+| Flag | Description |
+|------|-------------|
+| `--config <path>` | Path to `arivie.config.ts` (default: `./arivie.config.ts`) |

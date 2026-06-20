@@ -1,0 +1,84 @@
+---
+title: "@arivie/agent"
+description: Agent factory, tools, prompt building, and context modes.
+---
+
+`@arivie/agent` builds the Mastra `Agent` with analytics and workspace tools attached directly. Single-agent architecture — no supervisor, no sub-agents.
+
+## `makeAgent(opts)`
+
+```ts
+import { makeAgent } from "@arivie/agent";
+
+const agent = makeAgent({
+  ownerId: "acme",
+  model: google("gemini-2.5-flash"),
+  semantic,           // SemanticLayer
+  contextMode: "preload",  // "preload" | "indexed"
+  sources,            // resolved source adapters
+  sourceMetadata,     // descriptions for system prompt
+  workspace,          // Mastra Workspace
+  skillsProcessor,    // skill loader
+  skillsMode: "auto", // "eager" | "on-demand" | "auto"
+  compileMetric: true,
+  limits: { rowsPerQuery: 5000 },
+  hooks: { onToolCall: async (e) => audit(e) },
+});
+```
+
+You typically don't call `makeAgent` directly — `defineArivie` calls it for you. Use this reference to understand the parameters.
+
+## Context modes
+
+| Mode | Behavior |
+|------|----------|
+| `preload` | Full semantic layer in system prompt. Best for fewer than ~30 entities. |
+| `indexed` | Embedding-based retrieval. Requires vector store + embeddings config. |
+
+`autoDetectMode(semantic)` picks the mode based on token count.
+
+## Tools registered
+
+| Tool | Condition | Purpose |
+|------|-----------|---------|
+| `execute_<source>` | Always (one per source) | Read-only SQL execution |
+| `compile_metric` | `compileMetric: true` | Canonical metric definitions |
+| `mastra_workspace_write_file` | Workspace configured | Write files |
+| `mastra_workspace_read_file` | Workspace configured | Read files |
+| `mastra_workspace_grep` | Workspace configured | Search file contents |
+| `mastra_workspace_list_files` | Workspace configured | List directory |
+| `mastra_workspace_edit_file` | Workspace configured | Find/replace in file |
+| `mastra_workspace_mkdir` | Workspace configured | Create directory |
+| `mastra_workspace_delete` | Workspace configured | Delete file/directory |
+| `mastra_workspace_file_stat` | Workspace configured | File metadata |
+| `workspace_bash` | `bash: true` | Shell access in sandbox |
+| `finalize_report` | Sandbox FS | Report completion signal |
+| `search_skills` / `load_skill` / `skill_read` | `skillsMode: "on-demand"` | Lazy skill loading |
+
+## Prompt constants
+
+The agent's system prompt is built from composable constants exported by `@arivie/agent`:
+
+| Export | Purpose |
+|--------|---------|
+| `buildSystemPrompt(opts)` | Assembles the full system prompt |
+| `buildSystemPromptIndexed(opts)` | Indexed-mode variant |
+| `WORKSPACE_NAVIGATION_RULE` | Instructs agent on workspace usage |
+| `ASSUMPTION_STATING_RULE` | "State assumptions explicitly" rule |
+| `SELF_CORRECTION_RULES` | Zero-row / all-null / implausible checks |
+| `SKILL_DISCIPLINE_EAGER` | Skill-following rules (eager mode) |
+| `SKILL_DISCIPLINE_ONDEMAND` | Skill-loading rules (on-demand mode) |
+
+## SQL guard
+
+`validateExecuteSql(sql)` from `@arivie/db-postgres` uses a state-machine token scanner to enforce:
+- Must start with `SELECT` or `WITH`
+- No multi-statement queries
+- No CTE-DML hybrids
+- No DML/DDL operations
+
+## Types
+
+- `ContextMode` = `"preload" | "indexed"`
+- `SkillsMode` = `"eager" | "on-demand" | "none"`
+- `MakeAgentOptions` — full options interface

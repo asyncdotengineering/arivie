@@ -13,36 +13,52 @@ Arivie supports **scheduled workflows** through `defineSchedule` / `defineSchedu
 
 ## Configuration
 
-```ts
-import { defineArivie } from "@arivie/core";
+Schedules are an array of `ArivieSchedule` objects passed to `defineArivie`:
 
-defineArivie({
-  // ...
-  schedules: {
-    dailyRecap: {
-      cron: "0 9 * * 1-5", // 9 AM UTC, weekdays
-      prompt:
-        "Run the daily-recap skill for yesterday and write the result to reports/daily-recap.md",
-      memory: {
-        thread: "daily-recap",
-        resource: "__instance__",
-      },
-    },
-  },
+```ts
+import { defineArivie, defineSchedule } from "@arivie/core";
+
+const dailyRecap = defineSchedule({
+  id: "daily-recap",
+  cron: "0 9 * * 1-5", // 9 AM, weekdays
+  prompt: "Run the daily-recap skill for yesterday and write the result to reports/daily-recap.md",
 });
 ```
 
-Schedules share the same agent, sources, semantic layer, and skills as the rest of the instance. The `memory` option lets you store schedule state in an instance-global or per-user thread.
+Then wire into config:
+
+```ts
+defineArivie({
+  // ...
+  schedules: [dailyRecap],
+});
+```
+
+Each schedule compiles to a Mastra Workflow with:
+- A single step that calls `agent.generate(prompt)` as the owner user
+- A Mastra cron schedule that supplies the prompt via `inputData`
+- Memory scoped to `thread: "schedule-<id>"`, `resource: owner.id`
+
+### Multiple schedules
+
+```ts
+import { defineSchedules } from "@arivie/core";
+
+const schedules = defineSchedules([
+  { id: "daily-recap", cron: "0 9 * * 1-5", prompt: "Generate yesterday's revenue recap" },
+  { id: "weekly-trends", cron: "0 10 * * 1", prompt: "Summarize this week's order trends" },
+]);
+```
+
+Schedules share the same agent, sources, semantic layer, and skills as the rest of the instance.
 
 ## CLI helper
-
-The CLI can scaffold a schedule file for you:
 
 ```bash
 pnpm dlx arivie add schedule daily-recap
 ```
 
-This creates `schedules/daily-recap.ts` with the boilerplate and wires it into `arivie.config.ts`.
+This creates a schedule file and wires it into `arivie.config.ts`.
 
 ## Runtime
 
