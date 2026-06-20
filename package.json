@@ -29,6 +29,7 @@
     "@changesets/cli": "^2.31.0",
     "@mastra/core": "^1.45.0",
     "@mastra/mcp": "^1.11.0",
+    "@mastra/observability": "^1.15.0",
     "@mastra/pg": "^1.14.0",
     "@testcontainers/postgresql": "^11.0.0",
     "ai": "^6.0.0",

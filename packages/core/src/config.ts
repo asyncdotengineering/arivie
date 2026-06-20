@@ -5,6 +5,7 @@ import type { WorkspaceFilesystem } from "@mastra/core/workspace";
 import type { MastraVector } from "@mastra/core/vector";
 import type { LanguageModel } from "ai";
 import { z } from "zod";
+import { Observability } from "@mastra/observability";
 import { schedulesSchema } from "./schedules.js";
 import type {
   ResolveUser,
@@ -171,6 +172,14 @@ const sourceEntrySchema = z.discriminatedUnion("kind", [
 
 // Storage adapter — Postgres for now. Same custom-check shape as
 // sourceAdapter but lives in its own top-level slot.
+const observabilitySchema = z.custom<Observability>(
+  (v): v is Observability => v instanceof Observability,
+  {
+    message:
+      "observability must be a Mastra Observability instance from @mastra/observability",
+  },
+);
+
 const storageAdapterSchema = z.custom<StorageAdapter>(
   (v): v is StorageAdapter =>
     v != null &&
@@ -239,5 +248,6 @@ export const ArivieConfigSchema = z
     hooks: lifecycleHooksSchema.optional(),
     limits: limitSchema.optional(),
     schedules: schedulesSchema,
+    observability: observabilitySchema.optional(),
   })
   .strict();

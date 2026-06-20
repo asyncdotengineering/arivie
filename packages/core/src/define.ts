@@ -313,6 +313,9 @@ export async function defineArivie(
     workspace,
     mcpServers: { arivie: mcp },
     workflows: scheduleWorkflows,
+    ...(parsed.observability !== undefined
+      ? { observability: parsed.observability }
+      : {}),
   });
 
   const handler = makeWebHandler({

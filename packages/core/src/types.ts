@@ -157,6 +157,11 @@ export interface ArivieConfig {
    * `SKILL.md` frontmatter.
    */
   schedules?: import("./schedules.js").ArivieSchedule[];
+  /**
+   * Mastra Observability instance for tracing and scoring. Optional;
+   * when provided it is passed through to the Mastra runtime.
+   */
+  observability?: import("@mastra/observability").Observability;
 }
 
 export interface SemanticConfig {

@@ -73,11 +73,15 @@
   "peerDependencies": {
     "@arivie/source-mcp": "workspace:*",
     "@mastra/core": "^1.45.0",
+    "@mastra/observability": "^1.15.0",
     "ai": "^6.0.0",
     "zod": "^4.4.0"
   },
   "peerDependenciesMeta": {
     "@arivie/source-mcp": {
+      "optional": true
+    },
+    "@mastra/observability": {
       "optional": true
     }
   },
@@ -85,6 +89,7 @@
     "@arivie/source-mcp": "workspace:*",
     "@arivie/workspace": "workspace:*",
     "@mastra/core": "^1.45.0",
+    "@mastra/observability": "^1.15.0",
     "@testcontainers/postgresql": "^11.0.0",
     "@types/node": "^22.0.0",
     "ai": "^6.0.0",
