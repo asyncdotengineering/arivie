@@ -6,21 +6,25 @@ source: "RFC-002 §3.9–3.10 + PIVOT.md §9"
 
 **Evaluation** is how Arivie proves v0.1 is production-ready — not merely demo-ready. RFC-002 §3.9–3.10 (REQ-30–32) and the pivot's eval section define the suites, thresholds, and operational budgets that gate release.
 
-## 30-question dogfood suite
+## Sprint 1 dogfood suite
 
-**REQ-30** requires a hand-authored golden-SQL suite of **30 questions** run against the dogfood schema. Composition is fixed:
+The current dogfood suite is a **12-probe golden-SQL** runner exercised against the `orders` semantic entity. Each probe checks that the agent emits SQL whose result set matches a hand-authored golden query, plus probe-specific validation rules (e.g. "must not claim zero revenue" for zero-row traps).
 
-- 12 normal queries (revenue, top-N, time windows, JOIN, GROUP BY)
-- 5 **context-quality** probes (semantic-layer descriptions used correctly — replaces removed cross-tenant probes)
-- 3 zero-row traps (self-correction must catch)
-- 3 implausible-result traps (self-correction must catch)
-- 3 ambiguous-question probes (assumption-stating must work)
-- 2 memory-dependent probes (instance-global vs personal)
-- 2 **MCP-equivalence** probes (HTTP and MCP produce the same answer)
+Composition today:
 
-The dogfood must pass **≥ 90%** across all three context modes. Cross-tenant probes are architecturally impossible under the single-owner boundary and do not appear in the suite.
+- 8 normal queries (revenue, top-N, time windows, GROUP BY)
+- 2 ambiguous-question probes
+- 2 zero-row traps
 
-Run locally with `pnpm eval` / `arivie eval` (see `@arivie/cli` README). CI will gate on pass rate in Sprint 5 (C36).
+Run locally with:
+
+```bash
+pnpm eval
+```
+
+The harness now uses an in-process **PGlite** database by default, so no Docker is required. Set `USE_TESTCONTAINERS=1` to run against the original testcontainers Postgres path.
+
+The runner is built on Mastra `runEvals` with a composite scorer exposed from `@arivie/core/eval`. The current pass threshold is **9/12 (75%)**.
 
 ## BIRD-Interact
 

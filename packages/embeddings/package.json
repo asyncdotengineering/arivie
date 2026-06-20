@@ -1,6 +1,6 @@
 {
   "name": "@arivie/embeddings",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": false,
   "type": "module",
   "description": "Arivie embedding providers — OpenAI, Cohere, and Voyage adapters over AI SDK v6.",

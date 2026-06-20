@@ -1,6 +1,6 @@
 {
   "name": "@arivie/skills",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "description": "Agent Skills (per the open Agent Skills spec, Feb 2026 Mastra integration) — reusable analytical playbooks for the Arivie data agent. Each subdirectory is one skill, with a SKILL.md teaching the agent how to perform the named analysis end-to-end.",
   "license": "Apache-2.0",

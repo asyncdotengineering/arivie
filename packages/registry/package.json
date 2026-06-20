@@ -1,6 +1,6 @@
 {
   "name": "@arivie/registry",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "type": "module",
   "description": "Local-fs shadcn-style component registry for Arivie (REQ-28, RFC §4.9). Not published to npm.",

@@ -1,6 +1,6 @@
 {
   "name": "@arivie/source-mcp",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Arivie MCP source adapter — wraps @mastra/mcp MCPClient as a SourceAdapter.",
   "type": "module",
   "license": "Apache-2.0",

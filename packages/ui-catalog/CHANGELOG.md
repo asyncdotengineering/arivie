@@ -1,3 +1,5 @@
+# @arivie/ui-catalog
+
 ## 0.1.1
 
 ### Patch Changes
@@ -29,6 +31,14 @@
   - Remove the broken `customers` join from the dogfood `orders` semantic entity.
   - Upgrade `@electric-sql/pglite` to 0.5.3 for socket-server compatibility.
 
-## 0.0.0
+## 0.1.1
 
-- Initial `SemanticLayerFilesystem` + `makeWorkspace` (Sprint 0 / C05).
+### Patch Changes
+
+- Test patch deps only
+
+## 0.1.1
+
+### Patch Changes
+
+- Test mastra upgrade without core

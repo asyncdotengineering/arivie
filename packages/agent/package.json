@@ -1,6 +1,6 @@
 {
   "name": "@arivie/agent",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "private": false,
   "type": "module",
   "description": "Arivie Mastra agent — execute_<source> tools and optional compile_metric over the semantic layer.",

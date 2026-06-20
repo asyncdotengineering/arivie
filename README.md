@@ -15,7 +15,7 @@
 [![Node ≥20](https://img.shields.io/badge/node-%E2%89%A520-339933?logo=node.js&logoColor=white)](https://nodejs.org)
 [![pnpm 10](https://img.shields.io/badge/pnpm-10-f69220?logo=pnpm&logoColor=white)](https://pnpm.io)
 [![TypeScript 5.9](https://img.shields.io/badge/typescript-5.9-3178c6?logo=typescript&logoColor=white)](https://www.typescriptlang.org)
-[![Wraps Mastra 1.35](https://img.shields.io/badge/wraps-mastra%201.35-fb923c)](https://mastra.ai)
+[![Wraps Mastra 1.45](https://img.shields.io/badge/wraps-mastra%201.45-fb923c)](https://mastra.ai)
 
 </div>
 
@@ -34,6 +34,9 @@ Arivie wraps **Mastra** (`@mastra/core`, agent runtime, memory, workspace primit
 - 📖 **Skills are SOPs** — versioned Markdown playbooks for recurring analyses (daily recap, prime cost, food cost variance). The agent reads the playbook before answering. New analysts get the senior analyst's answer because the skill IS the senior analyst.
 - 🔌 **Multi-source + MCP at both ends** — Postgres + Mixpanel + any external MCP server (Linear, Slack, qmd, your own) as sources, AND `arivie mcp` exposes your agent to MCP-aware clients (Claude Desktop, Cursor, custom). The agent sits at both ends of the protocol.
 - 🛡️ **Read-only by construction** — `arivie_reader` DB role, session-variable-scoped views, prompt-injection guards. Owner-identity boundary verified on every request.
+- ✅ **Tool approval / HITL** — configurable `requireToolApproval` policy (global, allow-list, deny-list, or custom function) wired to Mastra's native tool-suspension flow.
+- ⏰ **Scheduled workflows** — `defineSchedule` / `defineSchedules` config plus `arivie add schedule <name>` to run recurring analyses on Mastra cron workflows.
+- 🧪 **Dogfood eval harness** — `pnpm eval` runs a 12-probe golden-SQL suite on PGlite without Docker; Mastra `runEvals` + composite scorer live in `@arivie/core/eval`.
 
 Read [`./docs/`](./docs/) for the live site. Quickstart below gets you a streamed answer in under 10 minutes.
 
@@ -43,7 +46,7 @@ Read [`./docs/`](./docs/) for the live site. Quickstart below gets you a streame
 
 | | |
 |---|---|
-| Version | `0.3.0` — code-DX-clean shape, **straight out of the oven** |
+| Version | `1.0.0` — Mastra 1.45, schedules, tool approval, and PGlite eval harness |
 | Repo | [github.com/asyncdotengineering/arivie](https://github.com/asyncdotengineering/arivie) |
 | Docs | [arivie-docs.vercel.app](https://arivie-docs.vercel.app) |
 | npm | [`@arivie/core`](https://www.npmjs.com/package/@arivie/core), [`@arivie/cli`](https://www.npmjs.com/package/@arivie/cli), [`@arivie/agent`](https://www.npmjs.com/package/@arivie/agent), [`@arivie/db-postgres`](https://www.npmjs.com/package/@arivie/db-postgres), [`@arivie/workspace`](https://www.npmjs.com/package/@arivie/workspace), [`@arivie/semantic`](https://www.npmjs.com/package/@arivie/semantic), and 7 more |

@@ -1,6 +1,8 @@
-## 0.1.1
+# @arivie/source-mcp
 
-### Patch Changes
+## 0.2.0
+
+### Minor Changes
 
 - Arivie 20 June 2026 release
 
@@ -29,6 +31,39 @@
   - Remove the broken `customers` join from the dogfood `orders` semantic entity.
   - Upgrade `@electric-sql/pglite` to 0.5.3 for socket-server compatibility.
 
-## 0.0.0
+### Patch Changes
 
-- Initial `SemanticLayerFilesystem` + `makeWorkspace` (Sprint 0 / C05).
+- Updated dependencies
+  - @arivie/core@1.0.0
+
+## 0.2.0
+
+### Minor Changes
+
+- Test two minor deps
+
+### Patch Changes
+
+- @arivie/core@1.0.0
+
+## 0.1.1
+
+### Patch Changes
+
+- @arivie/core@0.1.2
+
+## 0.2.0
+
+### Minor Changes
+
+- Test mastra upgrade without core
+
+### Patch Changes
+
+- @arivie/core@1.0.0
+
+## 0.1.1
+
+### Patch Changes
+
+- @arivie/core@0.1.2

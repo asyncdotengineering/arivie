@@ -1,6 +1,6 @@
 {
   "name": "@arivie/source-mixpanel",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Arivie Mixpanel source adapter — Query API segmentation with read-only token enforcement.",
   "type": "module",
   "license": "Apache-2.0",
