@@ -5,3 +5,15 @@ export {
   resultsEqual,
   type SqlSemanticScorerOptions,
 } from "./sql-semantic-scorer.js";
+export {
+  answerClaimsZeroRevenue,
+  countExecuteCalls,
+  runValidationRules,
+  type ProbeCategory,
+  type ValidationContext,
+  type ValidationRule,
+} from "./helpers.js";
+export {
+  createDogfoodScorer,
+  type DogfoodScorerOptions,
+} from "./dogfood-scorer.js";

@@ -84,16 +84,68 @@ function sqlFromToolPayload(record: Record<string, unknown>): string | null {
   return typeof sql === "string" && sql.trim().length > 0 ? sql.trim() : null;
 }
 
+function sqlFromToolInvocationPart(part: Record<string, unknown>): string | null {
+  const toolInvocation =
+    part.toolInvocation != null && typeof part.toolInvocation === "object"
+      ? (part.toolInvocation as Record<string, unknown>)
+      : undefined;
+  if (toolInvocation == null) {
+    return null;
+  }
+  const toolName =
+    typeof toolInvocation.toolName === "string" ? toolInvocation.toolName : "";
+  if (toolName !== "execute") {
+    return null;
+  }
+  const args =
+    toolInvocation.args != null && typeof toolInvocation.args === "object"
+      ? (toolInvocation.args as Record<string, unknown>)
+      : undefined;
+  const sql = args?.sql;
+  return typeof sql === "string" && sql.trim().length > 0 ? sql.trim() : null;
+}
+
 /**
- * Pull the last `execute` SQL out of an agent's tool results. Mastra returns
- * tool results in a few shapes depending on the model/loop, so this checks
- * the common containers (`toolResults`, `steps[].toolResults`).
+ * Pull the last `execute` SQL out of an agent's tool results. Accepts:
+ * - the raw agent result object (`toolResults` + optional `steps`)
+ * - an array of MastraDBMessage (e.g. from `runEvals` agent scoring)
+ * - a direct array of tool-result records
  */
 export function extractExecuteSql(
   toolResults: unknown,
   steps?: unknown,
 ): string | null {
   let lastSql: string | null = null;
+
+  // MastraDBMessage[] path (runEvals agent scorer)
+  if (Array.isArray(toolResults)) {
+    const maybeMessages = toolResults as unknown[];
+    for (const msg of maybeMessages) {
+      if (msg == null || typeof msg !== "object") continue;
+      const content = (msg as { content?: unknown }).content;
+      if (
+        content != null &&
+        typeof content === "object" &&
+        "parts" in content
+      ) {
+        const parts = (content as { parts?: unknown[] }).parts ?? [];
+        for (const part of parts) {
+          if (
+            part != null &&
+            typeof part === "object" &&
+            (part as { type?: string }).type === "tool-invocation"
+          ) {
+            const sql = sqlFromToolInvocationPart(part as Record<string, unknown>);
+            if (sql != null) {
+              lastSql = sql;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // Agent result object path
   const sources: unknown[] = [];
   if (Array.isArray(toolResults)) {
     sources.push(...toolResults);
