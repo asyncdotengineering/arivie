@@ -15,6 +15,7 @@ import type { LanguageModel } from "ai";
 import { postgresAdapter } from "@arivie/db-postgres";
 import { runWithUserContext } from "@arivie/core/context";
 import { defineArivie } from "@arivie/core";
+import { extractExecuteSql, resultsEqual } from "@arivie/core/eval";
 import { createEvalMockModel } from "./eval-mock-model.js";
 
 export type EvalMode = "preload" | "browse" | "rag";
@@ -152,50 +153,6 @@ function resolveModel(probes: Probe[]): {
   );
 }
 
-function normalizeCell(value: unknown): string {
-  if (value === null || value === undefined) {
-    return "";
-  }
-  if (value instanceof Date) {
-    return value.toISOString();
-  }
-  if (typeof value === "object") {
-    return JSON.stringify(value);
-  }
-  if (typeof value === "number" || typeof value === "bigint") {
-    return String(Number(value));
-  }
-  return String(value);
-}
-
-function rowFingerprint(row: Record<string, unknown>): string {
-  return Object.keys(row)
-    .sort()
-    .map((key) => `${key}=${normalizeCell(row[key])}`)
-    .join("|");
-}
-
-/** Set equality on result rows, ignoring row order. */
-export function resultsEqual(
-  left: Record<string, unknown>[],
-  right: Record<string, unknown>[],
-): boolean {
-  if (left.length !== right.length) {
-    return false;
-  }
-  const leftSet = new Set(left.map(rowFingerprint));
-  const rightSet = new Set(right.map(rowFingerprint));
-  if (leftSet.size !== rightSet.size) {
-    return false;
-  }
-  for (const fp of leftSet) {
-    if (!rightSet.has(fp)) {
-      return false;
-    }
-  }
-  return true;
-}
-
 function readerConnectionUrl(superuserUrl: string): string {
   const url = new URL(superuserUrl);
   url.username = "arivie_reader";
@@ -214,56 +171,6 @@ async function loadProbes(): Promise<Probe[]> {
     probes.push(parsed);
   }
   return probes;
-}
-
-function sqlFromToolPayload(record: Record<string, unknown>): string | null {
-  const payload =
-    record.payload != null && typeof record.payload === "object"
-      ? (record.payload as Record<string, unknown>)
-      : undefined;
-  const toolName =
-    (typeof record.toolName === "string" && record.toolName) ||
-    (typeof payload?.toolName === "string" && payload.toolName) ||
-    (typeof record.name === "string" && record.name) ||
-    (typeof record.tool === "string" && record.tool) ||
-    (typeof record.toolId === "string" && record.toolId);
-  if (toolName !== "execute") {
-    return null;
-  }
-  const args =
-    (payload?.args as Record<string, unknown> | undefined) ??
-    (record.args as Record<string, unknown> | undefined) ??
-    (record.input as Record<string, unknown> | undefined);
-  const sql = args?.sql;
-  return typeof sql === "string" && sql.trim().length > 0 ? sql.trim() : null;
-}
-
-function extractExecuteSql(toolResults: unknown, steps?: unknown): string | null {
-  let lastSql: string | null = null;
-  const sources: unknown[] = [];
-  if (Array.isArray(toolResults)) {
-    sources.push(...toolResults);
-  }
-  if (Array.isArray(steps)) {
-    for (const step of steps) {
-      if (step != null && typeof step === "object") {
-        const stepResults = (step as { toolResults?: unknown }).toolResults;
-        if (Array.isArray(stepResults)) {
-          sources.push(...stepResults);
-        }
-      }
-    }
-  }
-  for (const entry of sources) {
-    if (entry == null || typeof entry !== "object") {
-      continue;
-    }
-    const sql = sqlFromToolPayload(entry as Record<string, unknown>);
-    if (sql != null) {
-      lastSql = sql;
-    }
-  }
-  return lastSql;
 }
 
 function countExecuteCalls(toolResults: unknown): number {

@@ -7,7 +7,7 @@ import baseConfig from "../../tsup.base.ts";
 // main bundle (TS5055: overwrite). db-postgres now imports from the main
 // `@arivie/core` entry, which has no cycle since core's main DTS no longer
 // depends on db-postgres.
-const sharedEntries = ["src/context.ts", "src/public-types.ts"];
+const sharedEntries = ["src/context.ts", "src/public-types.ts", "src/eval/index.ts"];
 const mainEntries = ["src/index.ts"];
 
 function resolveEntries(): string[] {

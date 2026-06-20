@@ -36,6 +36,10 @@
     "./errors": {
       "import": "./dist/errors.js",
       "types": "./dist/errors.d.ts"
+    },
+    "./eval": {
+      "import": "./dist/eval/index.js",
+      "types": "./dist/eval/index.d.ts"
     }
   },
   "files": [
