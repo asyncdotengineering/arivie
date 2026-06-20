@@ -502,6 +502,11 @@ export interface ArivieInstance {
   handler: (req: Request) => Promise<Response>;
   /** Pre-wired Hono app — convenience for the Hono case. */
   hono: import("hono").Hono;
+  /**
+   * Mountable Hono sub-app exposing Mastra agent/workflow routes plus
+   * Arivie channels/triggers. Preferred over `.hono` for new servers.
+   */
+  app: import("hono").Hono;
   /** Close all source adapters that expose {@link SourceAdapter.close}. */
   dispose(): Promise<void>;
 }

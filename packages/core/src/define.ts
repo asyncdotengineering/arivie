@@ -23,6 +23,7 @@ import { ArivieConfigSchema } from "./config.js";
 import { runWithUserContext } from "./context.js";
 import { ArivieConfigError } from "./errors.js";
 import { makeWebHandler } from "./handler.js";
+import { arivie } from "./server/index.js";
 import { resolveSources } from "./sources.js";
 import type {
   ArivieConfig,
@@ -361,7 +362,7 @@ export async function defineArivie(
     return extractAskResult(result, text);
   }
 
-  return {
+  const instance: ArivieInstance = {
     agent,
     ask,
     mastra,
@@ -381,5 +382,12 @@ export async function defineArivie(
     /** Pre-wired Hono app — convenience for the Hono case. */
     hono: honoApp,
     dispose,
+    /**
+     * Mountable Hono sub-app with Mastra + Arivie routes.
+     * Constructed after the instance so it can reference `instance.mastra`.
+     */
+    app: await arivie({ instance: { mastra } as unknown as ArivieInstance, channels: [], subscriptions: [] }),
   };
+
+  return instance;
 }

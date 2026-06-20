@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 import { defineCommand, runCommand, showUsage } from "citty";
 import { addCommand } from "./commands/add.js";
+import { buildCommand } from "./commands/build.js";
 import { deployCommand } from "./commands/deploy.js";
 import { devCommand } from "./commands/dev.js";
 import { evalCommand } from "./commands/eval.js";
@@ -35,6 +36,7 @@ const rootCommand = defineCommand({
     lint: lintCommand,
     eval: evalCommand,
     dev: devCommand,
+    build: buildCommand,
     deploy: deployCommand,
     types: typesCommand,
     mcp: mcpCommand,
