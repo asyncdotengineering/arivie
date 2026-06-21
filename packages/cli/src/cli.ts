@@ -5,6 +5,7 @@ import { buildCommand } from "./commands/build.js";
 import { deployCommand } from "./commands/deploy.js";
 import { devCommand } from "./commands/dev.js";
 import { evalCommand } from "./commands/eval.js";
+import { infoCommand } from "./commands/info.js";
 import { initCommand } from "./commands/init.js";
 import { lintCommand } from "./commands/lint.js";
 import { mcpCommand } from "./commands/mcp.js";
@@ -33,6 +34,7 @@ const rootCommand = defineCommand({
     init: initCommand,
     setup: setupCommand,
     add: addCommand,
+    info: infoCommand,
     lint: lintCommand,
     eval: evalCommand,
     dev: devCommand,
