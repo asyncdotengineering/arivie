@@ -1,5 +1,7 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 import { Agent } from "@mastra/core/agent";
+import { InMemoryStore } from "@mastra/core/storage";
+import { Memory } from "@mastra/memory";
 import type { Hono } from "hono";
 import type { LanguageModel } from "ai";
 import { assertManifestValid } from "./manifest/validate.js";
@@ -19,6 +21,11 @@ import type { RuntimeStorage } from "./storage/types.js";
  * during the migration it is exported as `defineApp` so the legacy analytics
  * `defineArivie` keeps working until the cut completes.
  */
+/** The Mastra storage backing conversation Memory (thread = runtime session). */
+type MemoryStorage = NonNullable<
+  ConstructorParameters<typeof Memory>[0]
+>["storage"];
+
 export interface ArivieAppConfig {
   app: { id: string; name: string; owner?: { id: string; name: string } };
   model: LanguageModel;
@@ -27,6 +34,13 @@ export interface ArivieAppConfig {
   agents: Record<string, AgentDefinition>;
   context?: { root: string };
   resolveUser: (req: Request) => Promise<UserContext> | UserContext;
+  /**
+   * Mastra storage backing agent conversation Memory. The runtime Session is
+   * used as the Mastra thread, so multi-turn history persists through Mastra's
+   * own Memory primitive. Defaults to an in-memory store (dev); pass a
+   * `PostgresStore` (from `@mastra/pg`) for production durability.
+   */
+  memory?: MemoryStorage;
 }
 
 export interface ArivieApp {
@@ -47,6 +61,7 @@ function buildMastraAgent(
   agent: AgentDefinition,
   manifest: RuntimeManifest,
   model: LanguageModel,
+  memoryStorage: MemoryStorage,
 ): Agent {
   const { instructions, tools } = assembleAgentContext(agentId, agent, manifest);
   return new Agent({
@@ -55,6 +70,7 @@ function buildMastraAgent(
     model: (agent.model ?? model) as ConstructorParameters<typeof Agent>[0]["model"],
     instructions,
     tools: tools as NonNullable<ConstructorParameters<typeof Agent>[0]["tools"]>,
+    memory: new Memory({ storage: memoryStorage }),
   });
 }
 
@@ -73,9 +89,16 @@ export async function defineApp(config: ArivieAppConfig): Promise<ArivieApp> {
   });
   assertManifestValid(diagnostics);
 
+  const memoryStorage = config.memory ?? new InMemoryStore();
   const mastraAgents: Record<string, Agent> = {};
   for (const [id, agentDef] of Object.entries(config.agents)) {
-    mastraAgents[id] = buildMastraAgent(id, agentDef, manifest, config.model);
+    mastraAgents[id] = buildMastraAgent(
+      id,
+      agentDef,
+      manifest,
+      config.model,
+      memoryStorage,
+    );
   }
 
   const executor = createMastraExecutor({ agents: mastraAgents });

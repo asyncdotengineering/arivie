@@ -108,6 +108,39 @@ describe("defineApp — domain-neutral app builder", () => {
     ).rejects.toThrow();
   });
 
+  it("wires Mastra Memory keyed to the session (two turns in one session both complete)", async () => {
+    const app = await defineApp({
+      app: { id: "t", name: "T" },
+      model: stubModel("noted"),
+      storage: new InMemoryRuntimeStorage(),
+      plugins: [demoPlugin()],
+      agents: { helper: defineAgent({ instructions: "Be brief.", capabilities: ["demo.help"] }) },
+      resolveUser: async () => ({ userId: "u1" }),
+      // no `memory` → defaults to Mastra's InMemoryStore; thread = session id
+    });
+
+    const first = await app.sessions.create({
+      agent: "helper",
+      prompt: "my name is Sam",
+      session: { id: "conv-1" },
+      user: { userId: "u1" },
+    });
+    expect((await collect(first.stream)).some((e) => e.type === "run.completed")).toBe(true);
+
+    // Second turn in the SAME session/thread — must run through Mastra Memory
+    // without error (the continuity primitive is wired, not bypassed).
+    const second = await app.sessions.create({
+      agent: "helper",
+      prompt: "what is my name?",
+      session: { id: "conv-1" },
+      user: { userId: "u1" },
+    });
+    const events = await collect(second.stream);
+    expect(events.some((e) => e.type === "run.completed")).toBe(true);
+    expect(events.some((e) => e.type === "run.failed")).toBe(false);
+    await app.dispose();
+  });
+
   it("serves POST /sessions over the HTTP handler", async () => {
     const app = await defineApp({
       app: { id: "t", name: "T" },
