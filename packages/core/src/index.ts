@@ -86,6 +86,7 @@ export type {
   Runtime,
   SessionHandle,
 } from "./runtime/index.js";
+// __C9_DISPATCH_EXPORTS__
 export type {
   AcquireLeaseInput,
   AdmitDispatchInput,
@@ -135,6 +136,8 @@ export {
   setCurrentUserContext,
 } from "./context.js";
 export { verifyOwnerIdentity } from "./verify.js";
+export { createSessionApp, mountSessionRoutes } from "./server/routes/index.js";
+export type { SessionRoutesOptions } from "./server/routes/index.js";
 export type {
   AfterQueryCtx,
   ArivieConfig,
