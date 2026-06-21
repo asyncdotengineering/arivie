@@ -4,6 +4,7 @@ import { pathToFileURL } from "node:url";
 import { ArivieConfigError, defineArivie, type ArivieApp } from "@arivie/core";
 import { createJiti } from "jiti";
 import { isArivieAppConfig } from "./app-config.js";
+import { loadDotEnv } from "./load-env.js";
 
 function isArivieApp(value: unknown): value is ArivieApp {
   if (value == null || typeof value !== "object") return false;
@@ -28,6 +29,10 @@ export async function loadArivieInstance(configPath: string): Promise<ArivieApp>
   const absPath = isAbsolute(configPath)
     ? configPath
     : resolve(process.cwd(), configPath);
+
+  // Auto-load .env / .env.local for the config (config dir → parents → cwd) so
+  // `arivie <cmd> --config <path>` works without exporting env by hand.
+  loadDotEnv(absPath);
 
   const jiti = createJiti(dirname(absPath), {
     interopDefault: true,

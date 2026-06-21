@@ -25,7 +25,7 @@ This is the broadest runnable Arivie example in the repo. It models a realistic 
 - Node 20+
 - pnpm 10+
 - Local Postgres with `psql` and `createdb` on `PATH`
-- `OPENAI_API_KEY` in either repo-root `.env` or `examples/kitchen-sink/.env.local`
+- `OPENAI_API_KEY` and `DATABASE_URL` in either repo-root `.env` or `examples/kitchen-sink/.env.local`
 
 ## Setup
 
@@ -38,7 +38,35 @@ pnpm --filter @arivie/example-kitchen-sink setup-db
 
 `setup-db` creates `arivie_kitchen_sink` if needed, applies `db/schema.sql`, seeds realistic operating data, provisions `arivie_reader`, and writes the owner identity boundary row.
 
-## Run
+Put your config in a `.env` (the CLI auto-loads `.env` / `.env.local` from the
+config's directory and any parent, so a repo-root `.env` is found too):
+
+```bash
+# examples/kitchen-sink/.env.local  (or repo-root .env)
+OPENAI_API_KEY=sk-...
+DATABASE_URL=postgresql://localhost:5432/arivie_kitchen_sink
+```
+
+## Chat (terminal UI)
+
+The canonical runner — `arivie chat` loads the config, picks past conversations
+to resume, and streams answers. No need to export env by hand:
+
+```bash
+pnpm --filter @arivie/cli build   # first time, to get the `arivie` bin
+pnpm exec arivie chat --config examples/kitchen-sink/arivie.config.ts
+```
+
+- On a real terminal it opens the Ink TUI: pick **＋ New conversation** or a saved
+  thread to continue (history persists in `.arivie/memory.db`).
+- `--role arivie_reader` runs the agent's SQL under the least-privilege read-only
+  role (recommended). **`--role` is optional** — omit it for quick local testing
+  and queries run as your connection role (the SELECT-only SQL guard still blocks
+  writes either way).
+- Piped/non-TTY input falls back to a line-based REPL, e.g.
+  `printf 'how many voided tickets?\n/exit\n' | pnpm exec arivie chat --config examples/kitchen-sink/arivie.config.ts`.
+
+## Run the scripted spike
 
 ```bash
 pnpm --filter @arivie/example-kitchen-sink spike
