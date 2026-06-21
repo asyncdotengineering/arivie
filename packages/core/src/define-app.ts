@@ -53,6 +53,8 @@ export interface ArivieApp {
   app: { id: string; name: string };
   manifest: RuntimeManifest;
   runtime: Runtime;
+  /** Mastra storage backing conversation Memory — list/resume threads from it. */
+  memory: MemoryStorage;
   sessions: Runtime["sessions"];
   events: Runtime["events"];
   /** Web-standard request handler (POST /sessions, GET /runs/:id/events). */
@@ -120,6 +122,7 @@ export async function defineArivie(config: ArivieAppConfig): Promise<ArivieApp> 
     app: appMeta,
     manifest,
     runtime,
+    memory: memoryStorage,
     sessions: runtime.sessions,
     events: runtime.events,
     handler: async (req: Request) => hono.fetch(req),
