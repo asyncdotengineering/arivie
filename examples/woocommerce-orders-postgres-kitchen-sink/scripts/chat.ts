@@ -2,6 +2,7 @@
 import { createInterface } from "node:readline/promises";
 import { stdin as input, stdout as output } from "node:process";
 import { loadEnv } from "./env.js";
+import { runAnalystPrompt } from "./session-chat.js";
 
 loadEnv();
 
@@ -30,12 +31,12 @@ let localArivie: Awaited<typeof import("../arivie.config.js")>["arivie"] | undef
 
 async function askInProcess(message: string): Promise<string> {
   localArivie ??= (await import("../arivie.config.js")).arivie;
-  const result = await localArivie.ask({
+  return runAnalystPrompt(localArivie, {
     prompt: message,
     user: { userId, permissions: ["analytics:read", "finance:read"], dbRole: "arivie_reader" },
-    conversation: { id: conversationId, resource: process.env.ARIVIE_OWNER_ID ?? "woocommerce-demo-store" },
+    conversationId,
+    resourceId: process.env.ARIVIE_OWNER_ID ?? "woocommerce-demo-store",
   });
-  return result.text;
 }
 
 console.log("Arivie WooCommerce orders Postgres chat");

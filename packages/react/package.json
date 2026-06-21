@@ -1,6 +1,6 @@
 {
   "name": "@arivie/react",
-  "version": "0.2.1",
+  "version": "2.0.0",
   "private": false,
   "type": "module",
   "description": "Arivie React surface — headless hooks (useAgent, useSchema, useMemory) AND a drop-in chat UI (<ArivieChat>, <ArtifactPane>) wired to the shared @arivie/ui-catalog via @json-render/react.",

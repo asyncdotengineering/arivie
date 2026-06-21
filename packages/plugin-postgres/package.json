@@ -1,0 +1,49 @@
+{
+  "name": "@arivie/plugin-postgres",
+  "version": "2.0.0",
+  "private": false,
+  "type": "module",
+  "description": "Arivie Postgres plugin — durable runtime storage and SQL source adapter.",
+  "license": "Apache-2.0",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "lint": "echo no-lint-yet"
+  },
+  "dependencies": {
+    "@arivie/core": "workspace:*",
+    "@arivie/db-postgres": "workspace:*",
+    "postgres": "^3.4.9"
+  },
+  "peerDependencies": {
+    "zod": "^4.4.0"
+  },
+  "devDependencies": {
+    "@testcontainers/postgresql": "^11.0.0",
+    "@types/node": "^22.0.0",
+    "testcontainers": "^11.0.0",
+    "tsup": "^8.5.1",
+    "typescript": "^6.0.0",
+    "vitest": "^4.1.0",
+    "zod": "^4.4.0"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  }
+}

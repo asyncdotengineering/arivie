@@ -1,86 +1,57 @@
 # @arivie/core
 
-Arivie core: the `defineArivie` factory, public configuration types, owner-identity boundary, and runtime adapters for Next.js, Hono, Bun, and Cloudflare Workers. Built on Mastra; single-tenant per instance.
+Domain-neutral Arivie runtime: `defineArivie(ArivieAppConfig)`, plugin manifests, durable sessions, replayable events, and HTTP session routes.
 
 ## Install
 
 ```bash
-pnpm add @arivie/core @arivie/db-postgres @arivie/semantic @arivie/workspace \
-         @mastra/core @mastra/mcp @mastra/memory @mastra/pg ai
+pnpm add @arivie/core @arivie/plugin-analytics @arivie/plugin-postgres ai
 ```
 
 ## Usage
 
 ```ts
-// arivie.config.ts
-import { defineArivie } from '@arivie/core';
-import { postgresAdapter } from '@arivie/db-postgres';
-import { anthropic } from '@ai-sdk/anthropic';
+import { anthropic } from "@ai-sdk/anthropic";
+import { defineAgent, defineArivie } from "@arivie/core";
+import { analytics } from "@arivie/plugin-analytics";
+import { postgresRuntime, postgresSource } from "@arivie/plugin-postgres";
 
 export const arivie = await defineArivie({
-  owner: { id: process.env.ARIVIE_OWNER_ID!, name: 'My SaaS' },
-  model: anthropic('claude-opus-4-7'),
-  sources: {
-    postgres: postgresAdapter({
-      url: process.env.DATABASE_URL!,
-      readOnlyRole: 'arivie_reader',
+  app: { id: "my-saas", name: "My SaaS" },
+  model: anthropic("claude-sonnet-4-20250514"),
+  storage: postgresRuntime({ url: process.env.DATABASE_URL! }),
+  plugins: [
+    analytics({
+      semanticPath: "./semantic",
+      sources: {
+        warehouse: postgresSource({
+          url: process.env.DATABASE_URL!,
+          readOnlyRole: "arivie_reader",
+        }),
+      },
+      compileMetric: true,
+    }),
+  ],
+  agents: {
+    analyst: defineAgent({
+      instructions: "Answer with concise, auditable analysis.",
+      capabilities: ["analytics.query", "analytics.compile_metric"],
     }),
   },
-  semantic: {
-    path: './semantic',
-    mode: 'preload', // or 'indexed' (requires embeddings) or 'auto'
-  },
-  workspace: { rootDir: './semantic' },
-  resolveUser: async (req) => {
-    return { userId: 'u1', permissions: ['analytics:read'], dbRole: 'arivie_reader' };
-  },
+  context: { root: "./semantic" },
+  resolveUser: async () => ({
+    userId: "u1",
+    permissions: ["analytics:read"],
+    dbRole: "arivie_reader",
+  }),
 });
 ```
 
-### Runtime adapters
-
-Pick the sub-path that matches your server.
-
-```ts
-// app/api/arivie/route.ts (Next.js App Router)
-export { POST } from '@arivie/core/next';
-```
-
-```ts
-// hono server
-import { Hono } from 'hono';
-import { honoMiddleware } from '@arivie/core/hono';
-import { arivie } from './arivie.config';
-
-const app = new Hono();
-app.post('/api/arivie', honoMiddleware(arivie));
-```
-
-```ts
-// Bun server
-import { bunHandler } from '@arivie/core/bun';
-import { arivie } from './arivie.config';
-
-export default bunHandler(arivie);
-```
-
-```ts
-// Cloudflare Workers / Durable Objects
-import { workerHandler } from '@arivie/core/worker';
-import { arivie } from './arivie.config';
-
-export default workerHandler(arivie);
-```
+Use `arivie.handler(req)` in any Fetch-compatible runtime, or mount `arivie.hono` in a Hono app. Programmatic callers can create runs through `arivie.sessions.create(...)` and read structured events from the returned stream.
 
 ## Shutdown
 
-Call `dispose()` on the instance returned by `defineArivie` when shutting down the process. This closes Postgres pools and disconnects MCP stdio child processes for sources that implement `SourceAdapter.close`.
-
-## Status
-
-v0.2 — Sprint 0 (Foundation). Ships `defineArivie` with `sources`, `workspace`, and semantic `preload` / `indexed` / `auto` modes. Agent tools are `execute_<sourceName>` per configured source (plus optional `compile_metric`).
-
-The public surface contract is documented in RFC-003 v2.
+Call `dispose()` on the app returned by `defineArivie` when shutting down the process.
 
 ## License
 

@@ -1,9 +1,10 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 import { existsSync } from "node:fs";
-import type { ArivieConfig } from "@arivie/core/types";
 import { ArivieConfigError } from "@arivie/core";
 import { autoDetectMode } from "@arivie/agent";
 import { loadSemanticLayerSync } from "@arivie/semantic";
+import type { CliArivieConfig } from "./app-config.js";
+import { semanticModeFromConfig, semanticPathFromConfig } from "./app-config.js";
 import { loadArivieConfig } from "./load-config.js";
 import { resolveSemanticPath } from "./resolve-semantic-path.js";
 
@@ -23,11 +24,12 @@ export function parseEvalModeFlag(value: string | undefined): EvalMode | undefin
   );
 }
 
-function modeFromConfig(config: ArivieConfig, configPath: string): EvalMode {
-  if (config.semantic.mode !== "auto") {
-    return config.semantic.mode;
+function modeFromConfig(config: CliArivieConfig, configPath: string): EvalMode {
+  const mode = semanticModeFromConfig(config);
+  if (mode !== "auto") {
+    return mode;
   }
-  const semanticRoot = resolveSemanticPath(configPath, config.semantic.path);
+  const semanticRoot = resolveSemanticPath(configPath, semanticPathFromConfig(config));
   if (!existsSync(semanticRoot)) {
     return "preload";
   }

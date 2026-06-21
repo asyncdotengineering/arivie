@@ -313,7 +313,7 @@ const CATALOG: Catalog = {
       ]
     }
   ],
-  "generated_at": "2026-05-20T19:36:12.640Z",
+  "generated_at": "2026-06-21T10:11:35.684Z",
   "source_files": [
     "entities/customers.yml",
     "entities/invoices.yml",

@@ -6,6 +6,7 @@ import {
   loadSemanticLayer,
 } from "@arivie/semantic";
 import { defineCommand } from "citty";
+import { semanticPathFromConfig } from "../lib/app-config.js";
 import { loadArivieConfig } from "../lib/load-config.js";
 import { resolveSemanticPath } from "../lib/resolve-semantic-path.js";
 
@@ -15,7 +16,7 @@ import { resolveSemanticPath } from "../lib/resolve-semantic-path.js";
  */
 export async function runLint(configPath: string): Promise<number> {
   const config = await loadArivieConfig(configPath);
-  const semanticPath = resolveSemanticPath(configPath, config.semantic.path);
+  const semanticPath = resolveSemanticPath(configPath, semanticPathFromConfig(config));
   const layer = await loadSemanticLayer(semanticPath);
   const report = lint(layer);
 

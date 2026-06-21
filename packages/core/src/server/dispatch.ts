@@ -2,7 +2,7 @@
 import type { ChannelDefinition } from "../triggers/channel.js";
 import type { SubscriptionDefinition } from "../triggers/subscription.js";
 import type { TriggerEvent } from "../triggers/types.js";
-import type { ArivieInstance } from "../types.js";
+import type { ArivieApp } from "../define-app.js";
 
 function resolveSourceName(
   source: SubscriptionDefinition<TriggerEvent>["source"],
@@ -15,7 +15,7 @@ function resolveSourceName(
 export async function dispatchEvent(
   event: TriggerEvent,
   sourceName: string,
-  instance: ArivieInstance,
+  app: ArivieApp,
   subscriptions: SubscriptionDefinition<TriggerEvent>[],
 ): Promise<void> {
   for (const sub of subscriptions) {
@@ -37,16 +37,36 @@ export async function dispatchEvent(
       typeof target.input === "function"
         ? await target.input(event)
         : target.input ?? event.payload;
+    const inputRecord =
+      input != null && typeof input === "object" && !Array.isArray(input)
+        ? (input as Record<string, unknown>)
+        : undefined;
+    const messages =
+      typeof input === "string"
+        ? undefined
+        : Array.isArray(input)
+          ? input
+          : Array.isArray(inputRecord?.messages)
+            ? inputRecord.messages
+          : [{ role: "user", content: JSON.stringify(input) }];
 
     if (target.kind === "agent") {
-      const agent = instance.mastra.getAgent(target.id);
-      await agent.generate(input as Parameters<typeof agent.generate>[0], {
-        memory: { thread: instanceId, resource: resourceId },
+      await app.sessions.create({
+        agent: target.id,
+        ...(messages !== undefined ? { messages } : {}),
+        ...(typeof input === "string" ? { prompt: input } : {}),
+        session: { id: instanceId, resource: resourceId },
+        user: {
+          userId: resourceId,
+          raw: event,
+        },
+        metadata: {
+          triggerType: event.type,
+          provider: event.metadata.provider,
+        },
       });
     } else if (target.kind === "workflow") {
-      const workflow = instance.mastra.getWorkflow(target.id);
-      const run = await workflow.createRun();
-      await run.start({ inputData: input });
+      throw new Error("Workflow subscription target not supported by ArivieApp");
     } else if (target.kind === "skill") {
       throw new Error("Skill subscription target not yet implemented");
     }

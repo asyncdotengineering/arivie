@@ -2,18 +2,12 @@
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createOpenAI } from "@ai-sdk/openai";
-import {
-  defineArivie,
-  defineSchedules,
-  localWorkspace,
-  type ArivieConfig,
-} from "@arivie/core";
-import { postgresAdapter } from "@arivie/db-postgres";
+import { defineAgent, defineArivie, defineSchedules, type ArivieAppConfig } from "@arivie/core";
+import { analytics } from "@arivie/plugin-analytics";
+import { postgresRuntime, postgresSource } from "@arivie/plugin-postgres";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const semanticPath = join(__dirname, "semantic");
-const skillsPath = join(__dirname, "skills");
-const workspaceRoot = join(__dirname, "workspace");
 
 function requireEnv(name: string): string {
   const value = process.env[name];
@@ -23,11 +17,7 @@ function requireEnv(name: string): string {
   return value;
 }
 
-const pg = postgresAdapter({
-  url: requireEnv("DATABASE_URL"),
-  readOnlyRole: "arivie_reader",
-});
-
+const databaseUrl = requireEnv("DATABASE_URL");
 const openai = createOpenAI({ apiKey: requireEnv("OPENAI_API_KEY") });
 
 export const schedules = defineSchedules([
@@ -49,51 +39,35 @@ export const schedules = defineSchedules([
   },
 ]);
 
-export const config: ArivieConfig = {
-  owner: {
+export const config: ArivieAppConfig = {
+  app: {
     id: process.env.ARIVIE_OWNER_ID ?? "northstar-hospitality",
     name: "Northstar Hospitality",
   },
-  storage: pg,
   model: openai(process.env.OPENAI_MODEL ?? "gpt-4o-mini"),
-  semantic: { path: semanticPath, mode: "preload" },
-  sources: {
-    postgres: {
-      kind: "adapter",
-      adapter: pg,
-      description:
-        "Northstar Hospitality POS Postgres: outlets, tickets, menu items, line items, and closeout events.",
-      useWhen:
-        "revenue, voids, comps, menu mix, closeout alerts, outlet comparisons, and F&B operating questions",
-    },
+  storage: postgresRuntime({ url: databaseUrl }),
+  plugins: [
+    analytics({
+      semanticPath,
+      mode: "preload",
+      sources: {
+        postgres: postgresSource({
+          url: databaseUrl,
+          readOnlyRole: "arivie_reader",
+        }),
+      },
+      compileMetric: true,
+      ownerId: process.env.ARIVIE_OWNER_ID ?? "northstar-hospitality",
+    }),
+  ],
+  agents: {
+    analyst: defineAgent({
+      instructions:
+        "You are an operations analyst for Northstar Hospitality. Answer with concise, auditable SQL-backed analysis.",
+      capabilities: ["analytics.query", "analytics.compile_metric"],
+    }),
   },
-  skills: skillsPath,
-  skillsMode: "auto",
-  workspace: localWorkspace({ at: workspaceRoot, bash: true }),
-  compileMetric: true,
-  schedules,
-  limits: {
-    rowsPerQuery: 500,
-    queryTimeoutMs: 10_000,
-    maxSteps: 8,
-    // Demonstrates HITL policy configuration. The unattended spike avoids
-    // prompts that trigger approval-gated bash/file-write tools.
-    requireToolApproval: { tools: ["workspace_bash"] },
-  },
-  hooks: {
-    onBeforeQuery: async ({ userId, sql }) => {
-      console.log(`[kitchen-sink hook] before query user=${userId} sql=${sql?.slice(0, 64) ?? "n/a"}`);
-    },
-    onAfterQuery: async ({ rows, durationMs }) => {
-      console.log(`[kitchen-sink hook] after query rows=${rows.length} durationMs=${durationMs}`);
-    },
-    onToolCall: async ({ tool }) => {
-      console.log(`[kitchen-sink hook] tool=${tool}`);
-    },
-    onMemorySave: async ({ scope, userId }) => {
-      console.log(`[kitchen-sink hook] memory save scope=${scope} user=${userId}`);
-    },
-  },
+  context: { root: semanticPath },
   resolveUser: async () => ({
     userId: "northstar-gm",
     permissions: ["analytics:read", "ops:read"],

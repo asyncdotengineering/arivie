@@ -7,6 +7,7 @@ import { PostgreSqlContainer } from "@testcontainers/postgresql";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { postgresAdapter } from "@arivie/db-postgres";
 import { runSetup } from "../src/commands/setup.js";
+import { findAnalyticsConfig, ownerIdFromConfig } from "../src/lib/app-config.js";
 import { loadArivieConfig } from "../src/lib/load-config.js";
 import { postgresAdapterFromConfig } from "../src/lib/postgres-from-config.js";
 
@@ -61,13 +62,13 @@ describeIntegration.sequential("setup idempotency (testcontainer)", () => {
 
   it("loads named config export", async () => {
     const config = await loadArivieConfig("./arivie.config.ts");
-    expect(config.owner.id).toBe("dogfood-test");
+    expect(ownerIdFromConfig(config)).toBe("dogfood-test");
     expect(postgresAdapterFromConfig(config).url).toBe(connectionUrl);
   });
 
   it("setup twice leaves one role and one owner row", async () => {
     const config = await loadArivieConfig("./arivie.config.ts");
-    config.semantic.path = semanticDir;
+    findAnalyticsConfig(config).semanticPath = semanticDir;
 
     const first = await runSetup(config);
     expect(first.roleMessage).toMatch(/role created|already exists/);
@@ -116,8 +117,9 @@ describeIntegration.sequential("setup idempotency (testcontainer)", () => {
     await writeFile(join(badDir, "catalog.yml"), "entities: []\n", "utf8");
 
     const config = await loadArivieConfig("./arivie.config.ts");
-    config.semantic.path = badDir;
-    config.semantic.mode = "auto";
+    const analytics = findAnalyticsConfig(config);
+    analytics.semanticPath = badDir;
+    analytics.mode = "auto";
 
     let code = 0;
     try {
@@ -135,4 +137,3 @@ describeIntegration.sequential("setup idempotency (testcontainer)", () => {
     await rm(badDir, { recursive: true, force: true });
   });
 });
-

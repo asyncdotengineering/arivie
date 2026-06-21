@@ -1,6 +1,6 @@
 {
   "name": "@arivie/semantic",
-  "version": "0.1.0",
+  "version": "2.0.0",
   "private": false,
   "type": "module",
   "description": "Arivie semantic layer — YAML parser, validator, linter, and TypeScript codegen.",

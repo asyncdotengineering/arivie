@@ -19,12 +19,12 @@ import arivieConfig from ${JSON.stringify(configPath)};
 import { createArivieServer } from "@arivie/core/server";
 import { defineArivie } from "@arivie/core";
 
-function isArivieInstance(value) {
-  return value != null && typeof value === "object" && typeof value.handler === "function" && value.mastra != null;
+function isArivieApp(value) {
+  return value != null && typeof value === "object" && typeof value.handler === "function" && value.sessions != null;
 }
 
 const rootDir = process.env.ARIVIE_ROOT_DIR ?? ${JSON.stringify(options.rootDir)};
-const instance = isArivieInstance(arivieConfig) ? arivieConfig : await defineArivie(arivieConfig);
+const instance = isArivieApp(arivieConfig) ? arivieConfig : await defineArivie(arivieConfig);
 const { app } = await createArivieServer(instance, { rootDir });
 
 export default {

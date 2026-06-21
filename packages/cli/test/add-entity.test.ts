@@ -6,7 +6,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { PostgreSqlContainer } from "@testcontainers/postgresql";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
-import type { ArivieConfig } from "@arivie/core/types";
+import type { ArivieAppConfig } from "@arivie/core";
 import type { LanguageModel } from "ai";
 import { postgresAdapter } from "@arivie/db-postgres";
 import { parseEntity } from "@arivie/semantic";
@@ -99,19 +99,21 @@ describeIntegration.sequential("add entity orders (dogfood seed)", () => {
 
   it("writes orders.yml that parseEntity accepts", async () => {
     const pg = postgresAdapter({ url: container.getConnectionUri() });
-    const config: ArivieConfig = {
-      owner: { id: "dogfood-test", name: "Dogfood" },
+    const config: ArivieAppConfig = {
+      app: { id: "dogfood-test", name: "Dogfood" },
       model: {} as LanguageModel,
-      workspace: { rootDir: "./semantic" },
-      storage: pg,
-      sources: {
-        postgres: {
-          kind: "adapter",
-          adapter: pg,
-          description: "Test Postgres for the CLI add-entity test.",
+      storage: {} as never,
+      plugins: [
+        {
+          definition: { id: "analytics", version: "0.0.0" },
+          config: {
+            semanticPath: "./semantic",
+            sources: { postgres: pg },
+          },
         },
-      },
-      semantic: { path: "./semantic", mode: "preload" },
+      ],
+      agents: {},
+      context: { root: "./semantic" },
       resolveUser: async () => ({
         userId: "cli",
         permissions: [],

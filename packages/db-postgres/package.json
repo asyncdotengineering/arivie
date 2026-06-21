@@ -1,6 +1,6 @@
 {
   "name": "@arivie/db-postgres",
-  "version": "0.1.2",
+  "version": "2.0.0",
   "description": "Arivie Postgres adapter — role-scoped execute, introspect, owner-identity verification.",
   "type": "module",
   "license": "Apache-2.0",

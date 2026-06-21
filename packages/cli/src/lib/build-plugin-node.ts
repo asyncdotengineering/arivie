@@ -26,12 +26,12 @@ import { createArivieServer } from "@arivie/core/server";
 import { defineArivie } from "@arivie/core";
 import { serve } from "@hono/node-server";
 
-function isArivieInstance(value) {
-  return value != null && typeof value === "object" && typeof value.handler === "function" && value.mastra != null;
+function isArivieApp(value) {
+  return value != null && typeof value === "object" && typeof value.handler === "function" && value.sessions != null;
 }
 
 const rootDir = process.env.ARIVIE_ROOT_DIR ?? ${JSON.stringify(rootDir)};
-const instance = isArivieInstance(arivieConfig)
+const instance = isArivieApp(arivieConfig)
   ? arivieConfig
   : await defineArivie(arivieConfig);
 

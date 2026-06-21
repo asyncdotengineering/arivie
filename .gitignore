@@ -17,10 +17,6 @@ docs/dist/
 docs/.astro/
 .astro/
 
-# Internal-only — kept in the private backup repo, not in the public source
-.research/
-implementation-notes.md
-
 # Codegen output (regenerate via `arivie types`)
 .arivie/
 
@@ -33,3 +29,9 @@ examples/**/transcripts/
 .vercel/
 .vercel
 .vercel-docs/
+
+# Plan Desk local state / secrets (config.json + skill.md are tracked)
+.plandesk/token
+.plandesk/server.json
+.plandesk/workspace.db
+.plandesk/workspace.json

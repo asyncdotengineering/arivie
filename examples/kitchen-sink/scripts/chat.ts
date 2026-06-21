@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { createInterface } from "node:readline/promises";
 import { stdin as input, stdout as output } from "node:process";
 import { exampleRoot, loadEnv } from "./env.js";
+import { runAnalystPrompt } from "./session-chat.js";
 
 loadEnv();
 
@@ -109,16 +110,12 @@ let localArivie: Awaited<typeof import("../arivie.config.js")>["arivie"] | undef
 
 async function askInProcess(message: string, conversationId: string): Promise<string> {
   localArivie ??= (await import("../arivie.config.js")).arivie;
-  const result = await localArivie.ask({
+  return runAnalystPrompt(localArivie, {
     prompt: message,
-    user: {
-      userId,
-      permissions: ["analytics:read", "ops:read"],
-      dbRole: "arivie_reader",
-    },
-    conversation: { id: conversationId, resource: userId },
+    user: { userId, permissions: ["analytics:read", "ops:read"], dbRole: "arivie_reader" },
+    conversationId,
+    resourceId: userId,
   });
-  return result.text;
 }
 
 const rl = createInterface({ input, output });

@@ -34,13 +34,13 @@ describe("generateNodeServerEntry", () => {
     expect(source).toContain(`serve({`);
   });
 
-  it("prefers an exported instance over raw config", () => {
+  it("prefers an exported app over raw config", () => {
     const source = generateNodeServerEntry({
       configPath: "/project/arivie.config.ts",
       rootDir: "/project",
       outputDir: "/project/dist",
     });
-    expect(source).toContain("isArivieInstance");
+    expect(source).toContain("isArivieApp");
     expect(source).toContain("defineArivie");
   });
 });

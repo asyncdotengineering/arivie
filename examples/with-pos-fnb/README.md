@@ -46,23 +46,29 @@ Multi-outlet from day one — three Lumière outlets (Bistro / Riverside / Wests
      pnpm -C arivie exec tsx examples/with-pos-fnb/db/seed.ts
    ```
 
-2. **Configure env:**
+2. **Configure env:** put `OPENAI_API_KEY` and `DATABASE_URL` in
+   `examples/with-pos-fnb/.env.local` (or a repo-root `.env`). The CLI
+   auto-loads `.env` / `.env.local` from the config's directory and any parent,
+   so you don't export them by hand.
    ```bash
-   cp arivie/examples/with-pos-fnb/.env.example arivie/examples/with-pos-fnb/.env.local
-   # then edit .env.local to set GOOGLE_GENERATIVE_AI_API_KEY
+   # examples/with-pos-fnb/.env.local
+   OPENAI_API_KEY=sk-...
+   DATABASE_URL=postgresql://localhost:5432/arivie_pos
    ```
 
-3. **Run a one-shot question:**
+3. **Chat with it** (the canonical terminal runner):
    ```bash
-   pnpm -C arivie exec tsx examples/with-pos-fnb/scripts/ask-live.ts \
-     --prompt "What was prime cost across the chain last week?"
+   pnpm --filter @arivie/cli build   # first time, for the `arivie` bin
+   pnpm -C arivie exec arivie chat --config examples/with-pos-fnb/arivie.config.ts
    ```
-
-4. **Run the five-turn role walkthrough:**
-   ```bash
-   pnpm -C arivie exec tsx examples/with-pos-fnb/scripts/role-walkthrough.ts
-   ```
-   Each turn simulates one role at one cadence — GM morning, Exec Chef midday, FOH Manager afternoon, Bookkeeper at close, Owner Monday recap. Transcript lands in `transcripts/`.
+   - A real terminal opens the Ink TUI: start a new conversation or resume a saved
+     thread (history persists in `.arivie/memory.db`); ask e.g. *"What was prime
+     cost across the chain last week?"*.
+   - `--role arivie_reader` runs the agent's SQL under the least-privilege role
+     (recommended). `--role` is **optional** for local testing — without it the
+     SELECT-only SQL guard still blocks writes.
+   - Non-TTY/piped input uses the line REPL:
+     `printf 'prime cost last week?\n/exit\n' | pnpm -C arivie exec arivie chat --config examples/with-pos-fnb/arivie.config.ts`.
 
 ---
 

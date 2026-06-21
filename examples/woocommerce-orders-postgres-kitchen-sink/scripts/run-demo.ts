@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 import { loadEnv } from "./env.js";
+import { runAnalystPrompt } from "./session-chat.js";
 
 loadEnv();
 
@@ -22,14 +23,14 @@ const prompts = [
 
 try {
   for (const prompt of prompts) {
-    const result = await arivie.ask({
+    const text = await runAnalystPrompt(arivie, {
       prompt,
       user,
-      conversation: { id: "woocommerce:demo", resource: "woocommerce-demo-store" },
+      conversationId: "woocommerce:demo",
+      resourceId: "woocommerce-demo-store",
     });
     console.log(`\n## ${prompt}\n`);
-    console.log(result.text.trim());
-    if (result.sql.length > 0) console.log(`\nSQL used:\n${result.sql.join("\n---\n")}`);
+    console.log(text.trim());
   }
 } finally {
   await arivie.dispose();

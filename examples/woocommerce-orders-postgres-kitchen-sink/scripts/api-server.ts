@@ -3,6 +3,7 @@ import { serve } from "@hono/node-server";
 import { createArivieServer } from "@arivie/core/server";
 import { Hono } from "hono";
 import { exampleRoot, loadEnv } from "./env.js";
+import { runAnalystPrompt } from "./session-chat.js";
 
 loadEnv();
 
@@ -30,18 +31,16 @@ app.post("/chat", async (c) => {
     ? body.conversationId
     : `woocommerce:${userId}`;
 
-  const result = await arivie.ask({
+  const answer = await runAnalystPrompt(arivie, {
     prompt: body.message,
     user: { userId, permissions: ["analytics:read", "finance:read"], dbRole: "arivie_reader" },
-    conversation: { id: conversationId, resource: process.env.ARIVIE_OWNER_ID ?? "woocommerce-demo-store" },
+    conversationId,
+    resourceId: process.env.ARIVIE_OWNER_ID ?? "woocommerce-demo-store",
   });
 
   return c.json({
-    answer: result.text,
+    answer,
     conversationId,
-    toolCalls: result.toolCalls,
-    sql: result.sql,
-    artifacts: result.artifacts,
   });
 });
 

@@ -1,6 +1,6 @@
 {
   "name": "@arivie/cli",
-  "version": "0.3.0",
+  "version": "2.0.0",
   "private": false,
   "type": "module",
   "description": "Arivie CLI — citty-based init, setup, add, lint, eval, dev, deploy.",
@@ -46,7 +46,10 @@
     "@modelcontextprotocol/sdk": "^1.29.0",
     "citty": "^0.2.2",
     "esbuild": "^0.25.12",
+    "ink": "^7.1.0",
+    "ink-text-input": "^6.0.0",
     "jiti": "^2.7.0",
+    "react": "^19.2.0",
     "rollup": "^4.60.4",
     "vite": "^6.4.3",
     "yaml": "^2.9.0",
@@ -55,6 +58,8 @@
   "devDependencies": {
     "@testcontainers/postgresql": "^11.0.0",
     "@types/node": "^22.0.0",
+    "@types/react": "^19.0.0",
+    "ink-testing-library": "^4.0.0",
     "testcontainers": "^11.0.0",
     "tsup": "^8.5.1",
     "typescript": "^6.0.0",

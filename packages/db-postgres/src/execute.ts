@@ -47,14 +47,21 @@ export async function executeImpl(
       `rowLimit must be a positive integer; got ${String(opts.rowLimit)}`,
     );
   }
-  if (opts.runAsRole == null || opts.runAsRole === "") {
-    throw new ToolError("sql-invalid", "runAsRole is required");
-  }
-  const runAsRole = opts.runAsRole;
+  // runAsRole is OPTIONAL. When provided, queries run under that least-
+  // privilege DB role (SET LOCAL ROLE) — the DB-level read-only boundary. When
+  // omitted (e.g. local dev), queries run as the connection role; the SELECT-
+  // only SQL guard (validateExecuteSql) still blocks writes, so this is a
+  // defense-in-depth relaxation, not a hole. Provide a role in production.
+  const runAsRole =
+    typeof opts.runAsRole === "string" && opts.runAsRole.length > 0
+      ? opts.runAsRole
+      : undefined;
 
   try {
     const rows = await sql.begin(async (tx) => {
-      await tx.unsafe(`SET LOCAL ROLE ${escapeIdent(runAsRole)}`);
+      if (runAsRole !== undefined) {
+        await tx.unsafe(`SET LOCAL ROLE ${escapeIdent(runAsRole)}`);
+      }
       await tx.unsafe(
         `SET LOCAL statement_timeout = ${opts.timeoutMs}`,
       );

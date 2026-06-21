@@ -9,7 +9,7 @@ Bun.serve({
     const pathname = new URL(req.url).pathname;
     if (pathname === "/api/arivie") {
       const { arivie } = await getArivieRuntime();
-  return arivie.next.POST(req);
+      return arivie.handler(req);
     }
     return new Response("ok");
   },

@@ -2,6 +2,7 @@
 import { createHmac } from "node:crypto";
 import { createArivieServer } from "@arivie/core/server";
 import { exampleRoot, loadEnv } from "./env.js";
+import { runAnalystPrompt } from "./session-chat.js";
 
 loadEnv();
 
@@ -17,21 +18,21 @@ const user = {
 
 console.log(`[kitchen-sink] model: ${modelId}`);
 
-const stored = await arivie.ask({
+const stored = await runAnalystPrompt(arivie, {
   prompt:
     "Remember the codeword NORTHSTAR_MARGIN for this conversation. Reply with exactly STORED and nothing else.",
   user,
-  conversation: { id: "northstar:gm:daily-brief" },
+  conversationId: "northstar:gm:daily-brief",
 });
-console.log(`[kitchen-sink] continuity store: ${stored.text.trim()}`);
+console.log(`[kitchen-sink] continuity store: ${stored.trim()}`);
 
-const recalled = await arivie.ask({
+const recalled = await runAnalystPrompt(arivie, {
   prompt:
     "What codeword did I ask you to remember? Reply with exactly the codeword and nothing else.",
   user,
-  conversation: { id: "northstar:gm:daily-brief" },
+  conversationId: "northstar:gm:daily-brief",
 });
-console.log(`[kitchen-sink] continuity recall: ${recalled.text.trim()}`);
+console.log(`[kitchen-sink] continuity recall: ${recalled.trim()}`);
 
 const opsAlert = await app.request("/channels/ops-alert/closeout", {
   method: "POST",

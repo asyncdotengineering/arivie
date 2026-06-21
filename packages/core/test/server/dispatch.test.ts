@@ -4,20 +4,20 @@ import { dispatchEvent } from "../../src/server/dispatch.js";
 import { defineChannel } from "../../src/triggers/channel.js";
 import { defineSubscription } from "../../src/triggers/subscription.js";
 import { defineTrigger } from "../../src/triggers/define.js";
-import type { ArivieInstance } from "../../src/types.js";
+import type { ArivieApp } from "../../src/define-app.js";
 import type { TriggerEvent } from "../../src/triggers/types.js";
 
-function makeInstance(): ArivieInstance {
-  const generate = vi.fn().mockResolvedValue({ text: "ok" });
-  const start = vi.fn().mockResolvedValue({ ok: true });
-  const createRun = vi.fn().mockReturnValue({ start });
-
+function makeApp(): ArivieApp {
   return {
-    mastra: {
-      getAgent: vi.fn().mockReturnValue({ generate }),
-      getWorkflow: vi.fn().mockReturnValue({ createRun }),
+    sessions: {
+      create: vi.fn().mockResolvedValue({
+        sessionId: "s1",
+        runId: "r1",
+        continuationToken: "t",
+        stream: new ReadableStream(),
+      }),
     },
-  } as unknown as ArivieInstance;
+  } as unknown as ArivieApp;
 }
 
 describe("dispatchEvent", () => {
@@ -34,7 +34,7 @@ describe("dispatchEvent", () => {
   });
 
   it("calls agent.generate with resolved instance id when target kind is agent", async () => {
-    const instance = makeInstance();
+    const app = makeApp();
     const sub = defineSubscription({
       source: channel,
       target: {
@@ -51,18 +51,19 @@ describe("dispatchEvent", () => {
       metadata: { provider: "github", conversationKey: "repo/1" },
     };
 
-    await dispatchEvent(event, "github", instance, [sub]);
+    await dispatchEvent(event, "github", app, [sub]);
 
-    expect(instance.mastra.getAgent).toHaveBeenCalledWith("arivie");
-    const agent = instance.mastra.getAgent("arivie");
-    expect(agent.generate).toHaveBeenCalledWith(
-      { messages: [{ role: "user", content: "hello" }] },
-      { memory: { thread: "repo/1", resource: "repo/1" } },
-    );
+    expect(app.sessions.create).toHaveBeenCalledWith({
+      agent: "arivie",
+      messages: [{ role: "user", content: "hello" }],
+      session: { id: "repo/1", resource: "repo/1" },
+      user: { userId: "repo/1", raw: event },
+      metadata: { triggerType: "github.issue.opened", provider: "github" },
+    });
   });
 
-  it("calls workflow.createRun().start with inputData when target kind is workflow", async () => {
-    const instance = makeInstance();
+  it("rejects workflow targets because ArivieApp has no workflow dispatch surface", async () => {
+    const app = makeApp();
     const sub = defineSubscription({
       source: channel,
       target: { kind: "workflow", id: "triage", input: { issue: "#1" } },
@@ -74,17 +75,13 @@ describe("dispatchEvent", () => {
       metadata: { provider: "github" },
     };
 
-    await dispatchEvent(event, "github", instance, [sub]);
-
-    expect(instance.mastra.getWorkflow).toHaveBeenCalledWith("triage");
-    const workflow = instance.mastra.getWorkflow("triage");
-    expect(workflow.createRun).toHaveBeenCalled();
-    const run = workflow.createRun();
-    expect(run.start).toHaveBeenCalledWith({ inputData: { issue: "#1" } });
+    await expect(dispatchEvent(event, "github", app, [sub])).rejects.toThrow(
+      "Workflow subscription target not supported by ArivieApp",
+    );
   });
 
   it("skips subscriptions whose filter returns false", async () => {
-    const instance = makeInstance();
+    const app = makeApp();
     const sub = defineSubscription({
       source: channel,
       filter: (event) => event.type === "github.pull_request.opened",
@@ -97,12 +94,12 @@ describe("dispatchEvent", () => {
       metadata: { provider: "github" },
     };
 
-    await dispatchEvent(event, "github", instance, [sub]);
-    expect(instance.mastra.getAgent).not.toHaveBeenCalled();
+    await dispatchEvent(event, "github", app, [sub]);
+    expect(app.sessions.create).not.toHaveBeenCalled();
   });
 
   it("ignores subscriptions for other sources", async () => {
-    const instance = makeInstance();
+    const app = makeApp();
     const sub = defineSubscription({
       source: "slack",
       target: { kind: "agent", id: "arivie" },
@@ -114,12 +111,12 @@ describe("dispatchEvent", () => {
       metadata: { provider: "github" },
     };
 
-    await dispatchEvent(event, "github", instance, [sub]);
-    expect(instance.mastra.getAgent).not.toHaveBeenCalled();
+    await dispatchEvent(event, "github", app, [sub]);
+    expect(app.sessions.create).not.toHaveBeenCalled();
   });
 
   it("defaults instanceId to conversationKey then 'default'", async () => {
-    const instance = makeInstance();
+    const app = makeApp();
     const sub = defineSubscription({
       source: channel,
       target: { kind: "agent", id: "arivie" },
@@ -131,16 +128,18 @@ describe("dispatchEvent", () => {
       metadata: { provider: "github", conversationKey: "repo/2" },
     };
 
-    await dispatchEvent(event, "github", instance, [sub]);
-    const agent = instance.mastra.getAgent("arivie");
-    expect(agent.generate).toHaveBeenCalledWith(
-      event.payload,
-      { memory: { thread: "repo/2", resource: "repo/2" } },
-    );
+    await dispatchEvent(event, "github", app, [sub]);
+    expect(app.sessions.create).toHaveBeenCalledWith({
+      agent: "arivie",
+      messages: [{ role: "user", content: "{}" }],
+      session: { id: "repo/2", resource: "repo/2" },
+      user: { userId: "repo/2", raw: event },
+      metadata: { triggerType: "github.issue.opened", provider: "github" },
+    });
   });
 
   it("resolves memory resource separately from conversation thread", async () => {
-    const instance = makeInstance();
+    const app = makeApp();
     const sub = defineSubscription({
       source: channel,
       target: { kind: "agent", id: "arivie" },
@@ -156,16 +155,18 @@ describe("dispatchEvent", () => {
       },
     };
 
-    await dispatchEvent(event, "github", instance, [sub]);
-    const agent = instance.mastra.getAgent("arivie");
-    expect(agent.generate).toHaveBeenCalledWith(
-      event.payload,
-      { memory: { thread: "repo/issue-7", resource: "github-installation-42" } },
-    );
+    await dispatchEvent(event, "github", app, [sub]);
+    expect(app.sessions.create).toHaveBeenCalledWith({
+      agent: "arivie",
+      messages: [{ role: "user", content: JSON.stringify(event.payload) }],
+      session: { id: "repo/issue-7", resource: "github-installation-42" },
+      user: { userId: "github-installation-42", raw: event },
+      metadata: { triggerType: "github.issue.opened", provider: "github" },
+    });
   });
 
   it("lets subscription targets override resource id", async () => {
-    const instance = makeInstance();
+    const app = makeApp();
     const sub = defineSubscription({
       source: channel,
       target: {
@@ -182,11 +183,13 @@ describe("dispatchEvent", () => {
       metadata: { provider: "github" },
     };
 
-    await dispatchEvent(event, "github", instance, [sub]);
-    const agent = instance.mastra.getAgent("arivie");
-    expect(agent.generate).toHaveBeenCalledWith(
-      event.payload,
-      { memory: { thread: "conversation-1", resource: "tenant:github" } },
-    );
+    await dispatchEvent(event, "github", app, [sub]);
+    expect(app.sessions.create).toHaveBeenCalledWith({
+      agent: "arivie",
+      messages: [{ role: "user", content: "{}" }],
+      session: { id: "conversation-1", resource: "tenant:github" },
+      user: { userId: "tenant:github", raw: event },
+      metadata: { triggerType: "github.issue.opened", provider: "github" },
+    });
   });
 });

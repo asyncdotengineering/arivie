@@ -1,8 +1,7 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-import { makeMcpRouteHandler } from "@arivie/mcp/next";
-import { getArivieRuntime } from "../../../../arivie.config";
-
-export async function POST(req: Request): Promise<Response> {
-  const { mcp } = await getArivieRuntime();
-  return makeMcpRouteHandler(mcp)(req);
+export async function POST(): Promise<Response> {
+  return Response.json(
+    { error: "mcp_unavailable", message: "The v2 ArivieApp runtime no longer exposes the legacy raw agent required by this MCP demo route." },
+    { status: 410 },
+  );
 }

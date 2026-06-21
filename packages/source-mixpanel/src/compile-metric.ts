@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 import type { SourceAdapterCompileMetricOpts } from "@arivie/core/types";
+import type { Entity } from "@arivie/semantic";
 import type { MixpanelQuery } from "./types.js";
 
 function defaultDateRange(): { from_date: string; to_date: string } {
@@ -22,7 +23,8 @@ function formatDate(d: Date): string {
 export function compileMetricForMixpanel(
   opts: SourceAdapterCompileMetricOpts,
 ): { query: MixpanelQuery; params?: unknown[] } {
-  const { entity, metric } = opts;
+  const entity = opts.entity as Entity;
+  const { metric } = opts;
   const measure = entity.measures?.find((m) => m.name === metric);
   if (measure == null) {
     throw new Error(

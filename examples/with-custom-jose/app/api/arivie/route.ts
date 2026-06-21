@@ -8,5 +8,5 @@ assertAuthBypassAllowed();
 export async function POST(req: Request): Promise<Response> {
   const ownerId = await resolveOwnerId(req);
   const { arivie } = await getArivieRuntimeForOwner(ownerId);
-  return arivie.next.POST(req);
+  return arivie.handler(req);
 }

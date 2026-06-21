@@ -6,18 +6,21 @@ const pg = postgresAdapter({
 });
 
 export const config = {
-  owner: { id: "dogfood-test", name: "Dogfood" },
+  app: { id: "dogfood-test", name: "Dogfood" },
   model: {},
-  storage: pg,
-  workspace: { rootDir: "./semantic" },
-  sources: {
-    postgres: {
-      kind: "adapter",
-      adapter: pg,
-      description: "Setup-config fixture Postgres for CLI tests.",
+  storage: {},
+  plugins: [
+    {
+      definition: { id: "analytics", version: "0.0.0" },
+      config: {
+        semanticPath: "./semantic",
+        mode: "auto" as const,
+        sources: { postgres: pg },
+      },
     },
-  },
-  semantic: { path: "./semantic", mode: "auto" as const },
+  ],
+  agents: {},
+  context: { root: "./semantic" },
   resolveUser: async () => ({
     userId: "cli",
     permissions: [],
