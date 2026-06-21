@@ -30,8 +30,7 @@ examples/**/transcripts/
 .vercel
 .vercel-docs/
 
-# Plan Desk local state / secrets (config.json + skill.md are tracked)
+# Plan Desk: data (workspace.db) is tracked by request; secrets/per-machine state stay ignored
 .plandesk/token
 .plandesk/server.json
-.plandesk/workspace.db
 .plandesk/workspace.json
