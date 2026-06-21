@@ -1,6 +1,6 @@
 {
   "name": "with-arivie-chat",
-  "version": "2.0.0",
+  "version": "0.0.0",
   "private": true,
   "description": "Production-shaped Next.js chat starter for Arivie analytics agents — Mastra-native, Better Auth, json-render-ready artifacts (Phase 2).",
   "type": "module",
