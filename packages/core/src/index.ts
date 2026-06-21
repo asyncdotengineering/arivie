@@ -7,6 +7,8 @@ export {
   ArivieNotImplementedError,
 } from "./errors.js";
 export { defineArivie } from "./define.js";
+export { defineApp } from "./define-app.js";
+export type { ArivieApp, ArivieAppConfig } from "./define-app.js";
 export {
   assertUniquePluginIds,
   DANGEROUS_PERMISSIONS,

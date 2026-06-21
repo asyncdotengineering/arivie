@@ -92,11 +92,10 @@ export function createMastraExecutor(options: MastraExecutorOptions): AgentExecu
     }
     const prompt = ctx.input.prompt ?? "";
     const ownerUser = toOwnerUser(ctx.input.user);
-    const result = await runWithUserContext(ownerUser, () =>
-      agent.generate(prompt, {
-        memory: { thread: ctx.session.id, resource: ctx.session.resource },
-      }),
-    );
+    // No Mastra Memory thread: the new runtime owns durable session/run/event
+    // continuity (storage.sessions/events), so each turn is a stateless
+    // generate. Multi-turn history-replay into the prompt is a follow-up.
+    const result = await runWithUserContext(ownerUser, () => agent.generate(prompt));
     await emitToolCalls(ctx.emit, result, ctx.session.id);
     return { text: extractText(result) };
   };
