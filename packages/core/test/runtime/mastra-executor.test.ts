@@ -18,41 +18,39 @@ async function collect(stream: ReadableStream<ArivieEvent>): Promise<ArivieEvent
   return out;
 }
 
-/** A fake Mastra agent: records the user context and returns a canned response. */
+/**
+ * A fake Mastra agent exposing the streaming surface the executor uses
+ * (`agent.stream(...).fullStream` + `.text`). Records the user context that
+ * was active when the stream ran, and emits a tool call + a text delta.
+ */
 function fakeAgent(seenUser: { dbRole?: string }): Agent {
+  const chunks = [
+    {
+      type: "tool-call",
+      payload: { toolCallId: "tc1", toolName: "execute_warehouse", args: { sql: "select 1" } },
+    },
+    {
+      type: "tool-result",
+      payload: { toolCallId: "tc1", toolName: "execute_warehouse", result: { rows: [{ n: 1 }] } },
+    },
+    { type: "text-delta", payload: { text: "the answer" } },
+    { type: "finish", payload: {} },
+  ];
   return {
-    generate: async () => {
-      const user = getCurrentUserContext();
-      seenUser.dbRole = user?.dbRole;
+    stream: async () => {
+      seenUser.dbRole = getCurrentUserContext()?.dbRole;
       return {
-        text: "the answer",
-        response: {
-          messages: [
-            {
-              content: [
-                {
-                  type: "tool-call",
-                  toolCallId: "tc1",
-                  toolName: "execute_warehouse",
-                  input: { sql: "select 1" },
-                },
-                {
-                  type: "tool-result",
-                  toolCallId: "tc1",
-                  toolName: "execute_warehouse",
-                  output: { rows: [{ n: 1 }] },
-                },
-              ],
-            },
-          ],
-        },
+        fullStream: (async function* () {
+          for (const chunk of chunks) yield chunk;
+        })(),
+        text: Promise.resolve("the answer"),
       };
     },
   } as unknown as Agent;
 }
 
-describe("createMastraExecutor", () => {
-  it("runs the agent under user context and emits tool-call events + text", async () => {
+describe("createMastraExecutor (streaming)", () => {
+  it("streams chunks to structured events under the user context", async () => {
     const storage = new InMemoryRuntimeStorage();
     const seen: { dbRole?: string } = {};
     const rt = createRuntime({
@@ -73,16 +71,18 @@ describe("createMastraExecutor", () => {
       "run.started",
       "tool.call.started",
       "tool.call.completed",
+      "model.delta",
       "run.completed",
     ]);
-    const completed = events.find((e) => e.type === "run.completed");
-    expect((completed as { payload: { text?: string } }).payload.text).toBe("the answer");
     const started = events.find((e) => e.type === "tool.call.started");
     expect((started as { payload: { tool: string } }).payload.tool).toBe("execute_warehouse");
+    const delta = events.find((e) => e.type === "model.delta");
+    expect((delta as { payload: { text: string } }).payload.text).toBe("the answer");
+    const completed = events.find((e) => e.type === "run.completed");
+    expect((completed as { payload: { text?: string } }).payload.text).toBe("the answer");
     // The owner-boundary user context was set for the tools.
     expect(seen.dbRole).toBe("arivie_reader");
-    const run = await storage.runs.get(handle.runId);
-    expect(run?.status).toBe("completed");
+    expect((await storage.runs.get(handle.runId))?.status).toBe("completed");
   });
 
   it("throws when no Mastra agent is registered for the run's agent id", async () => {
