@@ -86,7 +86,18 @@ export type {
   Runtime,
   SessionHandle,
 } from "./runtime/index.js";
-// __C9_DISPATCH_EXPORTS__
+export {
+  admitChannelEvent,
+  createDispatchWorker,
+  dispatchDedupeKey,
+  DispatchRetryableError,
+} from "./dispatch/index.js";
+export type {
+  DispatchableEvent,
+  DispatchTickResult,
+  DispatchWorker,
+  DispatchWorkerOptions,
+} from "./dispatch/index.js";
 export type {
   AcquireLeaseInput,
   AdmitDispatchInput,
