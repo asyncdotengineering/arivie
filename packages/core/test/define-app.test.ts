@@ -98,6 +98,29 @@ describe("defineArivie — domain-neutral app builder", () => {
     await app.dispose();
   });
 
+  it("app.prompt runs one prompt to completion, streams onText, and returns the terminal text", async () => {
+    const app = await defineArivie({
+      app: { id: "t", name: "T" },
+      model: stubModel("42 orders yesterday"),
+      storage: new InMemoryRuntimeStorage(),
+      memory: new InMemoryStore(),
+      plugins: [demoPlugin()],
+      agents: { helper: defineAgent({ instructions: "Be brief.", capabilities: ["demo.help"] }) },
+      resolveUser: async () => ({ userId: "u1" }),
+    });
+
+    const chunks: string[] = [];
+    const text = await app.prompt({
+      agent: "helper",
+      prompt: "how many orders yesterday?",
+      user: { userId: "u1" },
+      onText: (c) => chunks.push(c),
+    });
+    expect(text).toContain("42 orders");
+    expect(chunks.join("")).toContain("42 orders"); // streamed via onText
+    await app.dispose();
+  });
+
   it("rejects an unknown agent capability at build time", async () => {
     await expect(
       defineArivie({

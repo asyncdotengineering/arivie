@@ -12,7 +12,13 @@ import type { PluginInstance } from "./plugins/types.js";
 import { assembleAgentContext } from "./runtime/assemble.js";
 import { createMastraExecutor } from "./runtime/mastra-executor.js";
 import { createRuntime } from "./runtime/session.js";
-import type { AgentDefinition, Runtime, UserContext } from "./runtime/types.js";
+import type {
+  AgentDefinition,
+  CreateSessionInput,
+  Runtime,
+  UserContext,
+} from "./runtime/types.js";
+import type { ArivieEvent } from "./events/types.js";
 import { createSessionApp } from "./server/routes/session.js";
 import type { RuntimeStorage } from "./storage/types.js";
 
@@ -49,6 +55,18 @@ function defaultMemoryStore(): MemoryStorage {
   return new LibSQLStore({ id: "arivie-memory", url: DEFAULT_MEMORY_DB });
 }
 
+/** Input to the one-shot {@link ArivieApp.prompt} convenience. */
+export interface PromptInput {
+  agent: string;
+  prompt: string;
+  user: CreateSessionInput["user"];
+  session?: CreateSessionInput["session"];
+  /** Incremental model text as it streams. */
+  onText?: (chunk: string) => void;
+  /** A tool invocation (e.g. a SQL query). */
+  onTool?: (tool: string, args: Record<string, unknown>) => void;
+}
+
 export interface ArivieApp {
   app: { id: string; name: string };
   manifest: RuntimeManifest;
@@ -57,6 +75,13 @@ export interface ArivieApp {
   memory: MemoryStorage;
   sessions: Runtime["sessions"];
   events: Runtime["events"];
+  /**
+   * Run one prompt to completion and return the agent's terminal text — the
+   * thin convenience over `sessions.create` for scripts, the CLI, and one-shot
+   * callers. Streams via the optional `onText`/`onTool` callbacks; throws if
+   * the run fails. (RFC §12 Q3.)
+   */
+  prompt(input: PromptInput): Promise<string>;
   /** Web-standard request handler (POST /sessions, GET /runs/:id/events). */
   handler: (req: Request) => Promise<Response>;
   hono: Hono;
@@ -125,6 +150,37 @@ export async function defineArivie(config: ArivieAppConfig): Promise<ArivieApp> 
     memory: memoryStorage,
     sessions: runtime.sessions,
     events: runtime.events,
+    async prompt(input: PromptInput): Promise<string> {
+      const handle = await runtime.sessions.create({
+        agent: input.agent,
+        prompt: input.prompt,
+        user: input.user,
+        ...(input.session !== undefined ? { session: input.session } : {}),
+      });
+      const reader = handle.stream.getReader();
+      let text = "";
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const event = value as ArivieEvent;
+        switch (event.type) {
+          case "model.delta":
+            input.onText?.(event.payload.text);
+            break;
+          case "tool.call.started":
+            input.onTool?.(event.payload.tool, event.payload.args);
+            break;
+          case "run.completed":
+            if (typeof event.payload.text === "string") text = event.payload.text;
+            break;
+          case "run.failed":
+            throw new Error(event.payload.error.message);
+          default:
+            break;
+        }
+      }
+      return text;
+    },
     handler: async (req: Request) => hono.fetch(req),
     hono,
     async dispose() {
