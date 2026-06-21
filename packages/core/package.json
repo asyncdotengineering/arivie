@@ -72,11 +72,8 @@
     "lint": "echo no-lint-yet"
   },
   "dependencies": {
-    "@arivie/agent": "workspace:*",
     "@arivie/context": "workspace:*",
     "@arivie/db-postgres": "workspace:*",
-    "@arivie/embeddings": "workspace:*",
-    "@arivie/semantic": "workspace:*",
     "@arivie/workspace": "workspace:*",
     "@mastra/hono": "^1.5.0",
     "@mastra/mcp": "^1.11.0",

@@ -10,7 +10,8 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "strict": true,
-    "noEmit": true
+    "noEmit": true,
+    "types": ["node"]
   },
-  "include": ["scripts/**/*.ts", "lib/**/*.ts", "db/**/*.ts"]
+  "include": ["arivie.config.ts"]
 }

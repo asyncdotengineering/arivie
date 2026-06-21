@@ -146,21 +146,21 @@ export function extractExecuteSql(
   }
 
   // Agent result object path
-  const sources: unknown[] = [];
+  const candidates: unknown[] = [];
   if (Array.isArray(toolResults)) {
-    sources.push(...toolResults);
+    candidates.push(...toolResults);
   }
   if (Array.isArray(steps)) {
     for (const step of steps) {
       if (step != null && typeof step === "object") {
         const stepResults = (step as { toolResults?: unknown }).toolResults;
         if (Array.isArray(stepResults)) {
-          sources.push(...stepResults);
+          candidates.push(...stepResults);
         }
       }
     }
   }
-  for (const entry of sources) {
+  for (const entry of candidates) {
     if (entry == null || typeof entry !== "object") {
       continue;
     }

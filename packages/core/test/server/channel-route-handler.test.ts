@@ -5,7 +5,7 @@ import { defineChannel } from "../../src/triggers/channel.js";
 import { defineTrigger } from "../../src/triggers/define.js";
 import { makeChannelRouteHandler } from "../../src/server/channel-route.js";
 import type { TriggerEvent } from "../../src/triggers/types.js";
-import type { ArivieInstance } from "../../src/types.js";
+import type { ArivieApp } from "../../src/define-app.js";
 
 describe("makeChannelRouteHandler", () => {
   const testTrigger = defineTrigger<{ secret: string }, TriggerEvent>({
@@ -38,13 +38,10 @@ describe("makeChannelRouteHandler", () => {
     config: { secret: "shh" },
   });
 
-  function fakeInstance(): ArivieInstance {
+  function fakeApp(): ArivieApp {
     return {
-      mastra: {
-        getAgent: vi.fn().mockReturnValue({ generate: vi.fn().mockResolvedValue({ text: "" }) }),
-        getWorkflow: vi.fn(),
-      },
-    } as unknown as ArivieInstance;
+      sessions: { create: vi.fn() },
+    } as unknown as ArivieApp;
   }
 
   function buildApp() {
@@ -52,7 +49,7 @@ describe("makeChannelRouteHandler", () => {
     const handler = makeChannelRouteHandler({
       channels: [channel],
       subscriptions: [],
-      instance: fakeInstance(),
+      app: fakeApp(),
     });
     app.all("/channels/:name", handler);
     app.all("/channels/:name/:suffix{.+}", handler);
@@ -110,7 +107,7 @@ describe("makeChannelRouteHandler", () => {
     });
     const cfgChannel = defineChannel({ name: "cfg", trigger: cfgTrigger, config: { secret: "abc" } });
     const app = new Hono();
-    const handler = makeChannelRouteHandler({ channels: [cfgChannel], subscriptions: [], instance: fakeInstance() });
+    const handler = makeChannelRouteHandler({ channels: [cfgChannel], subscriptions: [], app: fakeApp() });
     app.all("/channels/:name", handler);
     app.all("/channels/:name/:suffix{.+}", handler);
     const res = await app.request("/channels/cfg/config");

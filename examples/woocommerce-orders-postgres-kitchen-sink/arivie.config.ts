@@ -2,13 +2,12 @@
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createOpenAI } from "@ai-sdk/openai";
-import { defineArivie, defineSchedules, localWorkspace, type ArivieConfig } from "@arivie/core";
-import { postgresAdapter } from "@arivie/db-postgres";
+import { defineAgent, defineArivie, defineSchedules, type ArivieAppConfig } from "@arivie/core";
+import { analytics } from "@arivie/plugin-analytics";
+import { postgresRuntime, postgresSource } from "@arivie/plugin-postgres";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const semanticPath = join(__dirname, "semantic");
-const skillsPath = join(__dirname, "skills");
-const workspaceRoot = join(__dirname, "workspace");
 
 function requireEnv(name: string): string {
   const value = process.env[name];
@@ -18,11 +17,7 @@ function requireEnv(name: string): string {
   return value;
 }
 
-const pg = postgresAdapter({
-  url: requireEnv("DATABASE_URL"),
-  readOnlyRole: "arivie_reader",
-});
-
+const databaseUrl = requireEnv("DATABASE_URL");
 const openai = createOpenAI({ apiKey: requireEnv("OPENAI_API_KEY") });
 
 export const schedules = defineSchedules([
@@ -42,49 +37,35 @@ export const schedules = defineSchedules([
   },
 ]);
 
-export const config: ArivieConfig = {
-  owner: {
+export const config: ArivieAppConfig = {
+  app: {
     id: process.env.ARIVIE_OWNER_ID ?? "woocommerce-demo-store",
     name: "WooCommerce Demo Store",
   },
-  storage: pg,
   model: openai(process.env.OPENAI_MODEL ?? "gpt-4o-mini"),
-  semantic: { path: semanticPath, mode: "preload" },
-  sources: {
-    postgres: {
-      kind: "adapter",
-      adapter: pg,
-      description:
-        "WooCommerce orders normalized into Postgres tables for revenue, product, variant, coupon, refund, tax, shipping, customer, and payment analytics.",
-      useWhen:
-        "WooCommerce store analytics, order status trends, product and variant revenue, coupons, refunds, taxes, shipping, fees, payment methods, countries, and repeat customers",
-    },
+  storage: postgresRuntime({ url: databaseUrl }),
+  plugins: [
+    analytics({
+      semanticPath,
+      mode: "preload",
+      sources: {
+        postgres: postgresSource({
+          url: databaseUrl,
+          readOnlyRole: "arivie_reader",
+        }),
+      },
+      compileMetric: true,
+      ownerId: process.env.ARIVIE_OWNER_ID ?? "woocommerce-demo-store",
+    }),
+  ],
+  agents: {
+    analyst: defineAgent({
+      instructions:
+        "You are a WooCommerce commerce analyst. Explain revenue, products, refunds, coupons, tax, shipping, customers, and payment trends with precise SQL-backed evidence.",
+      capabilities: ["analytics.query", "analytics.compile_metric"],
+    }),
   },
-  skills: skillsPath,
-  skillsMode: "auto",
-  workspace: localWorkspace({ at: workspaceRoot, bash: true }),
-  compileMetric: true,
-  schedules,
-  limits: {
-    rowsPerQuery: 500,
-    queryTimeoutMs: 10_000,
-    maxSteps: 8,
-    requireToolApproval: { tools: ["workspace_bash"] },
-  },
-  hooks: {
-    onBeforeQuery: async ({ userId, sql }) => {
-      console.log(`[woocommerce hook] before query user=${userId} sql=${sql?.slice(0, 80) ?? "n/a"}`);
-    },
-    onAfterQuery: async ({ rows, durationMs }) => {
-      console.log(`[woocommerce hook] after query rows=${rows.length} durationMs=${durationMs}`);
-    },
-    onToolCall: async ({ tool }) => {
-      console.log(`[woocommerce hook] tool=${tool}`);
-    },
-    onMemorySave: async ({ scope, userId }) => {
-      console.log(`[woocommerce hook] memory save scope=${scope} user=${userId}`);
-    },
-  },
+  context: { root: semanticPath },
   resolveUser: async () => ({
     userId: "woocommerce-analyst",
     permissions: ["analytics:read", "finance:read"],

@@ -1,12 +1,18 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 import { existsSync } from "node:fs";
-import type { ArivieConfig } from "@arivie/core/types";
 import { autoDetectMode } from "@arivie/agent";
 import type { PostgresAdapter } from "@arivie/db-postgres";
 import { buildIndex } from "@arivie/embeddings";
 import { loadSemanticLayerSync } from "@arivie/semantic";
 import { PostgresStore } from "@mastra/pg";
 import { defineCommand } from "citty";
+import type { CliArivieConfig } from "../lib/app-config.js";
+import {
+  findAnalyticsConfig,
+  ownerIdFromConfig,
+  semanticModeFromConfig,
+  semanticPathFromConfig,
+} from "../lib/app-config.js";
 import { loadArivieConfig } from "../lib/load-config.js";
 import { postgresAdapterFromConfig } from "../lib/postgres-from-config.js";
 import { printCliCommandError } from "../lib/cli-errors.js";
@@ -57,11 +63,12 @@ async function ensureOwnerIdentity(
   return "verified";
 }
 
-function resolveEffectiveMode(config: ArivieConfig): "preload" | "indexed" {
-  if (config.semantic.mode !== "auto") {
-    return config.semantic.mode;
+function resolveEffectiveMode(config: CliArivieConfig): "preload" | "indexed" {
+  const mode = semanticModeFromConfig(config);
+  if (mode !== "auto") {
+    return mode;
   }
-  const semanticRoot = config.semantic.path;
+  const semanticRoot = semanticPathFromConfig(config);
   if (!existsSync(semanticRoot)) {
     return "preload";
   }
@@ -73,8 +80,9 @@ function resolveEffectiveMode(config: ArivieConfig): "preload" | "indexed" {
  * Idempotent project setup (role, Mastra memory, optional RAG index, owner identity).
  * @see RFC-002 §4.12
  */
-export async function runSetup(config: ArivieConfig): Promise<SetupResult> {
+export async function runSetup(config: CliArivieConfig): Promise<SetupResult> {
   const adapter = postgresAdapterFromConfig(config);
+  const ownerId = ownerIdFromConfig(config);
   const roleExisted = await roleExists(adapter, READER_ROLE);
 
   await adapter.setupRole(READER_ROLE);
@@ -84,7 +92,7 @@ export async function runSetup(config: ArivieConfig): Promise<SetupResult> {
 
   const mastraBefore = await countMastraTables(adapter);
   const storage = new PostgresStore({
-    id: `arivie-${config.owner.id}`,
+    id: `arivie-${ownerId}`,
     connectionString: adapter.url,
   });
   try {
@@ -106,25 +114,26 @@ export async function runSetup(config: ArivieConfig): Promise<SetupResult> {
   let indexMessage: string | undefined;
   const effectiveMode = resolveEffectiveMode(config);
   if (effectiveMode === "indexed") {
-    if (config.semantic.embeddings == null) {
+    const analytics = findAnalyticsConfig(config);
+    if (analytics.embeddings == null) {
       throw new Error(
         "semantic.embeddings is required when mode resolves to indexed; export a full config for setup",
       );
     }
-    const layer = loadSemanticLayerSync(config.semantic.path);
+    const layer = loadSemanticLayerSync(semanticPathFromConfig(config));
     await buildIndex({
       layer,
-      provider: config.semantic.embeddings.provider,
-      vector: config.semantic.embeddings.vector,
-      indexName: config.semantic.embeddings.indexName,
+      provider: analytics.embeddings.provider as never,
+      vector: analytics.embeddings.vector as never,
+      indexName: analytics.embeddings.indexName,
     });
     indexMessage = `✓ Embedding index built (mode=indexed)`;
   }
 
-  const ownerState = await ensureOwnerIdentity(adapter, config.owner.id);
+  const ownerState = await ensureOwnerIdentity(adapter, ownerId);
   const ownerMessage =
     ownerState === "inserted"
-      ? `✓ Owner identity verified: ${config.owner.id}`
+      ? `✓ Owner identity verified: ${ownerId}`
       : `✓ Owner identity: ok`;
 
   return {
@@ -181,25 +190,30 @@ export const setupCommand = defineCommand({
 async function configFromUrl(
   url: string,
   owner: string | undefined,
-): Promise<ArivieConfig> {
+): Promise<CliArivieConfig> {
   if (!owner) {
     throw new Error("--owner is required when --url is supplied");
   }
   const { postgresAdapter } = await import("@arivie/db-postgres");
   const pg = postgresAdapter({ url });
   return {
-    owner: { id: owner, name: owner },
-    storage: pg,
+    app: { id: owner, name: owner },
+    storage: {} as never,
     model: {} as never,
-    workspace: { rootDir: "./semantic" },
-    sources: {
-      postgres: {
-        kind: "adapter",
-        adapter: pg,
-        description: "First-call provisioning source.",
+    plugins: [
+      {
+        definition: { id: "analytics", version: "0.0.0" },
+        config: {
+          semanticPath: "./semantic",
+          mode: "preload",
+          sources: {
+            postgres: pg,
+          },
+        },
       },
-    },
-    semantic: { path: "./semantic", mode: "preload" },
+    ],
+    agents: {},
+    context: { root: "./semantic" },
     resolveUser: async () => ({
       userId: "cli",
       permissions: [],

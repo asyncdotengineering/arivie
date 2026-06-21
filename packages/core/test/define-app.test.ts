@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 import { describe, expect, it } from "vitest";
 import { MockLanguageModelV3, simulateReadableStream } from "ai/test";
-import { defineApp } from "../src/define-app.js";
+import { defineArivie } from "../src/define-app.js";
 import { definePlugin } from "../src/plugins/index.js";
 import { defineAgent } from "../src/runtime/index.js";
 import { InMemoryRuntimeStorage } from "../src/storage/index.js";
@@ -57,9 +57,9 @@ function demoPlugin() {
   })(undefined);
 }
 
-describe("defineApp — domain-neutral app builder", () => {
+describe("defineArivie — domain-neutral app builder", () => {
   it("compiles the manifest and exposes the plugin capability", async () => {
-    const app = await defineApp({
+    const app = await defineArivie({
       app: { id: "t", name: "T" },
       model: stubModel("ok"),
       storage: new InMemoryRuntimeStorage(),
@@ -72,7 +72,7 @@ describe("defineApp — domain-neutral app builder", () => {
   });
 
   it("runs a session through the Mastra executor and streams a completed run", async () => {
-    const app = await defineApp({
+    const app = await defineArivie({
       app: { id: "t", name: "T" },
       model: stubModel("42 orders yesterday"),
       storage: new InMemoryRuntimeStorage(),
@@ -97,7 +97,7 @@ describe("defineApp — domain-neutral app builder", () => {
 
   it("rejects an unknown agent capability at build time", async () => {
     await expect(
-      defineApp({
+      defineArivie({
         app: { id: "t", name: "T" },
         model: stubModel("x"),
         storage: new InMemoryRuntimeStorage(),
@@ -109,7 +109,7 @@ describe("defineApp — domain-neutral app builder", () => {
   });
 
   it("wires Mastra Memory keyed to the session (two turns in one session both complete)", async () => {
-    const app = await defineApp({
+    const app = await defineArivie({
       app: { id: "t", name: "T" },
       model: stubModel("noted"),
       storage: new InMemoryRuntimeStorage(),
@@ -142,7 +142,7 @@ describe("defineApp — domain-neutral app builder", () => {
   });
 
   it("serves POST /sessions over the HTTP handler", async () => {
-    const app = await defineApp({
+    const app = await defineArivie({
       app: { id: "t", name: "T" },
       model: stubModel("hello there"),
       storage: new InMemoryRuntimeStorage(),

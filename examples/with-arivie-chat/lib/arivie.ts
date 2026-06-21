@@ -14,29 +14,21 @@
  *
  * Override via MODEL_PROVIDER=google|openai|xai.
  */
-import { existsSync, mkdirSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { resolve } from "node:path";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { createOpenAI } from "@ai-sdk/openai";
 import { createXai } from "@ai-sdk/xai";
 import {
-  type ArivieInstance,
+  type ArivieApp,
+  type ArivieAppConfig,
+  defineAgent,
   defineArivie,
-  localWorkspace,
 } from "@arivie/core";
-import { postgresAdapter } from "@arivie/db-postgres";
+import { analytics } from "@arivie/plugin-analytics";
+import { postgresRuntime, postgresSource } from "@arivie/plugin-postgres";
 import type { LanguageModel } from "ai";
 
 const SEMANTIC_PATH = resolve(process.cwd(), "semantic");
-const SKILLS_PATH = resolve(process.cwd(), "skills");
-// Vercel / serverless filesystems are read-only outside /tmp. Prefer the
-// caller's explicit WORKSPACE_PATH; otherwise pick /tmp on Vercel and the
-// in-repo path locally.
-const WORKSPACE_ROOT =
-  process.env.WORKSPACE_PATH ??
-  (process.env.VERCEL === "1"
-    ? "/tmp/arivie/workspace"
-    : resolve(process.cwd(), ".arivie/workspace"));
 
 function resolveModel(): {
   model: LanguageModel;
@@ -75,10 +67,10 @@ function resolveModel(): {
   );
 }
 
-let cached: Promise<ArivieInstance> | null = null;
+let cached: Promise<ArivieApp> | null = null;
 
-/** Module-singleton ArivieInstance. Survives Next.js hot reloads. */
-export function getArivie(): Promise<ArivieInstance> {
+/** Module-singleton ArivieApp. Survives Next.js hot reloads. */
+export function getArivie(): Promise<ArivieApp> {
   if (cached) return cached;
   cached = (async () => {
     const databaseUrl = process.env.DATABASE_URL;
@@ -86,59 +78,44 @@ export function getArivie(): Promise<ArivieInstance> {
       throw new Error("DATABASE_URL not set");
     }
 
-    if (!existsSync(WORKSPACE_ROOT)) {
-      mkdirSync(WORKSPACE_ROOT, { recursive: true });
-      mkdirSync(join(WORKSPACE_ROOT, "reports"), { recursive: true });
-    }
-
     const { model, provider, id } = resolveModel();
     // eslint-disable-next-line no-console
     console.log(`[arivie-chat] model: ${provider}/${id}`);
 
-    // One Postgres adapter shared by storage (Mastra Memory + owner
-    // identity) AND the agent's `execute_commerce` source. Single DB,
-    // two roles — but if you want them on separate DBs, swap the
-    // `storage:` slot independently of `sources:`.
-    const pg = postgresAdapter({
-      url: databaseUrl,
-      readOnlyRole: process.env.ARIVIE_DB_ROLE ?? "arivie_reader",
-    });
-
-    const config: Parameters<typeof defineArivie>[0] = {
-      owner: {
+    const config: ArivieAppConfig = {
+      app: {
         id: process.env.ARIVIE_OWNER_ID ?? "arivie-chat",
         name: process.env.ARIVIE_OWNER_NAME ?? "Arivie",
       },
-      storage: pg,
+      storage: postgresRuntime({ url: databaseUrl }),
       model,
-      semantic: {
-        path: existsSync(SEMANTIC_PATH) ? SEMANTIC_PATH : SEMANTIC_PATH,
-        mode: "preload",
+      plugins: [
+        analytics({
+          semanticPath: SEMANTIC_PATH,
+          mode: "preload",
+          sources: {
+            commerce: postgresSource({
+              url: databaseUrl,
+              readOnlyRole: process.env.ARIVIE_DB_ROLE ?? "arivie_reader",
+            }),
+          },
+          compileMetric: true,
+        }),
+      ],
+      agents: {
+        analyst: defineAgent({
+          instructions:
+            "Answer commerce analytics questions with concise, SQL-backed evidence.",
+          capabilities: ["analytics.query", "analytics.compile_metric"],
+        }),
       },
-      sources: {
-        // Source key is now user-named — no magic `postgres` requirement.
-        commerce: {
-          kind: "adapter",
-          adapter: pg,
-          description:
-            "Synthetic e-commerce Postgres bundled with this starter — customers, products, orders, order_items. ~120 fake rows. Ships seeded by `pnpm setup`. Replace with your real DB to ship.",
-          useWhen:
-            "any revenue, orders, customer, product, AOV, or basket question",
-        },
-      },
-      workspace: localWorkspace({ at: WORKSPACE_ROOT, bash: false }),
-      compileMetric: true,
+      context: { root: SEMANTIC_PATH },
       resolveUser: async () => ({
         userId: "anonymous",
         permissions: ["analytics:read"],
         dbRole: process.env.ARIVIE_DB_ROLE ?? "arivie_reader",
       }),
     };
-    if (existsSync(SKILLS_PATH)) {
-      config.skills = SKILLS_PATH;
-      config.skillsMode = "auto";
-    }
-
     return defineArivie(config);
   })();
   return cached;

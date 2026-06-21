@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 import type { SourceAdapterCompileMetricOpts } from "@arivie/core/types";
+import type { Entity } from "@arivie/semantic";
 import { ToolError } from "./errors.js";
 
 const FILTER_COL_PATTERN =
@@ -28,7 +29,7 @@ function collectEntityRefs(text: string): Set<string> {
 }
 
 function detectJoinsNeeded(
-  entity: SourceAdapterCompileMetricOpts["entity"],
+  entity: Entity,
   dimensionSqls: string[],
   filterKeys: string[],
 ): Set<string> {
@@ -57,7 +58,7 @@ function detectJoinsNeeded(
 }
 
 function buildJoinClauses(
-  entity: SourceAdapterCompileMetricOpts["entity"],
+  entity: Entity,
   joinsNeeded: Set<string>,
 ): string[] {
   const clauses: string[] = [];
@@ -84,7 +85,8 @@ function buildJoinClauses(
 export function compileMetricForPostgres(
   opts: SourceAdapterCompileMetricOpts,
 ): { query: string; params?: (string | number | boolean | null)[] } {
-  const { entity, metric } = opts;
+  const entity = opts.entity as Entity;
+  const { metric } = opts;
   const measure = entity.measures?.find((m) => m.name === metric);
   if (measure == null) {
     throw new ToolError(

@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 import type { Context, MiddlewareHandler } from "hono";
-import type { ArivieInstance } from "../types.js";
+import type { ArivieApp } from "../define-app.js";
 import type { ChannelDefinition } from "../triggers/channel.js";
 import type { SubscriptionDefinition } from "../triggers/subscription.js";
 import type { TriggerEvent } from "../triggers/types.js";
@@ -9,7 +9,7 @@ import { dispatchEvent } from "./dispatch.js";
 export interface ChannelRouteOptions {
   channels: ChannelDefinition<unknown, TriggerEvent>[];
   subscriptions: SubscriptionDefinition<TriggerEvent>[];
-  instance: ArivieInstance;
+  app: ArivieApp;
 }
 
 function normalizeChannelMap(
@@ -59,7 +59,7 @@ export function makeChannelRouteHandler(
       c,
       config: channel.config,
       emit: async (event: TriggerEvent) => {
-        await dispatchEvent(event, channel.name, options.instance, options.subscriptions);
+        await dispatchEvent(event, channel.name, options.app, options.subscriptions);
       },
     };
 

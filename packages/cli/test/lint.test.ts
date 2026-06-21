@@ -56,18 +56,21 @@ describe("lint (dogfood semantic)", () => {
   verifyOwnerIdentity: async () => {},
 };
 export const config = {
-  owner: { id: "lint-test", name: "Lint" },
+  app: { id: "lint-test", name: "Lint" },
   model: {},
-  storage: stub,
-  workspace: { rootDir: "./semantic" },
-  sources: {
-    postgres: {
-      kind: "adapter",
-      adapter: stub,
-      description: "Lint-test stub Postgres adapter.",
+  storage: {},
+  plugins: [
+    {
+      definition: { id: "analytics", version: "0.0.0" },
+      config: {
+        semanticPath: "./semantic",
+        mode: "preload",
+        sources: { postgres: stub },
+      },
     },
-  },
-  semantic: { path: "./semantic", mode: "preload" },
+  ],
+  agents: {},
+  context: { root: "./semantic" },
   resolveUser: async () => ({ userId: "u", permissions: [], dbRole: "arivie_reader" }),
 };
 `,

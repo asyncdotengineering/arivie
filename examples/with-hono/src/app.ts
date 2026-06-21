@@ -8,7 +8,7 @@ app.get("/", (c) => c.text("with-hono — POST /api/arivie"));
 
 app.post("/api/arivie", async (c) => {
   const { arivie } = await getArivieRuntime();
-  return arivie.next.POST(c.req.raw);
+  return arivie.handler(c.req.raw);
 });
 
 export { app };

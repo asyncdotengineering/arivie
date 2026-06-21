@@ -1,9 +1,10 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import type { ArivieConfig } from "@arivie/core/types";
 import { parseEntity } from "@arivie/semantic";
 import { defineCommand } from "citty";
+import type { CliArivieConfig } from "../lib/app-config.js";
+import { semanticPathFromConfig } from "../lib/app-config.js";
 import { tableMetadataToEntityYaml } from "../lib/introspect-to-yaml.js";
 import { loadArivieConfig } from "../lib/load-config.js";
 import { postgresAdapterFromConfig } from "../lib/postgres-from-config.js";
@@ -40,7 +41,7 @@ export const addEntityCommand = defineCommand({
 /** @internal Exported for integration tests. */
 export async function runAddEntity(
   tableName: string,
-  configOrPath: ArivieConfig | string = "./arivie.config.ts",
+  configOrPath: CliArivieConfig | string = "./arivie.config.ts",
 ): Promise<number> {
     const tableError = validateTableName(tableName);
     if (tableError != null) {
@@ -71,7 +72,8 @@ export async function runAddEntity(
     );
 
     const yaml = tableMetadataToEntityYaml(table);
-    const entitiesDir = join(config.semantic.path, "entities");
+    const semanticPath = semanticPathFromConfig(config);
+    const entitiesDir = join(semanticPath, "entities");
     const outPath = join(entitiesDir, `${tableName}.yml`);
     await mkdir(entitiesDir, { recursive: true });
     await writeFile(outPath, yaml, "utf8");
@@ -82,7 +84,7 @@ export async function runAddEntity(
       return 1;
     }
 
-    const rel = join(config.semantic.path, "entities", `${tableName}.yml`);
+    const rel = join(semanticPath, "entities", `${tableName}.yml`);
     console.log(`✓ Wrote ${rel} (parses via EntitySchema)`);
     return 0;
 }

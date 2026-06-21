@@ -15,12 +15,6 @@ import type { AgentDefinition, Runtime, UserContext } from "./runtime/types.js";
 import { createSessionApp } from "./server/routes/session.js";
 import type { RuntimeStorage } from "./storage/types.js";
 
-/**
- * Domain-neutral app configuration (RFC §4.1). No analytics-specific keys —
- * analytics is composed in as a plugin. This is the new `defineArivie` shape;
- * during the migration it is exported as `defineApp` so the legacy analytics
- * `defineArivie` keeps working until the cut completes.
- */
 /** The Mastra storage backing conversation Memory (thread = runtime session). */
 type MemoryStorage = NonNullable<
   ConstructorParameters<typeof Memory>[0]
@@ -81,7 +75,7 @@ function buildMastraAgent(
  * wires the Mastra executor into the durable runtime, and exposes the session
  * API + HTTP handler. Analytics, when present, is just one plugin.
  */
-export async function defineApp(config: ArivieAppConfig): Promise<ArivieApp> {
+export async function defineArivie(config: ArivieAppConfig): Promise<ArivieApp> {
   const appMeta = { id: config.app.id, name: config.app.name };
   const { manifest, diagnostics } = await buildManifest({
     app: appMeta,

@@ -1,13 +1,11 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-export { ArivieConfigSchema } from "./config.js";
 export {
   ArivieBoundaryError,
   ArivieConfigError,
   ArivieInternalError,
   ArivieNotImplementedError,
 } from "./errors.js";
-export { defineArivie } from "./define.js";
-export { defineApp } from "./define-app.js";
+export { defineArivie } from "./define-app.js";
 export type { ArivieApp, ArivieAppConfig } from "./define-app.js";
 export {
   assertUniquePluginIds,
@@ -151,10 +149,6 @@ export { createSqlSemanticScorer, extractExecuteSql, resultsEqual } from "./eval
 export type { SqlSemanticScorerOptions } from "./eval/index.js";
 export { localWorkspace } from "./local-workspace.js";
 export type { LocalWorkspaceOptions } from "./local-workspace.js";
-export { adapterSource, mcpSource } from "./sources-factory.js";
-// Convenience re-exports — author entities in TS without a second import.
-export { composeSemantic, defineEntity } from "@arivie/semantic";
-export type { ComposeSemanticOptions, Entity } from "@arivie/semantic";
 export {
   getCurrentUserContext,
   runWithUserContext,
@@ -165,36 +159,23 @@ export { createSessionApp, mountSessionRoutes } from "./server/routes/index.js";
 export type { SessionRoutesOptions } from "./server/routes/index.js";
 export type {
   AfterQueryCtx,
-  ArivieConfig,
-  ArivieInstance,
-  AskOptions,
-  AskResult,
   BeforeQueryCtx,
   CompileMetricToolEvent,
-  EmbeddingsConfig,
   ErrorCtx,
   ExecutePostgresToolEvent,
   ExecuteSourceToolEvent,
-  ExportedHandler,
   FinalizeReportToolEvent,
   LifecycleHooks,
   LimitConfig,
-  MCPServerConfig,
   MemoryDeleteCtx,
   MemorySaveCtx,
   ResolveUser,
-  SemanticConfig,
   SourceAdapter,
   SourceAdapterCompileMetricOpts,
   SourceAdapterCompileMetricResult,
   SourceAdapterExecuteOpts,
   SourceAdapterExecuteResult,
-  SourceConfigEntry,
-  SourceMetadata,
-  SourcesConfig,
-  StorageAdapter,
   ToolCallEvent,
-  ToolCallTrace,
   UnknownToolEvent,
   UserContext,
   WorkspaceBashToolEvent,

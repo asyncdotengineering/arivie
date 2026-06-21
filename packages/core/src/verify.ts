@@ -1,6 +1,10 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 import { ArivieBoundaryError } from "@arivie/db-postgres";
-import type { StorageAdapter } from "./types.js";
+
+interface OwnerIdentityDatabase {
+  verifyOwnerIdentity(expectedOwnerId: string): Promise<void>;
+  sql<T>(strings: TemplateStringsArray, ...values: unknown[]): Promise<T>;
+}
 
 const FATAL_BOUNDARY_REASONS = new Set([
   "identity-mismatch",
@@ -47,7 +51,7 @@ export function isFatalBoundaryError(err: unknown): boolean {
 }
 
 export async function verifyOwnerIdentity(
-  db: StorageAdapter,
+  db: OwnerIdentityDatabase,
   expectedOwnerId: string,
   readOnlyRole = "arivie_reader",
 ): Promise<void> {

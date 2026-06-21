@@ -1,52 +1,30 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 import { dirname, isAbsolute, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
-import { ArivieConfigError, defineArivie } from "@arivie/core";
-import type { ArivieConfig, ArivieInstance } from "@arivie/core/types";
+import { ArivieConfigError, defineArivie, type ArivieApp } from "@arivie/core";
 import { createJiti } from "jiti";
+import { isArivieAppConfig } from "./app-config.js";
 
-function isArivieConfig(value: unknown): value is ArivieConfig {
-  if (value == null || typeof value !== "object") {
-    return false;
-  }
+function isArivieApp(value: unknown): value is ArivieApp {
+  if (value == null || typeof value !== "object") return false;
   const v = value as Record<string, unknown>;
   return (
-    typeof v.owner === "object" &&
-    v.owner != null &&
-    typeof (v.owner as { id?: unknown }).id === "string" &&
-    "sources" in v &&
-    typeof v.sources === "object" &&
-    v.sources != null &&
-    "workspace" in v &&
-    typeof v.workspace === "object" &&
-    "semantic" in v &&
-    typeof v.semantic === "object"
+    typeof v.handler === "function" &&
+    v.sessions != null &&
+    typeof v.sessions === "object" &&
+    v.runtime != null
   );
 }
 
-function isArivieInstance(value: unknown): value is ArivieInstance {
-  if (value == null || typeof value !== "object") {
-    return false;
-  }
-  const v = value as Record<string, unknown>;
-  return typeof v.handler === "function" && v.mastra != null;
-}
-
 function pickConfigExport(mod: Record<string, unknown>): unknown {
-  const candidates = [mod.config, mod.arivieConfig, mod.default, mod.arivie];
+  const candidates = [mod.arivie, mod.default, mod.config, mod.arivieConfig];
   for (const candidate of candidates) {
-    if (candidate !== undefined) {
-      return candidate;
-    }
+    if (candidate !== undefined) return candidate;
   }
   return undefined;
 }
 
-/**
- * Load an arivie.config.ts and return a usable ArivieInstance.
- * If the file exports a raw config, defineArivie() is invoked for the caller.
- */
-export async function loadArivieInstance(configPath: string): Promise<ArivieInstance> {
+export async function loadArivieInstance(configPath: string): Promise<ArivieApp> {
   const absPath = isAbsolute(configPath)
     ? configPath
     : resolve(process.cwd(), configPath);
@@ -76,15 +54,10 @@ export async function loadArivieInstance(configPath: string): Promise<ArivieInst
     );
   }
 
-  if (isArivieInstance(picked)) {
-    return picked;
-  }
-
-  if (isArivieConfig(picked)) {
-    return defineArivie(picked);
-  }
+  if (isArivieApp(picked)) return picked;
+  if (isArivieAppConfig(picked)) return defineArivie(picked);
 
   throw new ArivieConfigError(
-    `Export from ${configPath} is not a recognised Arivie config or instance`,
+    `Export from ${configPath} is not a recognised ArivieAppConfig or ArivieApp`,
   );
 }

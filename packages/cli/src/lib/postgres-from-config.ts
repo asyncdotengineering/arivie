@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-import type { ArivieConfig } from "@arivie/core/types";
 import type { PostgresAdapter } from "@arivie/db-postgres";
-import { ArivieConfigError } from "@arivie/core";
+import type { CliArivieConfig } from "./app-config.js";
+import { postgresAdapterFromAnalytics } from "./app-config.js";
 
 /**
  * Pulls the underlying PostgresAdapter from `config.storage` — that's
@@ -12,23 +12,7 @@ import { ArivieConfigError } from "@arivie/core";
  * contain a "postgres" key; storage is its own top-level slot.
  */
 export function postgresAdapterFromConfig(
-  config: ArivieConfig,
+  config: CliArivieConfig,
 ): PostgresAdapter {
-  const storage = config.storage;
-  if (storage == null || typeof storage !== "object") {
-    throw new ArivieConfigError(
-      "config.storage is required (PostgresAdapter)",
-    );
-  }
-  if (!("kind" in storage) || storage.kind !== "postgres") {
-    throw new ArivieConfigError(
-      'config.storage must be a Postgres storage (kind: "postgres")',
-    );
-  }
-  if (!("url" in storage) || typeof storage.url !== "string") {
-    throw new ArivieConfigError(
-      "config.storage must expose a connection url",
-    );
-  }
-  return storage as unknown as PostgresAdapter;
+  return postgresAdapterFromAnalytics(config);
 }
