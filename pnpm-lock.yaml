@@ -850,6 +850,9 @@ importers:
       '@arivie/agent':
         specifier: workspace:*
         version: link:../agent
+      '@arivie/context':
+        specifier: workspace:*
+        version: link:../context
       '@arivie/db-postgres':
         specifier: workspace:*
         version: link:../db-postgres

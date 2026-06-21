@@ -73,6 +73,7 @@
   },
   "dependencies": {
     "@arivie/agent": "workspace:*",
+    "@arivie/context": "workspace:*",
     "@arivie/db-postgres": "workspace:*",
     "@arivie/embeddings": "workspace:*",
     "@arivie/semantic": "workspace:*",

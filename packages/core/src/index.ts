@@ -7,6 +7,30 @@ export {
   ArivieNotImplementedError,
 } from "./errors.js";
 export { defineArivie } from "./define.js";
+export {
+  assertUniquePluginIds,
+  DANGEROUS_PERMISSIONS,
+  definePlugin,
+  parsePluginConfig,
+  validatePluginDefinition,
+  validateStandardSchema,
+} from "./plugins/index.js";
+export type {
+  BlueprintDefinition,
+  BlueprintFile,
+  BlueprintMarker,
+  DangerousPermission,
+  DiagnosticResult,
+  EvalPackDefinition,
+  PluginDefinition,
+  PluginFactory,
+  PluginInstance,
+  PluginPermission,
+  PluginRuntimeContribution,
+  PluginSetupContext,
+  RouteDefinition,
+} from "./plugins/index.js";
+export type { CapabilityDefinition } from "./capabilities/types.js";
 export { defineSchedule, defineSchedules } from "./schedules.js";
 export type { ArivieSchedule } from "./schedules.js";
 export { createSqlSemanticScorer, extractExecuteSql, resultsEqual } from "./eval/index.js";
