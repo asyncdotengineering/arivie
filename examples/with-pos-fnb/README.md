@@ -1,6 +1,6 @@
 # Arivie — F&B POS Example (Lumière Chain)
 
-A production-grade F&B Point-of-Sale example built on Arivie. Modeled to rival the analytics surface of Toast and Square: tickets, modifiers, multi-tender payments, inventory with recipe-driven COGS, employee shifts + labor, vendor purchase orders, and a double-entry GL.
+The flagship Arivie example: production-grade F&B analytics **and** full framework coverage — semantic layer, SOP skills, schedules, channels, subscriptions, conversation continuity, API-first server, and `arivie chat`.
 
 Multi-outlet from day one — three Lumière outlets (Bistro / Riverside / Westside) seeded with 14 days of realistic operational data. Skills are SOP playbooks per role: every analytics question maps to a documented standard operating procedure.
 
@@ -10,6 +10,7 @@ Multi-outlet from day one — three Lumière outlets (Bistro / Riverside / Wests
 
 | Layer | Detail |
 |---|---|
+| Framework | Channels (ops-alert, GitHub push), subscriptions, cron schedules, API server, spike script |
 | Schema | 18 tables — `outlets`, `menu_categories`, `menu_items`, `modifiers`, `ingredients`, `recipe_lines`, `suppliers`, `purchase_orders`, `purchase_order_lines`, `stock_movements`, `tickets`, `ticket_items`, `ticket_item_modifiers`, `tenders`, `employees`, `shifts`, `time_entries`, `gl_accounts`, `gl_entries` |
 | Seed scale | 3 outlets × 14 days × ~50 tickets/day → ~2,600 tickets, ~8,900 line items, ~2,700 tender lines, ~16,700 stock movements, ~800 GL entries |
 | Semantic layer | 15 entity YAMLs with F&B-canonical measures (`revenue`, `comp_pct`, `void_pct`, `avg_check`, `covers`, `gl_cogs`, `gl_labor`, `actual_consumption_cost`, `waste_cost`, `processor_fees`, …) and segments (`current_business_day`, `last_7_days`, `last_14_days`, `this_week`) — 4am business-day cutoff respected |
@@ -59,7 +60,7 @@ Multi-outlet from day one — three Lumière outlets (Bistro / Riverside / Wests
 3. **Chat with it** (the canonical terminal runner):
    ```bash
    pnpm --filter @arivie/cli build   # first time, for the `arivie` bin
-   pnpm -C arivie exec arivie chat --config examples/with-pos-fnb/arivie.config.ts
+   pnpm exec arivie chat --config examples/with-pos-fnb/arivie.config.ts
    ```
    - A real terminal opens the Ink TUI: start a new conversation or resume a saved
      thread (history persists in `.arivie/memory.db`); ask e.g. *"What was prime
@@ -68,7 +69,25 @@ Multi-outlet from day one — three Lumière outlets (Bistro / Riverside / Wests
      (recommended). `--role` is **optional** for local testing — without it the
      SELECT-only SQL guard still blocks writes.
    - Non-TTY/piped input uses the line REPL:
-     `printf 'prime cost last week?\n/exit\n' | pnpm -C arivie exec arivie chat --config examples/with-pos-fnb/arivie.config.ts`.
+     `printf 'prime cost last week?\n/exit\n' | pnpm exec arivie chat --config examples/with-pos-fnb/arivie.config.ts`.
+
+4. **API server** (channels + subscriptions + `/chat`):
+   ```bash
+   pnpm --filter with-pos-fnb api
+   ```
+   Then `POST http://localhost:3000/chat` with `{ "message": "…", "conversationId": "…" }`.
+   Channel webhooks mount at `/channels/ops-alert/closeout` and `/channels/github.push/push`.
+
+5. **End-to-end spike** (continuity + channels smoke test):
+   ```bash
+   pnpm --filter with-pos-fnb spike
+   ```
+   Expect: continuity store `STORED`, recall `LUMIERE_PRIME`, ops alert status `200`, github push status `200`.
+
+6. **Schedules** — three cron jobs in `arivie.config.ts` map to real skills:
+   - `daily-sales-recap` — daily at 2am CT (after 4am business-day cutoff)
+   - `weekly-flash-report` — Monday 8am CT
+   - `prime-cost-recap` — Monday 7am CT
 
 ---
 

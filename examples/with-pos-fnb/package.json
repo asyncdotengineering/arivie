@@ -8,6 +8,9 @@
     "db:schema": "psql -d arivie_pos -f db/schema.sql",
     "db:seed": "DATABASE_URL=$${DATABASE_URL:-postgresql://localhost:5432/arivie_pos} tsx db/seed.ts",
     "db:setup": "pnpm run db:schema && pnpm run db:seed",
+    "api": "tsx scripts/api-server.ts",
+    "spike": "tsx scripts/run-spike.ts",
+    "build:node": "pnpm --filter @arivie/cli build && pnpm exec arivie build --target node --config arivie.config.ts --output dist",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -16,15 +19,19 @@
     "@ai-sdk/xai": "^3.0.0",
     "@arivie/core": "workspace:*",
     "@arivie/db-postgres": "workspace:*",
+    "@arivie/github": "workspace:*",
     "@arivie/plugin-analytics": "workspace:*",
     "@arivie/plugin-postgres": "workspace:*",
     "@arivie/workspace": "workspace:*",
+    "@hono/node-server": "^1.19.14",
     "@mastra/core": "^1.45.0",
     "ai": "^6.0.0",
+    "hono": "^4.12.0",
     "postgres": "^3.4.7",
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@arivie/cli": "workspace:*",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "@types/node": "^22.0.0",
     "tsx": "^4.20.3",

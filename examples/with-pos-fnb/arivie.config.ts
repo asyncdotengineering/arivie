@@ -2,7 +2,7 @@
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createOpenAI } from "@ai-sdk/openai";
-import { defineAgent, defineArivie, type ArivieAppConfig } from "@arivie/core";
+import { defineAgent, defineArivie, defineSchedules, type ArivieAppConfig } from "@arivie/core";
 import { analytics } from "@arivie/plugin-analytics";
 import { postgresRuntime, postgresSource } from "@arivie/plugin-postgres";
 
@@ -22,6 +22,33 @@ function resolveModel() {
 }
 
 const databaseUrl = requireDatabaseUrl();
+
+export const schedules = defineSchedules([
+  {
+    id: "daily-sales-recap",
+    cron: "0 2 * * *",
+    timezone: "America/Chicago",
+    prompt:
+      "Run the daily-sales-recap skill for yesterday. Flag comp/void breaches and write a Markdown brief.",
+    metadata: { audience: "general-manager", cadence: "daily" },
+  },
+  {
+    id: "weekly-flash-report",
+    cron: "0 8 * * 1",
+    timezone: "America/Chicago",
+    prompt:
+      "Run the weekly-flash-report skill for last week. Compare WoW revenue, prime cost, and KPIs.",
+    metadata: { audience: "general-manager", cadence: "weekly" },
+  },
+  {
+    id: "prime-cost-recap",
+    cron: "0 7 * * 1",
+    timezone: "America/Chicago",
+    prompt:
+      "Run the prime-cost-recap skill for last week. Focus on food + labor as % of revenue by outlet.",
+    metadata: { audience: "owner", cadence: "weekly" },
+  },
+]);
 
 const config: ArivieAppConfig = {
   app: {

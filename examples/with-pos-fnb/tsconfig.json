@@ -13,5 +13,5 @@
     "noEmit": true,
     "types": ["node"]
   },
-  "include": ["arivie.config.ts"]
+  "include": ["*.ts", "channels/**/*.ts", "subscriptions/**/*.ts", "scripts/**/*.ts"]
 }
