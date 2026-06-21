@@ -30,7 +30,6 @@ examples/**/transcripts/
 .vercel
 .vercel-docs/
 
-# Plan Desk: data (workspace.db) is tracked by request; secrets/per-machine state stay ignored
+# Plan Desk: contents tracked by request. The auth token stays OUT — it's a
+# credential and this repo is public, so committing it would leak it permanently.
 .plandesk/token
-.plandesk/server.json
-.plandesk/workspace.json
