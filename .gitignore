@@ -17,20 +17,6 @@ docs/dist/
 docs/.astro/
 .astro/
 
-# Internal-only — local AI tooling, scratch, and reference material; never public
-.research/
-research/
-.agents/
-.codex/
-.claude/
-.handoff/
-.plandesk/
-.mcp.json
-CLAUDE.md
-_*.ts
-*implementation-notes.md
-.implementation-notes.md
-
 # Codegen output (regenerate via `arivie types`)
 .arivie/
 
@@ -43,5 +29,9 @@ examples/**/transcripts/
 .vercel/
 .vercel
 .vercel-docs/
+
+# Plan Desk local state / secrets (config.json + skill.md are tracked)
 .plandesk/token
 .plandesk/server.json
+.plandesk/workspace.db
+.plandesk/workspace.json
