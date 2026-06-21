@@ -78,6 +78,7 @@ export {
   InMemoryRuntimeStorage,
 } from "./storage/index.js";
 export {
+  assembleAgentContext,
   createRuntime,
   decodeContinuation,
   defineAgent,
@@ -89,6 +90,7 @@ export type {
   AgentDefinition,
   AgentExecutor,
   AgentTurnResult,
+  AssembledAgentContext,
   CreateRuntimeOptions,
   CreateSessionInput,
   ResolvedAgent,

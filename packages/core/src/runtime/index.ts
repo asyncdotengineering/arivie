@@ -1,5 +1,7 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 export { createRuntime, defineAgent } from "./session.js";
+export { assembleAgentContext } from "./assemble.js";
+export type { AssembledAgentContext } from "./assemble.js";
 export { executeRun } from "./run.js";
 export {
   decodeContinuation,
