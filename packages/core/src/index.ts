@@ -63,6 +63,36 @@ export {
   buildManifest,
   hasFatalDiagnostics,
 } from "./manifest/index.js";
+export {
+  assertStorageContract,
+  InMemoryRuntimeStorage,
+} from "./storage/index.js";
+export type {
+  AcquireLeaseInput,
+  AdmitDispatchInput,
+  AdmitDispatchResult,
+  ClaimReadyInput,
+  ContextIndexRecord,
+  ContextIndexStore,
+  CreateRunInput,
+  CreateSessionInput,
+  DispatchMessage,
+  DispatchQueueStore,
+  DispatchStatus,
+  EventInput,
+  EventStore,
+  Lease,
+  LeaseStore,
+  RetryLaterInput,
+  RunError,
+  RunRecord,
+  RunStatus,
+  RunStore,
+  RuntimeStorage,
+  SessionRecord,
+  SessionStore,
+  StorageFactory,
+} from "./storage/index.js";
 export type {
   BuildManifestInput,
   BuildManifestResult,
