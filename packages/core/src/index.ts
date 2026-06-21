@@ -31,6 +31,18 @@ export type {
   RouteDefinition,
 } from "./plugins/index.js";
 export type { CapabilityDefinition } from "./capabilities/types.js";
+export {
+  assertManifestValid,
+  buildManifest,
+  hasFatalDiagnostics,
+} from "./manifest/index.js";
+export type {
+  BuildManifestInput,
+  BuildManifestResult,
+  ManifestPluginEntry,
+  OwnedRef,
+  RuntimeManifest,
+} from "./manifest/index.js";
 export { defineSchedule, defineSchedules } from "./schedules.js";
 export type { ArivieSchedule } from "./schedules.js";
 export { createSqlSemanticScorer, extractExecuteSql, resultsEqual } from "./eval/index.js";
