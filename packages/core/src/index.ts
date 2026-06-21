@@ -7,6 +7,8 @@ export {
 } from "./errors.js";
 export { defineArivie } from "./define-app.js";
 export type { ArivieApp, ArivieAppConfig } from "./define-app.js";
+export { listConversations } from "./runtime/conversations.js";
+export type { ConversationSummary } from "./runtime/conversations.js";
 export {
   assertUniquePluginIds,
   DANGEROUS_PERMISSIONS,
