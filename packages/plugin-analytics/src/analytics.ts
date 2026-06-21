@@ -158,6 +158,12 @@ export const analytics: PluginFactory<AnalyticsPluginConfig> = (config) =>
           hasFinalizeReport: false,
           skillsMode: "none",
         }),
+        // Close source connection pools when the app is disposed.
+        dispose: async () => {
+          for (const source of Object.values(ctx.config.sources)) {
+            await source.close?.();
+          }
+        },
       };
     },
   })(config);

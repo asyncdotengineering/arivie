@@ -141,6 +141,33 @@ describe("defineArivie — domain-neutral app builder", () => {
     await app.dispose();
   });
 
+  it("calls plugin dispose hooks on app.dispose (no resource leak)", async () => {
+    let disposed = false;
+    const leaky = definePlugin({
+      id: "leaky",
+      version: "1.0.0",
+      capabilities: [{ id: "leaky.cap", title: "Leaky", description: "Holds a pool." }],
+      setup: () => ({
+        instructions: "x",
+        dispose: () => {
+          disposed = true;
+        },
+      }),
+    })(undefined);
+
+    const app = await defineArivie({
+      app: { id: "t", name: "T" },
+      model: stubModel("ok"),
+      storage: new InMemoryRuntimeStorage(),
+      plugins: [leaky],
+      agents: { helper: defineAgent({ instructions: "x", capabilities: ["leaky.cap"] }) },
+      resolveUser: async () => ({ userId: "u1" }),
+    });
+    expect(disposed).toBe(false);
+    await app.dispose();
+    expect(disposed).toBe(true);
+  });
+
   it("serves POST /sessions over the HTTP handler", async () => {
     const app = await defineArivie({
       app: { id: "t", name: "T" },

@@ -131,6 +131,12 @@ export interface PluginRuntimeContribution {
   diagnostics?: DiagnosticResult[];
   /** Eval packs exercised through public surfaces (C16). */
   evals?: EvalPackDefinition[];
+  /**
+   * Release resources the plugin opened during setup (e.g. source connection
+   * pools). Called by `app.dispose()`. Without it, a plugin that opens a
+   * Postgres pool would leak connections and keep the process alive.
+   */
+  dispose?(): Promise<void> | void;
 }
 
 /**

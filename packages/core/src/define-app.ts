@@ -113,6 +113,11 @@ export async function defineArivie(config: ArivieAppConfig): Promise<ArivieApp> 
     handler: async (req: Request) => hono.fetch(req),
     hono,
     async dispose() {
+      // Release plugin-opened resources (e.g. analytics source pools) before
+      // the runtime storage, so the process can exit cleanly.
+      for (const dispose of manifest.disposers) {
+        await dispose();
+      }
       await config.storage.close?.();
     },
   };

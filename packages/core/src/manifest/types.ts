@@ -52,6 +52,8 @@ export interface RuntimeManifest {
   evals: OwnedRef<EvalPackDefinition>[];
   /** System-prompt fragments contributed by plugins, tagged by owner. */
   instructions: OwnedRef<string>[];
+  /** Plugin resource-release hooks, called by `app.dispose()`. */
+  disposers: Array<() => Promise<void> | void>;
   diagnostics: DiagnosticResult[];
   hasRuntime: boolean;
 }
