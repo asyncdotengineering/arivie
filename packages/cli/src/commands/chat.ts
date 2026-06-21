@@ -5,6 +5,7 @@ import { createInterface } from "node:readline/promises";
 import type { ArivieApp, ArivieEvent, CreateSessionInput } from "@arivie/core";
 import { defineCommand } from "citty";
 import { loadArivieInstance } from "../lib/load-instance.js";
+import { runChatTui } from "./chat-tui.js";
 
 type ChatUser = CreateSessionInput["user"];
 
@@ -69,24 +70,26 @@ export interface RunChatOptions {
 const DIM = "\x1b[2m";
 const RESET = "\x1b[0m";
 
-/**
- * Interactive terminal chat against any Arivie app — the canonical runner.
- * Loads the app, picks an agent, and loops over the deployed session surface,
- * keeping a single conversation thread so Mastra Memory continuity holds.
- */
-export async function runChat(configPath: string, options: RunChatOptions = {}): Promise<number> {
+type PrepareChatResult =
+  | { ok: true; app: ArivieApp; agent: string; user: ChatUser }
+  | { ok: false; code: number };
+
+async function prepareChat(
+  configPath: string,
+  options: RunChatOptions = {},
+): Promise<PrepareChatResult> {
   const app = await loadArivieInstance(configPath);
   const agents = Object.keys(app.runtime.agents);
   const agent = options.agent ?? agents[0];
   if (agent === undefined) {
     console.error("✗ No agents defined in this app.");
     await app.dispose();
-    return 1;
+    return { ok: false, code: 1 };
   }
   if (!agents.includes(agent)) {
     console.error(`✗ Unknown agent "${agent}". Available: ${agents.join(", ")}`);
     await app.dispose();
-    return 1;
+    return { ok: false, code: 1 };
   }
 
   const user: ChatUser = {
@@ -94,6 +97,18 @@ export async function runChat(configPath: string, options: RunChatOptions = {}):
     permissions: [],
     ...(options.role !== undefined ? { dbRole: options.role } : {}),
   };
+  return { ok: true, app, agent, user };
+}
+
+/**
+ * Interactive terminal chat against any Arivie app — the canonical runner.
+ * Loads the app, picks an agent, and loops over the deployed session surface,
+ * keeping a single conversation thread so Mastra Memory continuity holds.
+ */
+export async function runChat(configPath: string, options: RunChatOptions = {}): Promise<number> {
+  const prepared = await prepareChat(configPath, options);
+  if (!prepared.ok) return prepared.code;
+  const { app, agent, user } = prepared;
   const conversationId = options.conversation ?? `cli-${randomUUID()}`;
 
   console.log(
@@ -148,12 +163,31 @@ export const chatCommand = defineCommand({
     conversation: { type: "string", description: "Conversation/thread id (defaults to a fresh one)" },
   },
   async run({ args }) {
-    const code = await runChat(args.config as string, {
+    const chatOptions: RunChatOptions = {
       ...(args.agent !== undefined ? { agent: args.agent as string } : {}),
       ...(args.user !== undefined ? { user: args.user as string } : {}),
       ...(args.role !== undefined ? { role: args.role as string } : {}),
       ...(args.conversation !== undefined ? { conversation: args.conversation as string } : {}),
-    });
+    };
+    const configPath = args.config as string;
+
+    if (process.stdin.isTTY && process.stdout.isTTY) {
+      const prepared = await prepareChat(configPath, chatOptions);
+      if (!prepared.ok) process.exit(prepared.code);
+      const { app, agent, user } = prepared;
+      await runChatTui({
+        app,
+        agent,
+        user,
+        ...(chatOptions.conversation !== undefined
+          ? { initialConversationId: chatOptions.conversation }
+          : {}),
+      });
+      await app.dispose();
+      process.exit(0);
+    }
+
+    const code = await runChat(configPath, chatOptions);
     // A REPL owns its lifecycle: exit explicitly so a background framework timer
     // (Mastra's internal interval) doesn't keep the process alive after /exit.
     process.exit(code);
