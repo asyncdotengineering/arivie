@@ -10,7 +10,7 @@ export type {
   ContextIndexRecord,
   ContextIndexStore,
   CreateRunInput,
-  CreateSessionInput,
+  CreateSessionRecordInput,
   DispatchMessage,
   DispatchQueueStore,
   DispatchStatus,

@@ -11,7 +11,7 @@ import type {
   ContextIndexRecord,
   ContextIndexStore,
   CreateRunInput,
-  CreateSessionInput,
+  CreateSessionRecordInput,
   DispatchMessage,
   DispatchQueueStore,
   EventInput,
@@ -35,7 +35,7 @@ function nowIso(now?: number): string {
 class MemorySessionStore implements SessionStore {
   private readonly sessions = new Map<string, SessionRecord>();
 
-  async create(input: CreateSessionInput): Promise<SessionRecord> {
+  async create(input: CreateSessionRecordInput): Promise<SessionRecord> {
     const id = input.id ?? randomUUID();
     const existing = this.sessions.get(id);
     if (existing !== undefined) return existing;

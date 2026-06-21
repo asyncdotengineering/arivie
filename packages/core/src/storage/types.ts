@@ -32,7 +32,7 @@ export interface SessionRecord {
   updatedAt: string;
 }
 
-export interface CreateSessionInput {
+export interface CreateSessionRecordInput {
   id?: string;
   resource: string;
   userId: string;
@@ -41,7 +41,7 @@ export interface CreateSessionInput {
 }
 
 export interface SessionStore {
-  create(input: CreateSessionInput): Promise<SessionRecord>;
+  create(input: CreateSessionRecordInput): Promise<SessionRecord>;
   get(id: string): Promise<SessionRecord | undefined>;
 }
 

@@ -67,6 +67,25 @@ export {
   assertStorageContract,
   InMemoryRuntimeStorage,
 } from "./storage/index.js";
+export {
+  createRuntime,
+  decodeContinuation,
+  defineAgent,
+  encodeContinuation,
+  executeRun,
+  streamEvents,
+} from "./runtime/index.js";
+export type {
+  AgentDefinition,
+  AgentExecutor,
+  AgentTurnResult,
+  CreateRuntimeOptions,
+  CreateSessionInput,
+  ResolvedAgent,
+  RunContext,
+  Runtime,
+  SessionHandle,
+} from "./runtime/index.js";
 export type {
   AcquireLeaseInput,
   AdmitDispatchInput,
@@ -75,7 +94,7 @@ export type {
   ContextIndexRecord,
   ContextIndexStore,
   CreateRunInput,
-  CreateSessionInput,
+  CreateSessionRecordInput,
   DispatchMessage,
   DispatchQueueStore,
   DispatchStatus,
