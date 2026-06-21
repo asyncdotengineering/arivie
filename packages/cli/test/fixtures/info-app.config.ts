@@ -7,6 +7,7 @@ import {
   definePlugin,
   InMemoryRuntimeStorage,
 } from "@arivie/core";
+import { InMemoryStore } from "@mastra/core/storage";
 import { MockLanguageModelV3 } from "ai/test";
 
 const demo = definePlugin({
@@ -40,6 +41,7 @@ export default await defineArivie({
   app: { id: "info-test", name: "Info Test App" },
   model,
   storage: new InMemoryRuntimeStorage(),
+  memory: new InMemoryStore(),
   plugins: [demo],
   agents: {
     helper: defineAgent({ instructions: "Be brief.", capabilities: ["demo.help"] }),

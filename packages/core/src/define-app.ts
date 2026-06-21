@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: Apache-2.0 */
+import { mkdirSync } from "node:fs";
 import { Agent } from "@mastra/core/agent";
-import { InMemoryStore } from "@mastra/core/storage";
+import { LibSQLStore } from "@mastra/libsql";
 import { Memory } from "@mastra/memory";
 import type { Hono } from "hono";
 import type { LanguageModel } from "ai";
@@ -31,10 +32,21 @@ export interface ArivieAppConfig {
   /**
    * Mastra storage backing agent conversation Memory. The runtime Session is
    * used as the Mastra thread, so multi-turn history persists through Mastra's
-   * own Memory primitive. Defaults to an in-memory store (dev); pass a
-   * `PostgresStore` (from `@mastra/pg`) for production durability.
+   * own Memory primitive. Defaults to a file-backed LibSQL store at
+   * `.arivie/memory.db` (durable, zero-infra) so conversations survive restarts
+   * and can be resumed; pass a `PostgresStore` (from `@mastra/pg`) for
+   * production, or an `InMemoryStore` (from `@mastra/core/storage`) for
+   * ephemeral/test use.
    */
   memory?: MemoryStorage;
+}
+
+const DEFAULT_MEMORY_DB = "file:.arivie/memory.db";
+
+/** Durable, zero-infra default memory (LibSQL file). Ensures the dir exists. */
+function defaultMemoryStore(): MemoryStorage {
+  mkdirSync(".arivie", { recursive: true });
+  return new LibSQLStore({ id: "arivie-memory", url: DEFAULT_MEMORY_DB });
 }
 
 export interface ArivieApp {
@@ -83,7 +95,7 @@ export async function defineArivie(config: ArivieAppConfig): Promise<ArivieApp> 
   });
   assertManifestValid(diagnostics);
 
-  const memoryStorage = config.memory ?? new InMemoryStore();
+  const memoryStorage = config.memory ?? defaultMemoryStore();
   const mastraAgents: Record<string, Agent> = {};
   for (const [id, agentDef] of Object.entries(config.agents)) {
     mastraAgents[id] = buildMastraAgent(

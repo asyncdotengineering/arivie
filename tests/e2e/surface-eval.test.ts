@@ -11,6 +11,7 @@
  */
 import { describe, expect, it } from "vitest";
 import { MockLanguageModelV3, simulateReadableStream } from "ai/test";
+import { InMemoryStore } from "@mastra/core/storage";
 import {
   admitChannelEvent,
   createDispatchWorker,
@@ -64,6 +65,7 @@ async function buildApp(answer: string) {
     app: { id: "surface", name: "Surface Eval" },
     model: stubModel(answer),
     storage,
+    memory: new InMemoryStore(),
     plugins: [demoPlugin()],
     agents: { helper: defineAgent({ instructions: "Be brief.", capabilities: ["demo.help"] }) },
     resolveUser: async () => ({ userId: "u1" }),

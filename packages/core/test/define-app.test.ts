@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 import { describe, expect, it } from "vitest";
 import { MockLanguageModelV3, simulateReadableStream } from "ai/test";
+import { InMemoryStore } from "@mastra/core/storage";
 import { defineArivie } from "../src/define-app.js";
 import { definePlugin } from "../src/plugins/index.js";
 import { defineAgent } from "../src/runtime/index.js";
@@ -63,6 +64,7 @@ describe("defineArivie — domain-neutral app builder", () => {
       app: { id: "t", name: "T" },
       model: stubModel("ok"),
       storage: new InMemoryRuntimeStorage(),
+      memory: new InMemoryStore(),
       plugins: [demoPlugin()],
       agents: { helper: defineAgent({ instructions: "Be brief.", capabilities: ["demo.help"] }) },
       resolveUser: async () => ({ userId: "u1" }),
@@ -76,6 +78,7 @@ describe("defineArivie — domain-neutral app builder", () => {
       app: { id: "t", name: "T" },
       model: stubModel("42 orders yesterday"),
       storage: new InMemoryRuntimeStorage(),
+      memory: new InMemoryStore(),
       plugins: [demoPlugin()],
       agents: { helper: defineAgent({ instructions: "Be brief.", capabilities: ["demo.help"] }) },
       resolveUser: async () => ({ userId: "u1" }),
@@ -101,6 +104,7 @@ describe("defineArivie — domain-neutral app builder", () => {
         app: { id: "t", name: "T" },
         model: stubModel("x"),
         storage: new InMemoryRuntimeStorage(),
+      memory: new InMemoryStore(),
         plugins: [demoPlugin()],
         agents: { bad: defineAgent({ instructions: "x", capabilities: ["nope"] }) },
         resolveUser: async () => ({ userId: "u1" }),
@@ -113,6 +117,7 @@ describe("defineArivie — domain-neutral app builder", () => {
       app: { id: "t", name: "T" },
       model: stubModel("noted"),
       storage: new InMemoryRuntimeStorage(),
+      memory: new InMemoryStore(),
       plugins: [demoPlugin()],
       agents: { helper: defineAgent({ instructions: "Be brief.", capabilities: ["demo.help"] }) },
       resolveUser: async () => ({ userId: "u1" }),
@@ -159,6 +164,7 @@ describe("defineArivie — domain-neutral app builder", () => {
       app: { id: "t", name: "T" },
       model: stubModel("ok"),
       storage: new InMemoryRuntimeStorage(),
+      memory: new InMemoryStore(),
       plugins: [leaky],
       agents: { helper: defineAgent({ instructions: "x", capabilities: ["leaky.cap"] }) },
       resolveUser: async () => ({ userId: "u1" }),
@@ -173,6 +179,7 @@ describe("defineArivie — domain-neutral app builder", () => {
       app: { id: "t", name: "T" },
       model: stubModel("hello there"),
       storage: new InMemoryRuntimeStorage(),
+      memory: new InMemoryStore(),
       plugins: [demoPlugin()],
       agents: { helper: defineAgent({ instructions: "Be brief.", capabilities: ["demo.help"] }) },
       resolveUser: async () => ({ userId: "u1" }),
