@@ -50,6 +50,8 @@ export interface RuntimeManifest {
   routes: Map<string, OwnedRef<RouteDefinition>>;
   schedules: OwnedRef<ArivieSchedule>[];
   evals: OwnedRef<EvalPackDefinition>[];
+  /** System-prompt fragments contributed by plugins, tagged by owner. */
+  instructions: OwnedRef<string>[];
   diagnostics: DiagnosticResult[];
   hasRuntime: boolean;
 }

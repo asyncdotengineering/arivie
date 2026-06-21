@@ -37,6 +37,7 @@ function emptyManifest(app: { id: string; name: string }): RuntimeManifest {
     routes: new Map(),
     schedules: [],
     evals: [],
+    instructions: [],
     diagnostics: [],
     hasRuntime: false,
   };
@@ -109,6 +110,9 @@ function mergeContribution(
   }
   for (const evalPack of contribution.evals ?? []) {
     manifest.evals.push({ pluginId, value: evalPack });
+  }
+  if (contribution.instructions !== undefined) {
+    manifest.instructions.push({ pluginId, value: contribution.instructions });
   }
   for (const diag of contribution.diagnostics ?? []) {
     diagnostics.push(diag);

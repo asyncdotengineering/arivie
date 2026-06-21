@@ -113,6 +113,14 @@ export interface PluginSetupContext<TConfig = unknown> {
 export interface PluginRuntimeContribution {
   /** Mastra tools keyed by tool name. We build on Mastra's tool surface. */
   tools?: Record<string, Tool>;
+  /**
+   * A system-prompt fragment contributed to any agent that uses one of this
+   * plugin's capabilities. The agent builder (defineArivie) concatenates the
+   * agent's own instructions with the fragments of the plugins backing its
+   * declared capabilities (e.g. the analytics plugin contributes its
+   * semantic-layer-aware prompt).
+   */
+  instructions?: string;
   /** Inbound channels (reuse the existing trigger/channel contract). */
   channels?: ChannelDefinition<unknown, TriggerEvent>[];
   /** Recurring schedules contributed by the plugin. */
