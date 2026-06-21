@@ -2,7 +2,7 @@
 
 Minimal App Router app showing:
 
-- `defineArivie` + `arivie.next` at `app/api/arivie/route.ts`
+- `defineArivie` + `arivie.handler` at `app/api/arivie/route.ts`
 - MCP HTTP adapter at `app/api/arivie/mcp/route.ts`
 - Registry `AgentChat` (`useAgent` under the hood) on the home page
 
