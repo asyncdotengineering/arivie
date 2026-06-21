@@ -64,6 +64,16 @@ export {
   hasFatalDiagnostics,
 } from "./manifest/index.js";
 export {
+  installBlueprint,
+  isBlueprintInstalled,
+  readInstalledBlueprints,
+} from "./blueprints/index.js";
+export type {
+  InstallBlueprintOptions,
+  InstallBlueprintResult,
+  InstalledBlueprintRecord,
+} from "./blueprints/index.js";
+export {
   assertStorageContract,
   InMemoryRuntimeStorage,
 } from "./storage/index.js";
