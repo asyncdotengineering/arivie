@@ -2,6 +2,7 @@
 import { defineCommand, runCommand, showUsage } from "citty";
 import { addCommand } from "./commands/add.js";
 import { buildCommand } from "./commands/build.js";
+import { chatCommand } from "./commands/chat.js";
 import { deployCommand } from "./commands/deploy.js";
 import { devCommand } from "./commands/dev.js";
 import { evalCommand } from "./commands/eval.js";
@@ -34,6 +35,7 @@ const rootCommand = defineCommand({
     init: initCommand,
     setup: setupCommand,
     add: addCommand,
+    chat: chatCommand,
     info: infoCommand,
     lint: lintCommand,
     eval: evalCommand,
