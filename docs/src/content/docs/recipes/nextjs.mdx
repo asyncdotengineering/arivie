@@ -1,6 +1,6 @@
 ---
 title: Next.js (App Router)
-description: Deploy Arivie on Next.js with App Router API routes and the registry AgentChat UI.
+description: Deploy Arivie on Next.js with App Router API routes and ArivieChat on /api/chat.
 sidebar:
   order: 1
 runnable_example: examples/with-nextjs/
@@ -8,11 +8,11 @@ source: "RFC-002 §5.1 + examples/with-nextjs"
 ---
 
 import { Code } from '@astrojs/starlight/components';
-import routeTs from '../../../../../examples/with-nextjs/app/api/arivie/route.ts?raw';
+import routeTs from '../../../../../examples/with-nextjs/app/api/chat/route.ts?raw';
 
 ## When to use this
 
-Choose the **Next.js** recipe when your product is already on the App Router and you want the canonical path: `defineArivie` in `arivie.config.ts`, a thin `app/api/arivie/route.ts`, optional MCP at `app/api/arivie/mcp/route.ts`, and `@arivie/react` on the page. This is the reference integration the quickstart and Puppeteer harness exercise.
+Choose the **Next.js** recipe when your product is already on the App Router and you want the canonical path: `defineArivie` in `arivie.config.ts`, a thin `app/api/chat/route.ts` delegating to `arivie.handler`, optional MCP at `app/api/arivie/mcp/route.ts`, and `ArivieChat` from `@arivie/react/chat` on the page. This is the reference integration the quickstart and Puppeteer harness exercise.
 
 ## Architecture
 
@@ -24,14 +24,16 @@ HTTP clients and the in-app chat both call the same runtime from `getArivieRunti
 
 The API route delegates to the shared runtime — no duplicate agent construction in the route file:
 
-<Code code={routeTs} lang="typescript" title="app/api/arivie/route.ts" />
+<Code code={routeTs} lang="typescript" title="app/api/chat/route.ts" />
+
+`arivie.handler` serves the built-in `POST /api/chat` (AI SDK / `useChat` protocol) plus durable session routes.
 
 ## Run it
 
 ```bash
 cd arivie && pnpm install
 pnpm --filter with-nextjs dev
-curl -X POST http://localhost:3000/api/arivie -H 'Content-Type: application/json' -d '{"prompt":"How many customers?"}'
+curl -X POST http://localhost:3000/api/chat -H 'Content-Type: application/json' -d '{"messages":[{"role":"user","content":"How many customers?"}]}'
 ```
 
 Canonical tree: [`arivie/examples/with-nextjs/`](https://github.com/openscoped/data-agent/tree/main/arivie/examples/with-nextjs).

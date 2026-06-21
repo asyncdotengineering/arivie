@@ -46,4 +46,4 @@ Sprint 5 ships automated CI gates (`check-bundle-size`, coverage, eval pass-rate
 
 ## Mode coverage
 
-The pivot requires **mode-coverage probes** — every context mode (`preload`, `browse`, `rag`) must be exercised in CI. Auto-detection via `arivie lint` chooses a default mode from token count; consumers override with `semantic.mode` when they know their catalog size.
+Mode is configured on the **analytics plugin** (`mode: "preload"`). Indexed/RAG mode is on the roadmap.

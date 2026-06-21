@@ -1,27 +1,29 @@
 ---
 title: Why Arivie
 description: Product positioning and foundation decisions from the architecture pivot.
-source: "PIVOT.md + RFC-002 §3.1"
+source: "PIVOT.md + RFC-002 §3.1 + ADR 0002"
 ---
 
-Arivie exists because teams want **agentic analytics inside their own application** without rebuilding Mastra primitives, duplicating MCP handlers, or inventing a parallel agent loop. The framework name, license, and foundation are locked in the project pivot document: **Arivie** ships under **Apache-2.0** for v0.x, published as `@arivie/*`, and is **built on Mastra** — not beside it.
+Arivie exists because teams want a **TypeScript-first agent framework they own** — durable sessions, plugins, webhook dispatch, context layer — without rebuilding Mastra primitives. **Analytics** (text-to-SQL on a governed semantic layer) is the first-party flagship **plugin**, not the framework itself.
+
+The framework ships under **Apache-2.0**, published as **17** `@arivie/*` packages at **2.0.0**, and is **built on Mastra** — not beside it. See [ADR 0002 — Arivie vs Mastra ownership](/adr/0002-arivie-vs-mastra-ownership/).
 
 ## Built on Mastra, not around it
 
-Every Arivie package whose responsibility overlaps a Mastra primitive **extends** that primitive's interface (REQ-1). Storage uses `@mastra/pg`; the filesystem-driven explore tool uses Mastra `Workspace`; embeddings use Mastra `Vector`; the agent uses Mastra `Agent`; MCP uses `@mastra/mcp`. Arivie does **not** run a parallel agent loop (REQ-2). AI SDK remains the escape hatch for narrow operations Mastra has not surfaced yet, but the production architecture treats Mastra as the loop owner.
+Every Arivie package whose responsibility overlaps a Mastra primitive **extends** that primitive's interface (REQ-1). Storage uses `@mastra/pg`; the agent uses Mastra `Agent`; MCP uses `@mastra/mcp`; web chat mounts `@mastra/ai-sdk` at `POST /api/chat`. Arivie does **not** run a parallel agent loop (REQ-2).
 
-This matters for maintainers: when Mastra ships observability, dev TUI, eval framework, or MCP server primitives, Arivie consumes them rather than forking. Where Mastra does not cover data-agent-specific concerns — semantic-layer linting, cross-mode coverage, registry UI — Arivie ships those pieces in `@arivie/semantic`, `@arivie/registry`, and related packages.
+Spend Arivie's code only on the **spine** — durable sessions/runs/events, plugin SDK, dispatch queue, context layer. Route everything else to Mastra **leaves** (agents, memory, model, streaming, guardrails, workflows).
 
 ## Single-tenant by design
 
-The pivot's central simplification is **one Arivie instance = one owner** (one company's data, one tenant's data, or one department's data). The instance scope **is** the boundary. User-level permissions inside an instance are **pass-through to the owner's database role**: if the configured DB role cannot `SELECT` a table, the agent cannot either. Multi-tenant SaaS embedders deploy **N instances**, one per tenant, using `@arivie/deploy` recipes rather than in-process tenant routing.
+**One Arivie app = one owner** (`app.id`). User-level permissions inside an instance are **pass-through to the owner's database role**: if the configured DB role cannot `SELECT` a table, the agent cannot either. Multi-tenant SaaS embedders deploy **N instances**, one per tenant.
 
-What was removed from the architecture is explicit in the pivot: tenant-scoped views with session variables as a firewall, in-process multi-tenant mode, cross-tenant eval probes, and a `resolveTenant(req)` contract. Those are replaced by owner-scoped instance config plus `resolveUser(req)` for personal memory and pass-through ACLs.
+## v2 is production-shaped
 
-## v0.1 is production-shaped
-
-The pivot commits to shipping the production deliverable list at v0.1 — documentation, eval suite, MCP parity, all three context modes, deployment recipes, and registry UI — with **no deferring** core primitives to a later milestone. RFC-002 encodes the same bar through REQ-30–32 (dogfood eval ≥ 90%, BIRD-Interact score, bundle and latency budgets).
+Version **2.0.0** is a domain-neutral agent framework; analytics demoted to a first-party plugin. The production deliverable list — documentation, eval suite, MCP parity, deployment recipes, web chat — ships with **full suite green** via `pnpm -r test`.
 
 ## When to choose Arivie
 
-Choose Arivie when you already run Postgres analytics data, want agents that **read** your warehouse through a curated semantic layer, need HTTP and MCP on the **same** Mastra `Agent`, and can map each customer or org to **its own deployed instance**. If you need arbitrary multi-tenant routing inside one process, Arivie is the wrong fit — deploy multiple instances instead.
+Choose Arivie when you want a **pluggable agent runtime** you self-host, need HTTP (`arivie.handler` / `POST /api/chat`) and MCP on the **same** Mastra agents, and can map each customer or org to **its own deployed instance**. If you need arbitrary multi-tenant routing inside one process, deploy multiple instances instead.
+
+For analytics specifically, add the `@arivie/plugin-analytics` plugin with a curated semantic layer and read-only Postgres role.

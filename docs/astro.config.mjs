@@ -9,7 +9,7 @@ export default defineConfig({
     starlight({
       title: "Arivie",
       description:
-        "Production-grade TypeScript framework for agentic analytics on Mastra — one instance, one owner.",
+        "An agent framework you own. Analytics is the flagship plugin.",
       favicon: "/favicon.svg",
       social: [
         {
@@ -75,6 +75,13 @@ export default defineConfig({
             { slug: "reference/agent" },
             { slug: "reference/cli" },
             { slug: "reference/packages" },
+          ],
+        },
+        {
+          label: "Architecture decisions",
+          items: [
+            { slug: "adr/0001-adopt-mastra-durable-execution" },
+            { slug: "adr/0002-arivie-vs-mastra-ownership" },
           ],
         },
       ],

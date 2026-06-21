@@ -1,15 +1,15 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-import { AgentChat } from "./agent-chat-client";
+import { AppChat } from "./agent-chat-client";
 
 export default function HomePage() {
   return (
     <main className="page">
       <h1>Arivie + Next.js</h1>
       <p className="lede">
-        Chat surface powered by <code>useAgent</code> via the registry{" "}
-        <code>AgentChat</code> component.
+        Chat surface powered by <code>ArivieChat</code> from <code>@arivie/react/chat</code>{" "}
+        against the built-in <code>POST /api/chat</code> route.
       </p>
-      <AgentChat endpoint="/api/arivie" title="Ask your data" />
+      <AppChat />
     </main>
   );
 }

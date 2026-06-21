@@ -19,7 +19,7 @@
   <rect class="bg" width="720" height="360"/>
   <rect class="col" x="40" y="40" width="280" height="120" rx="10"/>
   <text class="label" x="180" y="72" text-anchor="middle">HTTP</text>
-  <text class="label" x="180" y="100" text-anchor="middle" font-weight="400" font-size="11">arivie.next.POST</text>
+  <text class="label" x="180" y="100" text-anchor="middle" font-weight="400" font-size="11">POST /api/chat</text>
   <rect class="col" x="400" y="40" width="280" height="120" rx="10"/>
   <text class="label" x="540" y="72" text-anchor="middle">MCP-stdio</text>
   <text class="label" x="540" y="100" text-anchor="middle" font-weight="400" font-size="11">makeMcpServer</text>

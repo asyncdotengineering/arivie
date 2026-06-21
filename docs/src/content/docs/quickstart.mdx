@@ -1,66 +1,94 @@
 ---
 title: Quickstart
-description: From empty Next.js app to a streamed analytics answer in under 10 minutes.
+description: From empty repo to a streamed analytics answer in under 10 minutes.
 source: "RFC-002 §9.3.8"
 ---
 
 import { Code } from '@astrojs/starlight/components';
-import routeTs from '../../../../examples/with-nextjs/app/api/arivie/route.ts?raw';
+import routeTs from '../../../../examples/with-nextjs/app/api/chat/route.ts?raw';
 import arivieConfig from '../../../../examples/with-nextjs/arivie.config.ts?raw';
 import pageTsx from '../../../../examples/with-nextjs/app/page.tsx?raw';
 import agentChat from '../../../../examples/with-nextjs/app/agent-chat-client.tsx?raw';
 import envExample from '../../../../examples/with-nextjs/.env.example?raw';
 
-This quickstart follows RFC-002 §9.3.8: a developer with Postgres and Node 20+ should reach a **streamed answer** in **under 10 minutes** of wall-clock time (user experience expectation; CI uses a Puppeteer harness with a 10-minute test timeout).
+Get a **streamed answer** in under 10 minutes. The fast path is the CLI — no web server, no UI wiring.
 
 ## Prerequisites
 
 - Node.js 20+ and [pnpm](https://pnpm.io/)
-- Postgres 14+ (local or Docker)
-- Optional: `GOOGLE_GENERATIVE_AI_API_KEY` (Gemini is the documented default; without any model key the example uses a deterministic mock)
+- Postgres 14+ (local or Docker) when using the analytics plugin
+- A model provider key (`OPENAI_API_KEY`, `GOOGLE_GENERATIVE_AI_API_KEY`, or `ANTHROPIC_API_KEY`)
 
-## Sixty-second install (no Next.js needed)
-
-If you just want a working Arivie agent without scaffolding a Next.js app, the bare minimum is six commands:
+## One-command peak (CLI)
 
 ```bash
-mkdir my-arivie-app && cd my-arivie-app
-pnpm init
-pnpm add @arivie/core @arivie/db-postgres @arivie/workspace @ai-sdk/google
-pnpm add -D @arivie/cli
-pnpm dlx @arivie/cli add skill cohort-analysis
-pnpm dlx @arivie/cli add skill funnel-conversion
+pnpm dlx @arivie/cli init my-agent && cd my-agent
 ```
 
-That gives you the core framework plus two SOP skill playbooks dropped into `./skills/`. The CLI ships with six skills bundled (`cohort-analysis`, `funnel-conversion`, `revenue-attribution`, `dau-mau-ratio`, `churn-investigation`, `anomaly-detection`) and eight UI scaffolds — no extra package installs needed; everything resolves from the CLI's own tarball.
+Put `OPENAI_API_KEY` and `DATABASE_URL` in `.env` (auto-loaded), then:
 
-From there, jump to the [Build your first BI/BA agent tutorial](/tutorials/first-bi-agent/) for the full schema → semantic-layer → agent → file-artifact walkthrough.
+```bash
+pnpm exec arivie chat --config arivie.config.ts
+```
 
-The Next.js flow below is the production-shaped scaffold (HTTP route + chat UI + middleware-friendly handler shape). Pick whichever matches what you're building.
+Pick a past conversation or start a new one, ask a question, and watch the agent stream the answer.
 
-## 1. Create a Next.js app
+## Calling the agent
+
+One-shot — returns the terminal answer string:
+
+```ts
+const text = await arivie.prompt({
+  agent: "analyst",
+  prompt: "How many customers did we get last week?",
+  user: { userId: "u1", permissions: ["analytics:read"], dbRole: "arivie_reader" },
+});
+```
+
+Streaming or full control — durable session with cursor-replayable `ArivieEvent` stream:
+
+```ts
+const handle = await arivie.sessions.create({
+  agent: "analyst",
+  prompt: "How many customers did we get last week?",
+  user: { userId: "u1", permissions: ["analytics:read"], dbRole: "arivie_reader" },
+  session: { id: "conv-123" },
+});
+
+for await (const event of handle.stream) {
+  // model.delta, tool.call.started, run.completed, …
+}
+```
+
+For an ephemeral, non-durable call, drop to Mastra's `agent.generate()`. See [ADR 0002 — Arivie vs Mastra ownership](/adr/0002-arivie-vs-mastra-ownership/).
+
+## Production-shaped path (Next.js)
+
+Use this when you need an App Router app, HTTP routes, and a web chat UI.
+
+### 1. Create a Next.js app
 
 ```bash
 pnpm create next-app my-arivie-app --typescript --app --eslint
 cd my-arivie-app
 ```
 
-## 2. Install Arivie packages
+### 2. Install Arivie packages
 
 ```bash
-pnpm add @arivie/core @arivie/db-postgres @arivie/react @arivie/mcp
+pnpm add @arivie/core @arivie/plugin-analytics @arivie/plugin-postgres @arivie/react
 pnpm add -D @arivie/cli
 ```
 
-## 3. Initialize the project
+### 3. Initialize the project
 
 ```bash
-pnpm dlx arivie init
+pnpm dlx @arivie/cli init
 ```
 
 This scaffolds `arivie.config.ts`, semantic directory stubs, and CLI wiring.
 
-## 4. Configure environment and database
+### 4. Configure environment and database
 
 Copy the example env template and set `DATABASE_URL`:
 
@@ -70,7 +98,7 @@ Copy the example env template and set `DATABASE_URL`:
 pnpm dlx arivie setup
 ```
 
-`setup` creates the read-only DB role, runs Mastra Memory migrations, and performs the owner-identity smoke check (RFC-002 §4.5).
+`setup` creates the read-only DB role and runs storage migrations.
 
 Seed the dogfood schema (matches `examples/with-nextjs/seed.sql`):
 
@@ -78,7 +106,7 @@ Seed the dogfood schema (matches `examples/with-nextjs/seed.sql`):
 psql "$DATABASE_URL" -f path/to/seed.sql
 ```
 
-## 5. Set a model provider key
+### 5. Set a model provider key
 
 Add to `.env.local`:
 
@@ -89,30 +117,25 @@ GOOGLE_MODEL=gemini-2.5-flash
 
 Preference order in the reference config: **Gemini → Anthropic → OpenAI → mock**.
 
-## 6. Add an entity and UI
+### 6. Wire the chat API route
 
-```bash
-pnpm dlx arivie add entity orders
-pnpm dlx arivie add ui agent-chat
-```
+Create `app/api/chat/route.ts` — delegates to the built-in `POST /api/chat` handler:
 
-## 7. Wire the API route
+<Code code={routeTs} lang="typescript" title="app/api/chat/route.ts" />
 
-Create `app/api/arivie/route.ts` (canonical example):
-
-<Code code={routeTs} lang="typescript" title="app/api/arivie/route.ts" />
-
-Your `arivie.config.ts` should match the reference resolver and `defineArivie` block:
+Your `arivie.config.ts` should match the reference v2 shape:
 
 <Code code={arivieConfig} lang="typescript" title="arivie.config.ts" />
 
-## 8. Mount the chat UI
+### 7. Mount the chat UI
+
+`ArivieChat` from `@arivie/react/chat` posts to the built-in `/api/chat` route:
 
 <Code code={pageTsx} lang="tsx" title="app/page.tsx" />
 
 <Code code={agentChat} lang="tsx" title="app/agent-chat-client.tsx" />
 
-## 9. Run dev and ask a question
+### 8. Run dev and ask a question
 
 ```bash
 pnpm dev
@@ -126,26 +149,8 @@ The monorepo runs `pnpm test:quickstart` (Puppeteer + testcontainers Postgres) o
 
 ## Next steps
 
-- **Want a deeper walkthrough?** [Build your first BI/BA agent](/tutorials/first-bi-agent/) — 60-minute tutorial that adds a semantic layer, an SOP skill, and demonstrates writing a Markdown report directly from the agent. Each step has a checkpoint.
-- [SQL is the calculator](/recipes/sql-as-calculator/) — research-backed convention that prevents LLM arithmetic errors. Adopt this before your skill count grows.
-- [The boundary](/concepts/the-boundary/) — `owner.id` and `arivie_owner_identity`
+- **Want a deeper walkthrough?** [Build your first BI/BA agent](/tutorials/first-bi-agent/) — semantic layer, SOP skill, file artifacts. Each step has a checkpoint.
+- [SQL is the calculator](/recipes/sql-as-calculator/) — research-backed convention that prevents LLM arithmetic errors.
+- [The boundary](/concepts/the-boundary/) — `app.id` and owner identity
 - [Auth integrations](/integrations/better-auth/) — Better Auth or custom JWT (`jose`)
-- Full runnable project: `arivie/examples/with-nextjs/` (basic) or `arivie/examples/kitchen-sink/` (full feature demo — skills, schedules, triggers, channels, conversation continuity)
-
-## Calling the agent
-
-The simplest path is the typed `instance.ask()` facade:
-
-```ts
-const result = await instance.ask({
-  prompt: "How many customers did we get last week?",
-  user: { userId: "u1", permissions: ["analytics:read"], dbRole: "arivie_reader" },
-});
-
-console.log(result.text);            // string
-console.log(result.toolCalls);       // typed tool-call trace
-console.log(result.sql);              // string[] of execute_<source> statements
-console.log(result.artifacts);        // file paths written via mastra_workspace_write_file
-```
-
-`ask()` sets the AsyncLocalStorage user context the `execute_<source>` tool reads, manages the Mastra Memory `{ thread, resource }` thread, and walks the response into a strict `AskResult` shape. For streaming or other Mastra-specific options, `instance.agent.generate(...)` remains the escape hatch.
+- Full runnable projects: `examples/with-nextjs/` (minimal) · `examples/with-arivie-chat/` (deployable web chat) · `examples/with-pos-fnb/` (flagship analytics)

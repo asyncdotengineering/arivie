@@ -15,28 +15,27 @@ The CLI command `arivie add entity <name>` scaffolds a starter entity; `arivie l
 
 ## Context-loading modes
 
-Mode is auto-detected from semantic-layer token count; consumers override via `semantic.mode` in config.
+Mode is configured on the **analytics plugin** (`mode: "auto" | "preload"`). v2 supports preload; indexed/RAG mode is on the roadmap.
 
 | Mode | When | Mechanism |
 |------|------|-----------|
 | **preload** | Few entities (< ~30; ~10k tokens) | Entire layer flattened into agent system prompt |
-| **indexed** | Large catalogs | Mastra `Vector` over chunked paragraphs; agent retrieves on demand |
+| **indexed** | Large catalogs | Roadmap — Mastra `Vector` over chunked paragraphs |
 
-In preload mode, the full semantic layer is injected into the agent's instructions. In indexed mode, the agent uses embedding-based retrieval to pull relevant entity definitions on demand.
-
-Set mode explicitly in config:
+Set mode on the analytics plugin:
 
 ```ts
-defineArivie({
-  // ...
-  semantic: {
-    path: "./semantic",
-    mode: "auto", // "preload" | "indexed" | "auto"
-  },
-});
-```
+import { analytics } from "@arivie/plugin-analytics";
 
-When mode is `"indexed"` (or `"auto"` resolves to it), you must also provide an `embeddings` config with a provider, vector store, and index name.
+plugins: [
+  analytics({
+    semanticPath: "./semantic",
+    mode: "preload",
+    compileMetric: true,
+    sources: { /* … */ },
+  }),
+],
+```
 
 ## Read-only workspace
 
@@ -65,10 +64,10 @@ const orders = defineEntity({
 const layer = composeSemantic({ entities: [orders], outputDir: "./semantic" });
 ```
 
-This writes validated `.yml` files to disk and returns the in-memory `SemanticLayer` for direct use in `defineArivie`.
+This writes validated `.yml` files to disk and returns the in-memory `SemanticLayer` for use by the analytics plugin.
 
 ## Dogfood examples
 
 - `examples/with-nextjs/semantic/` — five entities (`customers`, `orders`, `products`, `line_items`, `invoices`).
-- `examples/kitchen-sink/semantic/` — hospitality ops entities with schedules, skills, and triggers.
+- `examples/kitchen-sink/semantic/` — hospitality ops entities with schedules and triggers.
 - `examples/woocommerce-orders-postgres-kitchen-sink/semantic/` — 13 WooCommerce analytics entities.

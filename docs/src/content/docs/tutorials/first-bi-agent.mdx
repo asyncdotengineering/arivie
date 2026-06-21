@@ -31,8 +31,8 @@ Optional: VS Code with the YAML + SQL extensions to make the semantic-layer file
 ```bash
 mkdir my-bi-agent && cd my-bi-agent
 pnpm init
-pnpm add @arivie/core @arivie/db-postgres @arivie/workspace \
-         @ai-sdk/google @mastra/core ai postgres zod
+pnpm add @arivie/core @arivie/plugin-analytics @arivie/plugin-postgres \
+         @ai-sdk/google postgres zod
 pnpm add -D tsx typescript @types/node
 ```
 
@@ -278,31 +278,46 @@ entities:
 `arivie.config.ts`:
 
 ```ts
-import { defineArivie } from "@arivie/core";
-import { postgresAdapter } from "@arivie/db-postgres";
+import { defineArivie, defineAgent } from "@arivie/core";
+import { analytics } from "@arivie/plugin-analytics";
+import { postgresRuntime, postgresSource } from "@arivie/plugin-postgres";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
+const semanticPath = join(__dirname, "semantic");
 
-export function buildInstance() {
+export async function buildArivie() {
   const google = createGoogleGenerativeAI({
     apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY!,
   });
   const model = google("gemini-2.5-flash");
 
-  const postgres = postgresAdapter({
-    url: process.env.DATABASE_URL!,
-    readOnlyRole: "arivie_reader",
-  });
-
   return defineArivie({
-    owner: { id: "tutorial", name: "Tutorial Chain" },
+    app: { id: "tutorial", name: "Tutorial Chain" },
     model,
-    semantic: { path: join(__dirname, "semantic"), mode: "preload" },
-    sources: { postgres },
-    compileMetric: true,
+    storage: postgresRuntime({ url: process.env.DATABASE_URL! }),
+    plugins: [
+      analytics({
+        semanticPath,
+        mode: "preload",
+        compileMetric: true,
+        sources: {
+          postgres: postgresSource({
+            url: process.env.DATABASE_URL!,
+            readOnlyRole: "arivie_reader",
+          }),
+        },
+      }),
+    ],
+    agents: {
+      analyst: defineAgent({
+        instructions: "Answer F&B questions with concise, SQL-backed evidence.",
+        capabilities: ["analytics.query", "analytics.compile_metric"],
+      }),
+    },
+    context: { root: semanticPath },
     resolveUser: async () => ({
       userId: "tutorial-user",
       permissions: ["analytics:read"],
@@ -315,25 +330,26 @@ export function buildInstance() {
 `scripts/ask.ts`:
 
 ```ts
-import { buildInstance } from "../arivie.config.js";
+import { buildArivie } from "../arivie.config.js";
 
 async function main() {
   const prompt = process.argv.slice(2).join(" ").trim();
   if (!prompt) { console.error('usage: pnpm ask "your question"'); process.exit(1); }
 
-  const instance = await buildInstance();
-  const result = await instance.ask({
+  const arivie = await buildArivie();
+  const text = await arivie.prompt({
+    agent: "analyst",
     prompt,
     user: { userId: "tutorial-user", permissions: ["analytics:read"], dbRole: "arivie_reader" },
   });
 
-  console.log("\n" + result.text);
+  console.log("\n" + text);
 }
 
 main().catch((err) => { console.error(err); process.exit(1); });
 ```
 
-`instance.agent` is the Arivie agent — a single Mastra Agent with SQL tools attached. In step 6 we add a workspace so the same agent can write files.
+The `analyst` agent is a Mastra Agent with SQL tools from the analytics plugin. In step 6 we add file-artifact prompts; see `examples/with-pos-fnb/` for workspace wiring.
 
 Run it:
 
@@ -348,7 +364,7 @@ pnpm ask "What is our revenue this week?"
 - An `Assumptions:` block stating which segment / status filter was applied
 - A `SQL:` block with one CTE-chained query
 
-If you get `column ... does not exist`, the agent guessed a column name that doesn't match your schema — check that your entity YAMLs have the dimensions the question references. If you get "no user context", you forgot the `runWithUserContext(user, ...)` wrapper.
+If you get `column ... does not exist`, the agent guessed a column name that doesn't match your schema — check that your entity YAMLs have the dimensions the question references.
 
 ## 5. Add an SOP skill (10 min)
 
@@ -409,19 +425,13 @@ ORDER BY revenue DESC;
 Surface the rows. The `flag` column is your verdict — do not re-derive it.
 ```
 
-Update `arivie.config.ts` to register the skills directory:
+Add the skill with the CLI:
 
-```ts
-return defineArivie({
-  // ...
-  workspace: {
-    rootDir: join(__dirname, "semantic"),
-    skills: join(__dirname, "skills"),
-    skillsMode: "auto",
-  },
-  // ...
-});
+```bash
+pnpm dlx arivie add skill daily-recap
 ```
+
+Then replace the generated `skills/daily-recap/SKILL.md` body with the playbook above (or author it manually under `skills/daily-recap/SKILL.md`).
 
 Re-run:
 
@@ -431,59 +441,21 @@ pnpm ask "How did we do yesterday?"
 
 **Checkpoint:** The output references the skill in its reasoning ("following the daily-recap playbook…") OR you see a tool call to `load_skill` / `skill_read` in the agent's trace. The SQL in the response is the CTE from the skill (or close to it).
 
-The `skillsMode: "auto"` setting auto-picks **eager** mode (skill content injected into the system prompt) for ≤6 skills and **on-demand** (BM25-searchable) for >6. With one skill, eager fires every turn.
+**Checkpoint:** The output references the skill in its reasoning ("following the daily-recap playbook…") OR you see a tool call related to skill loading in the agent's trace. The SQL in the response is the CTE from the skill (or close to it).
 
-## 6. Add a workspace and write a Markdown report (15 min)
+## 6. Write a Markdown report (15 min)
 
-So far the agent only reads + computes. Now mount a sandboxed workspace so the same agent can **write files** via `mastra_workspace_write_file`. No second agent, no delegation — the SQL rows that come out of `execute_postgres` go straight into the file write in the same turn.
-
-Update `arivie.config.ts` to attach a workspace filesystem rooted at a project-local directory:
-
-```ts
-import { InProcessSandboxFilesystem } from "@arivie/workspace";
-import { resolve } from "node:path";
-
-// ...inside buildInstance(), before defineArivie:
-const workspaceRoot = resolve(__dirname, "workspace");
-const filesystem = new InProcessSandboxFilesystem({ rootDir: workspaceRoot });
-
-return defineArivie({
-  // ...
-  workspace: {
-    filesystem,
-    skills: join(__dirname, "skills"),
-    skillsMode: "auto",
-    // Opt-in: surfaces `workspace_bash` so you can also shell out for things
-    // SQL can't shape (jq / awk / python). Omit if you only need file writes.
-    tools: ["bash"],
-  },
-  // ...
-});
-```
-
-Add `workspace/` to `.gitignore` — artifacts are run-time output, not source.
-
-Mastra automatically registers the workspace tools on your agent: `mastra_workspace_read_file`, `mastra_workspace_write_file`, `mastra_workspace_grep`, `mastra_workspace_list_files`, `mastra_workspace_mkdir`, `mastra_workspace_delete`, `mastra_workspace_edit_file`, `mastra_workspace_file_stat`, plus `workspace_bash` because we opted in.
+Prompt the same agent to pull data and write a file. Workspace tools (`mastra_workspace_write_file`) require workspace wiring — see `examples/with-pos-fnb/` for the flagship setup. For this tutorial, use a prompt that asks for file output; when workspace is wired, the agent writes in the same turn:
 
 Create `scripts/recap-to-file.ts`:
 
 ```ts
-import { runWithUserContext } from "@arivie/core/context";
-import { existsSync, mkdirSync, readFileSync, rmSync } from "node:fs";
-import { join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
-import { dirname } from "node:path";
-import { buildInstance } from "../arivie.config.js";
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const workspaceRoot = resolve(__dirname, "..", "workspace");
+import { buildArivie } from "../arivie.config.js";
 
 async function main() {
-  if (existsSync(workspaceRoot)) rmSync(workspaceRoot, { recursive: true, force: true });
-  mkdirSync(join(workspaceRoot, "reports"), { recursive: true });
-
-  const instance = await buildInstance();
-  const result = await instance.ask({
+  const arivie = await buildArivie();
+  const text = await arivie.prompt({
+    agent: "analyst",
     prompt: `Produce yesterday's recap and save it as a Markdown file.
 1. Use the daily-recap skill to pull the data via ONE execute_postgres CTE.
 2. Call mastra_workspace_write_file to write reports/recap-yesterday.md with
@@ -493,10 +465,7 @@ async function main() {
     user: { userId: "tutorial-user", permissions: ["analytics:read"], dbRole: "arivie_reader" },
   });
 
-  const report = join(workspaceRoot, "reports", "recap-yesterday.md");
-  console.log("\n— Agent's answer —\n" + result.text);
-  console.log(`\n— Tool trace —\n${result.toolCalls.map((c) => `  ${c.tool}`).join("\n")}`);
-  console.log("\n— File on disk —\n" + (existsSync(report) ? readFileSync(report, "utf8") : "(not written)"));
+  console.log("\n— Agent's answer —\n" + text);
 }
 
 main().catch((err) => { console.error(err); process.exit(1); });
@@ -508,42 +477,38 @@ Run it:
 pnpm tsx scripts/recap-to-file.ts
 ```
 
-**Checkpoint:** The script prints two sections. The "File on disk" section shows actual Markdown with the dollar figures from the database — those numbers should match what `pnpm ask "How did we do yesterday?"` returned. The file lives at `workspace/reports/recap-yesterday.md` and you can `cat` it.
+**Checkpoint:** With workspace wired (see `examples/with-pos-fnb/`), the script prints the agent's confirmation and `workspace/reports/recap-yesterday.md` exists on disk.
 
 If the file doesn't get written, check:
-- The tool trace includes one `execute_postgres` call followed by one `mastra_workspace_write_file` call.
-- The path in the prompt is relative (`reports/recap-yesterday.md`), not absolute. Absolute paths trip the path-guard.
-- You didn't put the model in a mode that strips tool calls (some "JSON mode" wrappers do this).
+- Workspace tools are registered on the agent (see flagship example).
+- The path in the prompt is relative (`reports/recap-yesterday.md`), not absolute.
 
 ## 7. What you just built
 
 ```
 ┌────────────────────────────────────────────────────────────┐
-│ instance.agent — Arivie agent (Gemini)                     │
-│   tools:                                                   │
-│     - compile_metric                                       │
-│     - execute_postgres                                     │
-│     - mastra_workspace_{read,write,grep,list,…}_file       │
-│     - workspace_bash (opt-in)                              │
-│   inputs:                                                  │
-│     - semantic layer (3 entities, preloaded)               │
-│     - skills (daily-recap, eager mode)                     │
+│ analyst agent (Gemini) via defineAgent + analytics plugin  │
+│   tools: compile_metric, execute_postgres, workspace_*     │
+│   inputs: semantic layer (3 entities, preloaded)           │
+│   skills: daily-recap (skills/daily-recap/SKILL.md)        │
 └────────────────────────────────────────────────────────────┘
                 ↓
        Postgres `arivie_tutorial`
                 ↓
-       workspace/reports/*.md
+       workspace/reports/*.md (when workspace wired)
 ```
 
-One entry point, one model, two tool families:
+One entry point, one model:
 
 ```ts
-const result = await instance.agent.generate(prompt, {
-  memory: { thread: `chat-${Date.now()}`, resource: user.userId },
+const text = await arivie.prompt({
+  agent: "analyst",
+  prompt,
+  user: { userId: "tutorial-user", permissions: ["analytics:read"], dbRole: "arivie_reader" },
 });
 ```
 
-The same call answers an analytics question OR produces a file, depending on what the prompt asks for. No routing layer to debug; the tool trace is the routing log.
+The same call answers an analytics question OR produces a file, depending on what the prompt asks for.
 
 ## 8. Where to go from here
 
@@ -562,6 +527,6 @@ Three things, in order of weight:
 
 1. **The semantic layer is the contract.** Measures, dimensions, and segments are declared once and reused everywhere. The agent doesn't reinvent `revenue` on each query; it composes the declared SQL.
 2. **Skills are SOPs, not prompts.** A skill is a versioned, reviewable, testable Markdown playbook that says "here's how this analysis should always be done." The agent reads the playbook before answering. New analysts get the same answer the senior analyst would have given because the skill is the senior analyst.
-3. **The workspace is part of the same agent.** When marketing wants the recap emailed daily, you wire a mailer at the host-app layer that calls `instance.agent.generate(...)` with "...then write reports/recap.md". When finance wants the same recap in CSV, you change the prompt. The SQL surface and the skills don't change, and there's no second LLM in the loop translating data into prose between steps.
+3. **File artifacts use the same agent.** When marketing wants the recap emailed daily, call `arivie.prompt` with "...then write reports/recap.md". See `examples/with-pos-fnb/` for workspace + schedules wired end-to-end.
 
 That's the difference between an analytics chatbot and an analytics platform.

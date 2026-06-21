@@ -1,6 +1,6 @@
 ---
 title: Cost guardrails
-description: Cap rows, query time, and token budgets per request with Arivie limits config.
+description: Cap rows and query time on analytics tools.
 sidebar:
   order: 6
 runnable_example: examples/with-nextjs/
@@ -9,7 +9,7 @@ source: "RFC-002 §4.1 limits + examples/with-nextjs"
 
 ## When to use this
 
-Apply **cost guardrails** when you need hard ceilings on agent spend: fewer rows returned per `execute`, shorter SQL timeouts, and optional per-request token budgets before the model provider bills you. These limits are enforced inside `@arivie/agent` tools — not advisory prompts.
+Apply **cost guardrails** when you need hard ceilings on agent spend: fewer rows returned per `execute`, shorter SQL timeouts. These limits are enforced inside analytics tools — not advisory prompts.
 
 ## Architecture
 
@@ -19,28 +19,18 @@ Base example: [`examples/with-nextjs/`](https://github.com/openscoped/data-agent
 
 ## Config patch
 
-Add `limits` to `defineArivie` in `arivie.config.ts`:
+Row limits and query timeouts are configured on the analytics plugin source adapters and tool layer. Pair `mode: "preload"` on the analytics plugin when your catalog is small to avoid retrieval token overhead.
 
-```typescript
-defineArivie({
-  // ... owner, model, db, semantic, resolveUser
-  limits: {
-    rowsPerQuery: 50,
-    queryTimeoutMs: 30_000,
-    tokensPerRequest: 8_000,
-    tokensPerUserPerMonth: null,
-  },
-});
-```
-
-`rowsPerQuery` and `queryTimeoutMs` apply to `execute` and `compile_metric`. `tokensPerRequest` is reserved for handler-level enforcement as the budget wiring lands in Sprint 5 CI gates (REQ-32). Pair limits with `semantic.mode: "preload"` when your catalog is small to avoid browse/RAG token overhead.
+Per-request token budgets and `limits` top-level config are **planned** with ADR 0001 durable execution wiring.
 
 ## Run it
 
 ```bash
 cd arivie && pnpm install
 pnpm --filter with-nextjs dev
-curl -X POST http://localhost:3000/api/arivie -H 'Content-Type: application/json' -d '{"prompt":"How many customers?"}'
+curl -X POST http://localhost:3000/api/chat \
+  -H 'Content-Type: application/json' \
+  -d '{"messages":[{"role":"user","content":"How many customers?"}]}'
 ```
 
-Stress-test with a wide `SELECT` prompt and confirm the agent respects `rowsPerQuery` in the returned result set.
+Stress-test with a wide `SELECT` prompt and confirm the agent respects row limits in the returned result set.

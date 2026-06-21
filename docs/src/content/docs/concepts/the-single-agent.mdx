@@ -1,15 +1,23 @@
 ---
 title: The single-agent shape
-description: defineArivie returns one Mastra agent with text-to-SQL tools + workspace tools attached directly. Why Arivie picked this over a supervisor + sub-agents topology, and what changes when you do need orchestration.
+description: defineArivie builds Mastra agents with plugin tools attached directly. Why Arivie picked this over a supervisor + sub-agents topology, and what changes when you do need orchestration.
 source: "v0.2 single-agent reversal"
 ---
 
-`defineArivie()` returns a **single Mastra agent** with two tool families attached: text-to-SQL (`compile_metric`, `execute_<source>`) and workspace (`mastra_workspace_read_file`, `mastra_workspace_write_file`, `mastra_workspace_grep`, optional `workspace_bash`). The agent that runs the SQL is the same agent that writes the Markdown report or runs the shell utility. No supervisor, no sub-agents, no inter-agent prose handoff.
+`defineArivie()` builds **Mastra agents** from your `agents` map. Each agent gets the tools and instruction fragments from the plugins backing its `capabilities` — for analytics, that means text-to-SQL (`compile_metric`, `execute_<source>`) plus any workspace tools your deployment wires. The agent that runs the SQL is the same agent that writes the Markdown report. No supervisor, no sub-agents, no inter-agent prose handoff.
 
 ```ts
-const instance = await defineArivie({ ... });
-
-instance.agent      // The Arivie analytics agent. Tools attached: SQL + workspace.
+const arivie = await defineArivie({
+  app: { id: "acme", name: "Acme" },
+  agents: {
+    analyst: defineAgent({
+      instructions: "…",
+      capabilities: ["analytics.query", "analytics.compile_metric"],
+    }),
+  },
+  plugins: [analytics({ /* … */ })],
+  // …
+});
 ```
 
 ## Why one agent, not a supervisor + sub-agents
@@ -31,7 +39,7 @@ coder LLM (sees the supervisor's paraphrase, NOT the rows)
   ↓ writes file
 ```
 
-Every arrow between LLMs is a **prose summary boundary**. The rows that came out of Postgres are now a narrative the supervisor wrote — and weak models fill gaps in that narrative with plausible-sounding numbers. We have a verified failure mode from Grok where the actual SQL output had correct outlet IDs and prime-cost percentages, and the user-facing HTML report had **completely fabricated** revenue, COGS, and labor numbers. The data was right at the boundary; the boundary destroyed it.
+Every arrow between LLMs is a **prose summary boundary**. The rows that came out of Postgres are now a narrative the supervisor wrote — and weak models fill gaps in that narrative with plausible-sounding numbers.
 
 The single-agent shape eliminates the boundary:
 
@@ -66,40 +74,33 @@ The agent saw the rows. The agent wrote the file. One LLM, two tools, zero hando
 
 ## What about workflows?
 
-For composite work where you want **deterministic steps** (validate input → fetch → render → email) rather than letting the LLM choose the tool sequence, use Mastra Workflows. Workflows let you put the LLM only at the steps that need genuine reasoning, with typed state flowing between them. This is WrenAI's shape and the recommended escape hatch when you want to lock down a procedure.
-
-Arivie itself does not ship workflow primitives in v0.2 — they belong in the host application that uses Arivie as a building block, not in the framework.
+For composite work where you want **deterministic steps** (validate input → fetch → render → email) rather than letting the LLM choose the tool sequence, use Mastra Workflows. Multi-step + cron-scheduled workflows on Mastra are **planned** — see [ADR 0001](/adr/0001-adopt-mastra-durable-execution/). Current `schedules` are single-prompt cron config.
 
 ## What about genuinely heterogeneous specialists?
 
-If you're building something that routes between distinct domains — say, an analytics agent **and** a customer-support agent **and** a code-review agent — then the supervisor + agents-as-tools pattern (Mastra's canonical example, Anthropic's "Building Effective Agents" orchestrator pattern) is the right shape. The boundary cost is real, but routing between genuine specialists is the actual problem you have.
+If you're building something that routes between distinct domains — say, an analytics agent **and** a customer-support agent **and** a code-review agent — then the supervisor + agents-as-tools pattern (Mastra's canonical example) is the right shape.
 
-That is not what Arivie is. Arivie is an analytics agent. The work is text-to-SQL with optional file output. One LLM, multiple tools.
-
-If you do need supervisor routing, you can construct it yourself by wrapping `instance.agent` as a tool on your own supervisor Agent — Mastra exposes this through its `agents:` parameter on the Agent constructor. But that lives in your app code, not in `defineArivie`'s surface.
+Arivie is a **domain-neutral agent framework**; analytics is the flagship plugin. For analytics workloads the work is text-to-SQL with optional file output — one LLM, multiple tools. For multi-domain routing, construct a supervisor in your app code using Mastra's `agents:` parameter.
 
 ## What you give up (vs. supervisor + sub-agents)
 
 | You lose | Why it matters less than it sounds |
 |---|---|
-| Per-agent model selection (cheap supervisor + heavy coder) | The single agent can be any model; if you need heavy reasoning for some prompts, use a heavier model. The bookkeeping of two models was never worth the fabrication risk. |
-| Memory isolation between sub-agents | Scratch noise in a single agent's context is normal and small. The compounded prompt length of supervisor + sub-agent identity definitions is much larger. |
-| Path-scoped sandbox isolation (coder writes elsewhere) | The single agent's workspace IS path-scoped (`InProcessSandboxFilesystem({ rootDir })`). The agent cannot escape the workspace root — same guarantee, fewer moving parts. |
+| Per-agent model selection (cheap supervisor + heavy coder) | Each `defineAgent` entry can specify its own `model`. |
+| Memory isolation between sub-agents | Scratch noise in a single agent's context is normal and small. |
+| Path-scoped sandbox isolation | The workspace root is path-scoped when wired. Same guarantee, fewer moving parts. |
 
 ## What you keep
 
 Everything that matters for analytics agents:
 
 - Read-only DB role enforcement
-- Owner-identity boundary
+- Owner-identity boundary (`app.id`)
 - Per-source `execute_<source>` tools with row-limit + timeout
 - `compile_metric` semantic-layer compilation
-- Skills (SOP playbooks) loaded by `SkillsProcessor`
+- Skills (SOP playbooks) in `skills/*/SKILL.md`
 - Mastra Memory for cross-turn state
-- Workspace filesystem with path-guard
-- Opt-in `workspace_bash` for shell utilities
-
-The package surface is smaller, the failure modes are fewer, and the production-validated text-to-SQL pattern is what ships as the default.
+- Workspace filesystem with path-guard (when wired)
 
 ## See also
 

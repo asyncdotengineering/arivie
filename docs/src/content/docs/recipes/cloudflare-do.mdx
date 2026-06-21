@@ -3,16 +3,12 @@ title: Cloudflare Durable Objects
 description: Run one Arivie instance per Durable Object with Wrangler and Worker bindings.
 sidebar:
   order: 3
-runnable_example: examples/with-cloudflare-do/
-source: "RFC-002 §4.11 + examples/with-cloudflare-do"
+source: "RFC-002 §4.11"
 ---
-
-import { Code } from '@astrojs/starlight/components';
-import workerTs from '../../../../../examples/with-cloudflare-do/src/worker.ts?raw';
 
 ## When to use this
 
-Deploy on **Cloudflare Durable Objects** when you want one isolated Arivie instance per owner with sub-second cold starts and idle survival — the deploy target RFC-002 §4.11.4 budgets as **&lt; 1 s cold, &lt; 200 ms warm**. The Worker routes `POST /api/arivie` to a named DO stub; model keys and `DATABASE_URL` come from Worker `env` bindings, not `process.env`.
+Deploy on **Cloudflare Durable Objects** when you want one isolated Arivie instance per owner with sub-second cold starts and idle survival. The Worker routes requests to `arivie.handler` (including built-in `POST /api/chat`); model keys and `DATABASE_URL` come from Worker `env` bindings, not `process.env`.
 
 ## Architecture
 
@@ -20,15 +16,30 @@ Deploy on **Cloudflare Durable Objects** when you want one isolated Arivie insta
 
 ## Code snippet
 
-<Code code={workerTs} lang="typescript" title="src/worker.ts" />
+```ts
+export default {
+  async fetch(request: Request, env: Env): Promise<Response> {
+    const ownerId = new URL(request.url).searchParams.get("owner") ?? "default";
+    const id = env.ARIVIE_DO.idFromName(ownerId);
+    const stub = env.ARIVIE_DO.get(id);
+    return stub.fetch(request);
+  },
+};
+
+// Inside the Durable Object — one defineArivie app per stub
+async function handle(request: Request, env: Env): Promise<Response> {
+  const arivie = await getOrCreateArivie(env);
+  return arivie.handler(request);
+}
+```
 
 ## Run it
 
 ```bash
-cd arivie && pnpm install
-pnpm --filter with-cloudflare-do build   # wrangler deploy --dry-run
 wrangler dev
-curl -X POST http://127.0.0.1:8787/api/arivie -H 'Content-Type: application/json' -d '{"prompt":"How many customers?"}'
+curl -X POST http://127.0.0.1:8787/api/chat \
+  -H 'Content-Type: application/json' \
+  -d '{"messages":[{"role":"user","content":"How many customers?"}]}'
 ```
 
-Canonical tree: [`arivie/examples/with-cloudflare-do/`](https://github.com/openscoped/data-agent/tree/main/arivie/examples/with-cloudflare-do).
+Deploy recipe details are in RFC-002 §4.11. One Arivie app per owner per DO stub — same boundary model as Node deployments.

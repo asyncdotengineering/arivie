@@ -1,30 +1,45 @@
 ---
 title: File artifacts (reports, CSVs, charts)
-description: How the single Arivie agent produces Markdown / HTML / CSV / JSON files from a natural-language prompt. Workspace tools attach directly to the agent — no coder sub-agent, no prose handoff.
-source: "v0.2 examples/with-pos-fnb/scripts/with-artifacts.ts"
+description: How the agent produces Markdown / HTML / CSV / JSON files from a natural-language prompt. Workspace tools attach directly to the agent — no coder sub-agent, no prose handoff.
+source: "examples/with-pos-fnb/"
 ---
 
-When a user asks *"pull yesterday's outlet KPIs and write me an HTML report I can email,"* the Arivie agent treats it as one turn with a sequence of tool calls: SQL → `mastra_workspace_write_file`. The rows live in the agent's scratchpad from `execute_postgres` through to the file write. There is no second LLM in the loop and no prose paraphrase boundary where numbers can drift.
+When a user asks *"pull yesterday's outlet KPIs and write me an HTML report I can email,"* the agent treats it as one turn with a sequence of tool calls: SQL → `mastra_workspace_write_file`. The rows live in the agent's scratchpad from `execute_postgres` through to the file write. There is no second LLM in the loop and no prose paraphrase boundary where numbers can drift.
 
-This page shows the wiring.
+This page shows the wiring. For a full production example with workspace + skills, see `examples/with-pos-fnb/`.
 
-## 1. Attach a sandboxed workspace
-
-The `workspace.filesystem` you pass to `defineArivie` is the root for every workspace tool call. Use `InProcessSandboxFilesystem` from `@arivie/workspace` rooted at the directory you want artifacts to land in:
+## 1. Wire the analytics plugin
 
 ```ts
-import { defineArivie, localWorkspace } from "@arivie/core";
-import { postgresAdapter } from "@arivie/db-postgres";
+import { defineArivie, defineAgent } from "@arivie/core";
+import { analytics } from "@arivie/plugin-analytics";
+import { postgresRuntime, postgresSource } from "@arivie/plugin-postgres";
+import { openai } from "@ai-sdk/openai";
 
-const instance = await defineArivie({
-  owner: { id: "...", name: "..." },
-  model,
-  semantic: { path: "./semantic", mode: "preload" },
-  skills: "./skills",
-  skillsMode: "auto",
-  sources: { postgres: postgresAdapter({ url: process.env.DATABASE_URL! }) },
-  workspace: localWorkspace({ at: "./workspace", bash: true }),
-  compileMetric: true,
+const arivie = await defineArivie({
+  app: { id: "acme", name: "Acme" },
+  model: openai("gpt-4o-mini"),
+  storage: postgresRuntime({ url: process.env.DATABASE_URL! }),
+  plugins: [
+    analytics({
+      semanticPath: "./semantic",
+      mode: "preload",
+      compileMetric: true,
+      sources: {
+        postgres: postgresSource({
+          url: process.env.DATABASE_URL!,
+          readOnlyRole: "arivie_reader",
+        }),
+      },
+    }),
+  ],
+  agents: {
+    analyst: defineAgent({
+      instructions: "Answer with SQL-backed analysis; write reports to the workspace when asked.",
+      capabilities: ["analytics.query", "analytics.compile_metric"],
+    }),
+  },
+  context: { root: "./semantic" },
   resolveUser: async () => ({
     userId: "demo",
     permissions: ["analytics:read"],
@@ -33,30 +48,15 @@ const instance = await defineArivie({
 });
 ```
 
-`localWorkspace({ at, bash })` is a one-line helper that constructs an `InProcessSandboxFilesystem` rooted at the given path and (when `bash: true`) surfaces `workspace_bash` for shell utilities (jq, awk, python). Drop `bash` if the agent only needs read/write/grep.
-
-The agent automatically gets these tools (Mastra registers them when the Workspace primitive is attached):
-
-| Tool | Purpose |
-|---|---|
-| `mastra_workspace_read_file` | Read a file, optionally a line range |
-| `mastra_workspace_write_file` | Create or overwrite a file; parents auto-created |
-| `mastra_workspace_edit_file` | Find-and-replace inside an existing file |
-| `mastra_workspace_list_files` | List a directory as a tree |
-| `mastra_workspace_grep` | Regex search across file contents |
-| `mastra_workspace_file_stat` | Inspect a path's size, type, mtime |
-| `mastra_workspace_mkdir` | Create a directory |
-| `mastra_workspace_delete` | Remove a file or directory |
-| `workspace_bash` *(opt-in via `workspace.bash: true` or `localWorkspace({ bash: true })`)* | Run a shell command in the sandbox; returns stdout/stderr/exit code |
-
-All paths are resolved relative to `workspaceRoot`. The path-guard rejects traversal: `../../../etc/passwd` becomes an error, not a security incident.
+Workspace tools (`mastra_workspace_write_file`, etc.) are registered when a workspace is attached to the agent in your deployment. See `examples/with-pos-fnb/` for the flagship file-artifact setup.
 
 ## 2. Write the prompt
 
-The prompt itself is plain English — no special protocol, no tool-naming gymnastics. The agent's system prompt already includes the math-into-SQL discipline; for file work you just tell it where to put the output:
+The prompt itself is plain English — no special protocol. Tell the agent where to put the output:
 
 ```ts
-const result = await instance.ask({
+const text = await arivie.prompt({
+  agent: "analyst",
   prompt: `Pull yesterday's revenue, ticket count, covers, average check,
    comp% and void% for outlet_id 'luminere-bistro' via ONE execute_postgres
    query (single CTE). Then call mastra_workspace_write_file to write a
@@ -64,17 +64,13 @@ const result = await instance.ask({
      - a heading with the outlet name and business_day
      - a KPI table with the six metrics
      - a one-line verdict ("Comp% breached" if > 3%, else "Within target")`,
-  user,
+  user: { userId: "demo", permissions: ["analytics:read"], dbRole: "arivie_reader" },
 });
-
-// result is AskResult — strictly typed.
-console.log(result.text);                       // string
-for (const c of result.toolCalls) console.log(c.tool);
-console.log(result.sql);                         // string[] of SQL that ran
-console.log(result.artifacts);                   // file paths written this turn
 ```
 
-The agent will call `execute_postgres`, see the rows in its scratchpad, then call `mastra_workspace_write_file` with the formatted Markdown. The file lands at `workspace/reports/eod-luminere-bistro-yesterday.md`.
+For streaming tool traces, use `arivie.sessions.create` and read `tool.call.started` / `run.completed` events from `handle.stream`.
+
+The agent will call `execute_postgres`, see the rows in its scratchpad, then call `mastra_workspace_write_file` with the formatted Markdown.
 
 ## 3. Shell utilities for non-SQL transformations
 
@@ -124,14 +120,13 @@ function walk(dir: string, prefix = ""): string[] {
 for (const f of walk(workspaceRoot)) console.log(`  ${f}`);
 ```
 
-For a runnable end-to-end example with two task shapes (Markdown report + shell-scripted analysis), see `arivie/examples/with-pos-fnb/scripts/with-artifacts.ts`.
+For a runnable end-to-end example, see `arivie/examples/with-pos-fnb/`.
 
 ## Anti-patterns to avoid
 
 - **Asking the agent to "summarize" the rows before writing.** It will, and a weak model will introduce paraphrase drift. Tell it to copy values verbatim from the SQL result.
 - **Doing arithmetic outside SQL.** Even with the file-write step, math goes in the SQL CTE. The file is a *renderer*, not a calculator. ([SQL is the calculator](/recipes/sql-as-calculator/))
 - **Putting the workspace at a system-shared location** (e.g., `/tmp` with no scoping). Use a project-local directory and gitignore it.
-- **Forgetting to opt into `workspace_bash`.** Without it the agent will try to do shell-y work in JS-like prose. Pass `bash: true` to `localWorkspace` (or `workspace: { bash: true }` if you're constructing the filesystem yourself) when you need real exec.
 
 ## See also
 

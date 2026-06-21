@@ -8,9 +8,9 @@ The Arivie **boundary** is the contract that separates one owner's analytics wor
 
 ## One owner per instance
 
-**REQ-5** requires every Arivie instance to serve exactly one `owner.id`. The framework **refuses to start** if `owner.id` is missing or empty. Public APIs use the terms **owner**, **user**, and **instance** — not `tenant` (REQ-7). The word `tenant` may appear only in adapter examples or docs where it maps to the consumer's external concept.
+**REQ-5** requires every Arivie instance to serve exactly one owner. In v2 config that is `app.id` (and `app.name`). The framework **refuses to start** if `app.id` is missing or empty. Public APIs use the terms **owner**, **user**, and **instance** — not `tenant` (REQ-7). The word `tenant` may appear only in adapter examples or docs where it maps to the consumer's external concept.
 
-`defineArivie` validates config with Zod, performs **lazy** owner-identity assertion on the first request, constructs a Mastra container, and returns handler shapes. On owner-identity mismatch it throws `ArivieBoundaryError` (RFC-002 §4.1).
+`defineArivie` validates config with Zod, performs **lazy** owner-identity assertion on the first request, constructs Mastra agents, and returns `handler` + session APIs. On owner-identity mismatch it throws `ArivieBoundaryError` (RFC-002 §4.1).
 
 ## Owner-identity assertion at boot
 
@@ -22,7 +22,7 @@ The `@arivie/db-postgres` adapter implements `verifyOwnerIdentity(expectedOwnerI
 
 **REQ-8** states that every query the agent emits must execute using the database role returned by `resolveUser`. If the user's role lacks `SELECT` on a table, the query fails — **by Postgres**, not by Arivie application filtering. This is the OpenAI-style pass-through pattern cited in the pivot: the agent does not synthesize a second permission layer.
 
-Integration guides show how to derive `ownerId` from your auth provider and pass it into `getArivieRuntimeForOwner(ownerId)` so each authenticated principal maps to the correct instance configuration and owner-identity row.
+Integration guides show how to derive `app.id` from your auth provider and pass it into runtime config so each authenticated principal maps to the correct instance configuration and owner-identity row.
 
 ## Operational implication
 

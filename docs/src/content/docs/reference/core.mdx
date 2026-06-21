@@ -1,9 +1,9 @@
 ---
 title: "@arivie/core API"
-description: Core framework API — defineArivie, config types, instance, handler, and subpath exports.
+description: Core framework API — defineArivie, ArivieApp, handler, sessions, and subpath exports.
 ---
 
-`@arivie/core` is the orchestrator package. It provides the `defineArivie()` factory, config schema, HTTP handler, context propagation, schedules, triggers/channels/subscriptions, and the server module.
+`@arivie/core` is the orchestrator package. It provides the `defineArivie()` factory, plugin manifest compilation, durable sessions/runs/events, and the web-standard HTTP handler.
 
 ## Installation
 
@@ -13,38 +13,53 @@ pnpm add @arivie/core
 
 ## `defineArivie(config)`
 
-The factory. Validates config, resolves sources, loads the semantic layer, builds the agent + Mastra runtime + Memory + MCP stub + scheduled workflows, and wires the Hono app.
+The factory. Compiles the plugin manifest, builds one Mastra agent per `agents` entry, wires the durable runtime, and exposes `prompt`, `sessions`, `events`, and `handler`.
 
 ```ts
-import { defineArivie } from "@arivie/core";
+import { defineArivie, defineAgent } from "@arivie/core";
+import { analytics } from "@arivie/plugin-analytics";
+import { postgresRuntime, postgresSource } from "@arivie/plugin-postgres";
+import { openai } from "@ai-sdk/openai";
 
-const instance = await defineArivie({
-  owner: { id: "acme", name: "Acme Analytics" },
-  storage: postgresAdapter({ url: process.env.DATABASE_URL! }),
-  model: google("gemini-2.5-flash"),
-  semantic: { path: "./semantic", mode: "auto" },
-  sources: {
-    postgres: {
-      kind: "adapter",
-      adapter: postgresAdapter({ url: process.env.DATABASE_URL! }),
-      description: "Primary analytics database",
-    },
+const arivie = await defineArivie({
+  app: { id: "acme", name: "Acme" },
+  model: openai("gpt-4o-mini"),
+  storage: postgresRuntime({ url: process.env.DATABASE_URL! }),
+  plugins: [
+    analytics({
+      semanticPath: "./semantic",
+      mode: "preload",
+      compileMetric: true,
+      sources: {
+        postgres: postgresSource({
+          url: process.env.DATABASE_URL!,
+          readOnlyRole: "arivie_reader",
+        }),
+      },
+    }),
+  ],
+  agents: {
+    analyst: defineAgent({
+      instructions: "Answer with concise, auditable SQL-backed analysis.",
+      capabilities: ["analytics.query", "analytics.compile_metric"],
+    }),
   },
-  resolveUser: async (req) => ({
+  context: { root: "./semantic" },
+  resolveUser: async () => ({
     userId: "u1",
-    permissions: ["read"],
+    permissions: ["analytics:read"],
     dbRole: "arivie_reader",
   }),
 });
 ```
 
-Returns an `ArivieInstance`.
+Returns an `ArivieApp`.
 
 ### Subpath exports
 
 | Import path | Exports |
 |-------------|---------|
-| `@arivie/core` | `defineArivie`, `defineSchedule`, `defineSchedules`, `localWorkspace`, `adapterSource`, `mcpSource`, `composeSemantic`, `defineEntity`, `verifyOwnerIdentity`, `runWithUserContext`, `getCurrentUserContext`, context + types |
+| `@arivie/core` | `defineArivie`, `defineAgent`, `defineSchedule`, `defineSchedules`, `definePlugin`, context + types |
 | `@arivie/core/triggers` | `defineTrigger`, `defineChannel`, `defineSubscription`, trigger/channel/subscription types |
 | `@arivie/core/server` | `arivie`, `createArivieServer` |
 | `@arivie/core/context` | `runWithUserContext`, `getCurrentUserContext`, `setCurrentUserContext` |
@@ -52,115 +67,106 @@ Returns an `ArivieInstance`.
 | `@arivie/core/errors` | `ArivieBoundaryError`, `ArivieConfigError`, `ArivieInternalError`, `ArivieNotImplementedError` |
 | `@arivie/core/eval` | `createDogfoodScorer`, `createSqlSemanticScorer`, `runValidationRules`, `extractExecuteSql`, `countExecuteCalls`, `answerClaimsZeroRevenue`, `resultsEqual` |
 
-## ArivieInstance
+## `ArivieApp`
 
 ```ts
-interface ArivieInstance {
-  agent: Agent;              // Mastra agent
-  mastra: Mastra;            // Mastra runtime
-  workspace: Workspace;      // Filesystem sandbox
-  ask(opts: AskOptions): Promise<AskResult>;  // Typed facade
-  handler: (req: Request) => Promise<Response>; // Web-standard handler
-  hono: Hono;                // Pre-wired Hono app
-  app: Hono;                 // Mountable Hono sub-app (Mastra + channels)
-  dispose(): Promise<void>;  // Close adapters + pools
+interface ArivieApp {
+  app: { id: string; name: string };
+  manifest: RuntimeManifest;
+  runtime: Runtime;
+  memory: MemoryStorage;
+  sessions: Runtime["sessions"];
+  events: Runtime["events"];
+  prompt(input: PromptInput): Promise<string>;
+  handler: (req: Request) => Promise<Response>;
+  hono: Hono;
+  dispose(): Promise<void>;
 }
 ```
 
-### `ask(opts)`
+### `prompt(input)`
 
-Typed one-shot facade over `agent.generate()`:
+Durable one-shot over `sessions.create` — returns the agent's terminal text:
 
 ```ts
-const result = await instance.ask({
+const text = await arivie.prompt({
+  agent: "analyst",
   prompt: "Revenue last week?",
-  user: { userId: "u1", permissions: ["read"], dbRole: "arivie_reader" },
-  conversation: { id: "conv-1" },
+  user: { userId: "u1", permissions: ["analytics:read"], dbRole: "arivie_reader" },
+  session: { id: "conv-1" },
+});
+```
+
+Optional `onText` / `onTool` callbacks stream incremental output during the run.
+
+### `sessions.create(input)`
+
+Full control with a cursor-replayable `ArivieEvent` stream:
+
+```ts
+const handle = await arivie.sessions.create({
+  agent: "analyst",
+  prompt: "Revenue last week?",
+  user: { userId: "u1", permissions: ["analytics:read"], dbRole: "arivie_reader" },
+  session: { id: "conv-1" },
 });
 
-// result.text        → string (final answer)
-// result.toolCalls   → ToolCallTrace[]
-// result.sql         → string[] (SQL executed)
-// result.artifacts   → string[] (file paths written)
-// result.raw         → unknown (full agent.generate response)
+for await (const event of handle.stream) {
+  // model.delta, tool.call.started, run.completed, run.failed, …
+}
 ```
 
 ### `handler(req)`
 
-Web-standard request handler. Works with any Fetch-compatible host:
+Web-standard request handler. Mounts durable session routes and the built-in `POST /api/chat` (Mastra `@mastra/ai-sdk` under the hood):
 
 ```ts
 // Next.js App Router
-export const POST = arivie.handler;
+export const POST = (req: Request) => arivie.handler(req);
 
 // Bun
 Bun.serve({ fetch: arivie.handler });
 
 // Hono
 app.all("*", (c) => arivie.handler(c.req.raw));
-
-// Cloudflare Worker
-export default { fetch: arivie.handler };
 ```
 
-Accepts JSON body `{ prompt }` or `{ messages }`, plus optional `{ conversation: { id } }` and `{ threadId }`. Supports SSE streaming via `Accept: text/event-stream`.
+`POST /api/chat` accepts the AI SDK / `useChat` message protocol. `POST /sessions` accepts the durable session protocol with cursor-replayable events.
 
-## ArivieConfig
+## `ArivieAppConfig`
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `owner` | `{ id: string, name: string }` | Yes | Instance owner identity |
-| `storage` | `StorageAdapter` | Yes | Infrastructure Postgres (memory + identity) |
-| `model` | `LanguageModel` | Yes | AI SDK language model |
-| `semantic` | `SemanticConfig` | Yes | Semantic layer config |
-| `sources` | `SourcesConfig` | Yes | Named data sources |
+| `app` | `{ id: string, name: string }` | Yes | Instance identity (`app.id` is the owner id) |
+| `model` | `LanguageModel` | Yes | Default AI SDK language model |
+| `storage` | `RuntimeStorage` | Yes | Durable sessions/runs/events storage |
+| `plugins` | `PluginInstance[]` | No | Domain plugins (`analytics`, channels, …) |
+| `agents` | `Record<string, AgentDefinition>` | Yes | Named agents with capabilities |
+| `context` | `{ root: string }` | No | File-backed context layer root |
 | `resolveUser` | `(req: Request) => Promise<UserContext>` | Yes | User resolution from request |
-| `workspace` | `WorkspaceConfig` | No | Sandbox config |
-| `skills` | `string \| string[]` | No | Path(s) to skill directories |
-| `skillsMode` | `"eager" \| "on-demand" \| "auto"` | No | Skill loading mode |
-| `compileMetric` | `boolean` | No | Register `compile_metric` tool |
-| `hooks` | `LifecycleHooks` | No | Lifecycle event hooks |
-| `limits` | `LimitConfig` | No | Hard ceilings |
-| `schedules` | `ArivieSchedule[]` | No | Recurring analysis schedules |
-| `observability` | `Observability` | No | Mastra observability instance |
+| `memory` | Mastra storage | No | Conversation memory backing store (defaults to `.arivie/memory.db`) |
 
-## Sources
+Analytics-specific options (`semanticPath`, `sources`, `compileMetric`, `mode`) live on the `analytics()` plugin — not on the top-level config.
 
-Sources are user-named domain databases. Each source gets an `execute_<name>` tool on the agent.
+## Analytics sources (via `@arivie/plugin-analytics`)
+
+Sources are user-named domain databases registered on the analytics plugin. Each source gets an `execute_<name>` tool on agents with the matching capability.
 
 ```ts
-sources: {
-  postgres: {
-    kind: "adapter",
-    adapter: postgresAdapter({ url: DB_URL }),
-    description: "Primary analytics database",
-    useWhen: "For orders, revenue, and customer questions",
-  },
-  mixpanel: {
-    kind: "adapter",
-    adapter: mixpanelAdapter({ serviceAccount: "...", projectToken: "..." }),
-    description: "Product analytics events",
-    useWhen: "For funnel and retention questions",
-  },
-  remote: {
-    kind: "mcp",
-    mcp: { command: "npx", args: ["-y", "@some/mcp-server"] },
-    description: "External MCP tools",
-  },
-}
-```
+import { analytics } from "@arivie/plugin-analytics";
+import { postgresSource } from "@arivie/plugin-postgres";
 
-### `adapterSource(opts)` / `mcpSource(config)`
-
-One-line factories for source config entries:
-
-```ts
-import { adapterSource } from "@arivie/core";
-
-sources: {
-  db: adapterSource({
-    adapter: postgresAdapter({ url: DB_URL }),
-    description: "Primary database",
+plugins: [
+  analytics({
+    semanticPath: "./semantic",
+    mode: "preload",
+    compileMetric: true,
+    sources: {
+      postgres: postgresSource({
+        url: process.env.DATABASE_URL!,
+        readOnlyRole: "arivie_reader",
+      }),
+    },
   }),
-}
+],
 ```

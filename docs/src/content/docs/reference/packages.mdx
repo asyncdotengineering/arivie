@@ -3,9 +3,34 @@ title: Package reference
 description: "@arivie/db-postgres, @arivie/github, @arivie/mcp, @arivie/source-mcp, @arivie/source-mixpanel, @arivie/semantic, @arivie/workspace, @arivie/react, @arivie/embeddings"
 ---
 
+## `@arivie/plugin-postgres`
+
+v2 Postgres runtime storage + analytics source factories.
+
+```bash
+pnpm add @arivie/plugin-postgres
+```
+
+```ts
+import { postgresRuntime, postgresSource } from "@arivie/plugin-postgres";
+
+const storage = postgresRuntime({ url: process.env.DATABASE_URL! });
+const postgres = postgresSource({
+  url: process.env.DATABASE_URL!,
+  readOnlyRole: "arivie_reader",
+});
+```
+
+| Export | Purpose |
+|--------|---------|
+| `postgresRuntime(opts)` | Durable sessions/runs/events storage |
+| `postgresSource(opts)` | Analytics plugin source adapter |
+
+---
+
 ## `@arivie/db-postgres`
 
-Postgres source adapter + infrastructure storage. Role-scoped read-only execution, owner-identity verification, introspection.
+Lower-level Postgres adapter (used internally by `@arivie/plugin-postgres`). Role-scoped read-only execution, owner-identity verification, introspection.
 
 ```bash
 pnpm add @arivie/db-postgres
@@ -17,20 +42,14 @@ import { postgresAdapter } from "@arivie/db-postgres";
 const adapter = postgresAdapter({
   url: process.env.DATABASE_URL!,
   readOnlyRole: "arivie_reader",
-  allowedSchemas: ["public"],
-  maxConnections: 10,
-  idleTimeoutMs: 30_000,
 });
 ```
-
-Key exports:
 
 | Export | Purpose |
 |--------|---------|
 | `postgresAdapter(opts)` | Creates a Postgres source adapter |
 | `validateExecuteSql(sql)` | SQL guard (rejects non-SELECT/WITH, DML, DDL) |
 | `compileMetricForPostgres` | Metric-to-SQL compiler |
-| `ArivieBoundaryError` | Thrown when DB role is not read-only |
 
 ---
 

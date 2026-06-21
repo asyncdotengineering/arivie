@@ -3,33 +3,34 @@ title: Hono on Node
 description: Serve Arivie from a Hono app without Next.js — stateless HTTP on @hono/node-server.
 sidebar:
   order: 2
-runnable_example: examples/with-hono/
-source: "RFC-002 §5.1 + examples/with-hono"
+source: "RFC-002 §5.1"
 ---
-
-import { Code } from '@astrojs/starlight/components';
-import appTs from '../../../../../examples/with-hono/src/app.ts?raw';
 
 ## When to use this
 
-Use **Hono** when you want a lightweight Node HTTP server (API-only backend, edge-adjacent services, or a custom framework stack) without pulling in Next.js. The example mounts `arivie.next.POST` on `POST /api/arivie` and reuses the same `arivie.config.ts` + semantic layer as the Next.js reference.
-
-## Architecture
-
-![Agent loop: explore → compile_metric → execute](../../../assets/architecture/agent-loop.svg)
-
-The handler shape is identical to Next.js; only the HTTP framework entry point differs.
+Use **Hono** when you want a lightweight Node HTTP server (API-only backend, edge-adjacent services, or a custom framework stack) without pulling in Next.js. Mount `arivie.handler` on your routes and reuse the same `arivie.config.ts` + analytics plugin as the Next.js reference.
 
 ## Code snippet
 
-<Code code={appTs} lang="typescript" title="src/app.ts" />
+```ts
+import { Hono } from "hono";
+import { serve } from "@hono/node-server";
+import { arivie } from "./arivie.config.js";
+
+const app = new Hono();
+
+// Built-in POST /api/chat + durable session routes
+app.all("*", (c) => arivie.handler(c.req.raw));
+
+serve({ fetch: app.fetch, port: 3000 });
+```
 
 ## Run it
 
 ```bash
-cd arivie && pnpm install
-pnpm --filter with-hono dev
-curl -X POST http://localhost:3000/api/arivie -H 'Content-Type: application/json' -d '{"prompt":"How many customers?"}'
+curl -X POST http://localhost:3000/api/chat \
+  -H 'Content-Type: application/json' \
+  -d '{"messages":[{"role":"user","content":"How many customers?"}]}'
 ```
 
-Canonical tree: [`arivie/examples/with-hono/`](https://github.com/openscoped/data-agent/tree/main/arivie/examples/with-hono).
+For a full Next.js + `ArivieChat` reference, see [`examples/with-nextjs/`](/recipes/nextjs/).

@@ -1,9 +1,11 @@
 ---
 title: Schedules
-description: Run recurring analyses with defineSchedule and Mastra cron workflows.
+description: Run recurring single-prompt analyses with defineSchedule.
 ---
 
-Arivie supports **scheduled workflows** through `defineSchedule` / `defineSchedules` in `ArivieConfig`. Schedules compile to Mastra Workflows with cron triggers, so the same agent that answers ad-hoc questions can also run recurring reports.
+Arivie supports **scheduled prompts** through `defineSchedule` / `defineSchedules`. Each schedule is a cron expression plus a prompt string — the same agent that answers ad-hoc questions can run recurring reports on a timer.
+
+> **Roadmap:** Multi-step Mastra workflows with durable suspend/resume are planned in [ADR 0001](/adr/0001-adopt-mastra-durable-execution/). Current `schedules` are **single-prompt** cron config — not yet Mastra multi-step workflows.
 
 ## When to use
 
@@ -13,44 +15,35 @@ Arivie supports **scheduled workflows** through `defineSchedule` / `defineSchedu
 
 ## Configuration
 
-Schedules are an array of `ArivieSchedule` objects passed to `defineArivie`:
-
-```ts
-import { defineArivie, defineSchedule } from "@arivie/core";
-
-const dailyRecap = defineSchedule({
-  id: "daily-recap",
-  cron: "0 9 * * 1-5", // 9 AM, weekdays
-  prompt: "Run the daily-recap skill for yesterday and write the result to reports/daily-recap.md",
-});
-```
-
-Then wire into config:
-
-```ts
-defineArivie({
-  // ...
-  schedules: [dailyRecap],
-});
-```
-
-Each schedule compiles to a Mastra Workflow with:
-- A single step that calls `agent.generate(prompt)` as the owner user
-- A Mastra cron schedule that supplies the prompt via `inputData`
-- Memory scoped to `thread: "schedule-<id>"`, `resource: owner.id`
-
-### Multiple schedules
+Schedules are an array of `ArivieSchedule` objects exported alongside your app config:
 
 ```ts
 import { defineSchedules } from "@arivie/core";
 
+export const schedules = defineSchedules([
+  {
+    id: "daily-recap",
+    cron: "0 9 * * 1-5",
+    timezone: "America/Chicago",
+    prompt: "Run the daily-recap skill for yesterday and write the result to reports/daily-recap.md",
+  },
+]);
+```
+
+Wire schedules into your deployment's dispatch runner (see `examples/with-pos-fnb/` for a production-shaped setup).
+
+Each schedule runs **one prompt** against the configured agent. Memory is scoped to `thread: "schedule-<id>"`, `resource: app.id`.
+
+### Multiple schedules
+
+```ts
 const schedules = defineSchedules([
   { id: "daily-recap", cron: "0 9 * * 1-5", prompt: "Generate yesterday's revenue recap" },
   { id: "weekly-trends", cron: "0 10 * * 1", prompt: "Summarize this week's order trends" },
 ]);
 ```
 
-Schedules share the same agent, sources, semantic layer, and skills as the rest of the instance.
+Schedules share the same agents, plugins, and semantic layer as the rest of the app.
 
 ## CLI helper
 
@@ -62,4 +55,4 @@ This creates a schedule file and wires it into `arivie.config.ts`.
 
 ## Runtime
 
-Mastra's workflow engine evaluates the cron expression and invokes the agent with the configured prompt. The host app is responsible for deploying the workflow scheduler in production (e.g. Mastra's built-in runner, a separate worker, or a platform cron service).
+The host app is responsible for evaluating cron expressions and invoking `arivie.prompt` or `arivie.sessions.create` with the configured prompt. See `examples/with-pos-fnb/arivie.config.ts` for three production cron jobs mapped to SOP skills.

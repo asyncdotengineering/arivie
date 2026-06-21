@@ -17,10 +17,9 @@ The agent gets some combination of these tools depending on configuration:
 |------|-------------|---------|
 | `execute_<source>` | Always (one per source) | Runs validated read-only SQL against a source. Tool name is derived from the source key (e.g., `execute_postgres`, `execute_mixpanel`). |
 | `compile_metric` | `compileMetric: true` | Lets the agent invoke canonical metric definitions instead of ad-hoc SQL. |
-| `mastra_workspace_*` | When `workspace` is configured | Read/write/grep/edit/list/mkdir/delete/stat files in the sandbox. |
-| `workspace_bash` | `workspace.bash: true` | Opt-in shell access for `jq`, `awk`, `python3`, etc. inside the sandbox. |
-| `finalize_report` | When workspace + sandboxed FS | Signals report completion with SQL, CSV results, and narrative. |
-| `search_skills` / `load_skill` / `skill_read` | When `skillsMode: "on-demand"` | Lazy-load SOP skills from the skills directory. |
+| `mastra_workspace_*` | When workspace is wired in deployment | Read/write/grep/edit/list/mkdir/delete/stat files in the sandbox. |
+| `workspace_bash` | When bash is opted in | Shell access for `jq`, `awk`, `python3`, etc. inside the sandbox. |
+| Skill tools | When skills directory is present | Load SOP playbooks from `skills/*/SKILL.md`. |
 
 ### SQL guard
 

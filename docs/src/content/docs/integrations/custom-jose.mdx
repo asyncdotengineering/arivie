@@ -1,22 +1,14 @@
 ---
 title: Custom JWT (jose)
-description: Verify bearer JWTs with jose and use the sub claim as ownerId.
-source: "RFC-002 §3.2 + examples/with-custom-jose"
+description: Verify bearer JWTs with jose and use the sub claim in resolveUser.
+source: "RFC-002 §3.2"
 ---
-
-import { Code } from '@astrojs/starlight/components';
-import routeTs from '../../../../../examples/with-custom-jose/app/api/arivie/route.ts?raw';
-import resolveOwner from '../../../../../examples/with-custom-jose/lib/resolve-owner.ts?raw';
 
 Use a **custom JWT** when you already issue bearer tokens (internal IdP, API gateway, or multi-service mesh) and want Arivie to verify signatures with **`jose`** rather than adopting a full auth framework.
 
 ## Setup
 
-1. Copy `examples/with-custom-jose/.env.example`:
-
-   - `DATABASE_URL`
-   - `JWT_SECRET` (HS256 symmetric key for the example; adapt for RS256 in production)
-   - Model keys (optional)
+1. Set `DATABASE_URL`, `JWT_SECRET` (HS256 for the example; adapt for RS256 in production), and model keys in `.env`.
 
 2. Install:
 
@@ -24,24 +16,44 @@ Use a **custom JWT** when you already issue bearer tokens (internal IdP, API gat
    pnpm add jose
    ```
 
-3. Clients send `Authorization: Bearer <jwt>` on Arivie API requests.
+3. Clients send `Authorization: Bearer <jwt>` on API requests.
 
 ## Route handler
 
-<Code code={routeTs} lang="typescript" title="app/api/arivie/route.ts" />
+```ts
+import { jwtVerify } from "jose";
+import { getArivie } from "@/lib/arivie";
 
-## ownerId derivation
-
-<Code code={resolveOwner} lang="typescript" title="lib/resolve-owner.ts" />
-
-The verified JWT's **`sub`** claim is `ownerId`. Missing or invalid bearer tokens throw before the handler runs.
-
-## Runnable example
-
-```bash
-pnpm --filter with-custom-jose dev
+export async function POST(req: Request): Promise<Response> {
+  const arivie = await getArivie();
+  return arivie.handler(req);
+}
 ```
 
-Canonical tree: `arivie/examples/with-custom-jose/`.
+## resolveUser
 
-_Tested with `jose ^6.2.3`._
+```ts
+import { jwtVerify } from "jose";
+
+async function resolveUser(req: Request) {
+  const auth = req.headers.get("authorization");
+  const token = auth?.startsWith("Bearer ") ? auth.slice(7) : null;
+  if (!token) throw new Response("Unauthorized", { status: 401 });
+
+  const { payload } = await jwtVerify(
+    token,
+    new TextEncoder().encode(process.env.JWT_SECRET!),
+  );
+  const userId = typeof payload.sub === "string" ? payload.sub : "anonymous";
+
+  return {
+    userId,
+    permissions: ["analytics:read"],
+    dbRole: "arivie_reader",
+  };
+}
+```
+
+The verified JWT's **`sub`** claim is `userId`. Missing or invalid bearer tokens throw before the handler runs.
+
+Wire `resolveUser` in `defineArivie({ resolveUser, … })`.

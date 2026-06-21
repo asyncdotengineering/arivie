@@ -1,4 +1,8 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 "use client";
 
-export { AgentChat } from "@arivie/registry/agent-chat";
+import { ArivieChat } from "@arivie/react/chat";
+
+export function AppChat({ userId = "demo-user" }: { userId?: string }) {
+  return <ArivieChat userId={userId} endpoint="/api/chat" />;
+}

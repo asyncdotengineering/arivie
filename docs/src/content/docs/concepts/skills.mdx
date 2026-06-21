@@ -43,23 +43,13 @@ Write a Markdown file to `reports/daily-recap-YYYY-MM-DD.md` with...
 
 ## Loading modes
 
-Skills load in one of two modes, controlled by `skillsMode` in config:
+Skills load from `skills/*/SKILL.md` on disk. Add them via CLI:
 
-| Mode | When | Behavior |
-|------|------|----------|
-| **eager** | ≤6 skills (or explicit `"eager"`) | Full skill bodies injected into every agent turn as system-prompt context |
-| **on-demand** | >6 skills (or explicit `"on-demand"`) | Agent gets `search_skills`, `load_skill`, and `skill_read` tools to fetch skills lazily |
-| **auto** | Default | Picks: ≤6 skills → eager, >6 → on-demand |
-
-```ts
-defineArivie({
-  // ...
-  skills: "./skills",           // path to skills directory
-  skillsMode: "auto",           // "eager" | "on-demand" | "auto"
-});
+```bash
+pnpm dlx arivie add skill cohort-analysis
 ```
 
-In on-demand mode, the agent first searches for relevant skills, loads the ones it needs, then follows the procedure. This keeps the system prompt small when you have many skills.
+Reference a skill by name in prompts or schedule config — the agent reads matching `SKILL.md` playbooks from the skills directory. See `examples/with-pos-fnb/skills/` for ten production F&B SOP skills.
 
 ## Built-in skills
 

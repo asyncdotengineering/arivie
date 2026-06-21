@@ -1,62 +1,26 @@
 ---
 title: Tool approval
-description: Gate tool calls with requireToolApproval policies.
+description: Planned human-in-the-loop tool gating — see ADR 0001.
 ---
 
-Arivie exposes a configurable **tool-approval policy** through `ArivieConfig.limits.requireToolApproval`. When a policy is active, the agent pauses before calling a gated tool and emits a suspension that the host app can resolve.
+Tool approval / HITL is **planned**, not yet shipped. See [ADR 0001 — adopt Mastra durable execution](/adr/0001-adopt-mastra-durable-execution/).
 
-## Use cases
+## Roadmap shape
+
+When shipped, dangerous tools will use Mastra's `createTool({ requireApproval: true })`. The agent stream will emit a `tool-call-approval` suspension; the host app resumes via `agent.approveToolCall({ runId })` / `declineToolCall`. Arivie's durable executor will map suspensions to an `ApprovalRequested` event on the session stream, with `approve` / `decline` on the session API.
+
+## Use cases (planned)
 
 - **Destructive SQL** — require human confirmation before any `execute_<source>` call in production.
 - **Regulated environments** — gate all tool calls by default, then explicitly allow safe tools like `compile_metric`.
 - **Per-user policies** — vary approval by user role or permissions.
 
-## Policy shapes
+## What exists today
 
-```ts
-import { defineArivie } from "@arivie/core";
+Hard ceilings on query cost are enforced inside analytics tools today (`rowsPerQuery`, `queryTimeoutMs`). See [Cost guardrails](/recipes/cost-guardrails/). Token budgets and tool-approval policy wiring land with ADR 0001.
 
-defineArivie({
-  // ...
-  limits: {
-    // Gate every tool call
-    requireToolApproval: true,
+## Reference
 
-    // Gate only these tools
-    requireToolApproval: {
-      tools: ["execute_postgres", "mastra_workspace_write_file"],
-    },
-
-    // Gate everything except safe tools
-    requireToolApproval: {
-      exceptTools: ["compile_metric"],
-    },
-
-    // Custom predicate: (toolName, args, requestContext?) => boolean
-    requireToolApproval: (toolName, _args) => {
-      if (toolName === "compile_metric") return false;
-      return toolName.startsWith("execute_");
-    },
-  },
-});
-```
-
-The function form receives the tool name, its arguments, and an optional request context, so you can vary policy by role, environment, or request metadata.
-
-## How it works
-
-Arivie forwards the policy to Mastra's native `requireToolApproval` option on the Agent. When the agent hits a gated tool, Mastra emits a suspension that the host app resolves by approving or denying the call. See the [Mastra tool suspension docs](https://mastra.ai/docs/agents/agent-tools#tool-approval) for the exact runtime shape.
-
-## Other limits
-
-The `limits` config also enforces hard ceilings:
-
-| Field | Effect |
-|-------|--------|
-| `rowsPerQuery` | Max rows returned per `execute_<source>` call |
-| `queryTimeoutMs` | SQL statement timeout |
-| `tokensPerRequest` | Max tokens per agent turn |
-| `tokensPerUserPerMonth` | Monthly token budget per user |
-| `maxSteps` | Max agent steps per turn |
-
-These are enforced inside `@arivie/agent` tools, not advisory.
+- [ADR 0001 — adopt Mastra durable execution](/adr/0001-adopt-mastra-durable-execution/)
+- [ADR 0002 — Arivie vs Mastra ownership](/adr/0002-arivie-vs-mastra-ownership/) — tool approval is a Mastra leaf, backlogged on the evented engine
+- [Mastra tool suspension docs](https://mastra.ai/docs/agents/agent-tools#tool-approval) — target runtime shape

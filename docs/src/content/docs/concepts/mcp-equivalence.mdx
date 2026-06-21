@@ -10,7 +10,7 @@ source: "RFC-002 §3.7 + PIVOT.md §6"
 
 **REQ-26** requires a single Mastra `Agent` to back both the HTTP transport and the MCP transport. Arivie **refuses** to construct two agents per instance.
 
-`@arivie/mcp` wraps `makeMcpServer` from Mastra's MCP primitive (`@mastra/mcp`). The Next.js example mounts HTTP at `app/api/arivie/route.ts` and MCP at `app/api/arivie/mcp/route.ts`, both from `getArivieRuntime()` in `arivie.config.ts`.
+`@arivie/mcp` wraps `makeMcpServer` from Mastra's MCP primitive (`@mastra/mcp`). The Next.js example mounts HTTP at `app/api/chat/route.ts` (built-in `POST /api/chat`) and MCP at `app/api/arivie/mcp/route.ts`, both from `getArivieRuntime()` in `arivie.config.ts`.
 
 ## Parity test in CI
 
@@ -28,4 +28,4 @@ The 30-question eval suite (REQ-30) includes **two MCP-equivalence probes** amon
 
 ## Choosing HTTP vs MCP
 
-Use **HTTP** when your UI calls `useAgent` from `@arivie/react` or posts JSON to `arivie.next.POST`. Use **MCP** when Claude Desktop, Cursor, or another MCP host should discover `explore` and `execute` as tools. Configuration differs only at the transport edge; `owner.id`, semantic path, and model resolver stay in `arivie.config.ts`.
+Use **HTTP** when your UI uses `ArivieChat` from `@arivie/react/chat` or posts to the built-in `POST /api/chat` via `arivie.handler`. Use **MCP** when Claude Desktop, Cursor, or another MCP host should discover analytics tools. Configuration differs only at the transport edge; `app.id`, `semanticPath`, and model resolver stay in `arivie.config.ts`.

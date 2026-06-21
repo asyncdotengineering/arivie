@@ -74,15 +74,12 @@ The skill loader (`SkillsProcessor` or `SkillSearchProcessor`) injects the full 
 Wrap user prompts in a non-skill-bound discipline reminder:
 
 ```ts
-const MATH_DISCIPLINE_PREFIX = `[SYSTEM RULE — read first]
-All arithmetic in this turn MUST happen inside ONE \`execute_postgres\` call
-(CTE-chained), not in your response text. Do not combine outputs of multiple
-\`compile_metric\` calls with arithmetic. ...`;
-
-const result = await instance.agent.generate(
-  `${MATH_DISCIPLINE_PREFIX}${userPrompt}`,
-  { memory: { thread, resource } },
-);
+const text = await arivie.prompt({
+  agent: "analyst",
+  prompt: `${MATH_DISCIPLINE_PREFIX}${userPrompt}`,
+  user,
+  session: { id: threadId },
+});
 ```
 
 The agent's own instructions enforce the same rule, but the prefix is belt-and-suspenders for prompts that don't trigger a skill load.

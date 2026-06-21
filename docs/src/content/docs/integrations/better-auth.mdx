@@ -1,47 +1,39 @@
 ---
 title: Better Auth
-description: Integrate Arivie with Better Auth session userId as ownerId.
-source: "RFC-002 §3.2 + examples/with-better-auth"
+description: Integrate Arivie with Better Auth session userId for resolveUser.
+source: "RFC-002 §3.2 + examples/with-arivie-chat"
 ---
 
 import { Code } from '@astrojs/starlight/components';
-import routeTs from '../../../../../examples/with-better-auth/app/api/arivie/route.ts?raw';
-import resolveOwner from '../../../../../examples/with-better-auth/lib/resolve-owner.ts?raw';
+import routeTs from '../../../../../examples/with-arivie-chat/app/api/chat/route.ts?raw';
+import pageTsx from '../../../../../examples/with-arivie-chat/app/page.tsx?raw';
 
-Use **Better Auth** when you want a self-hosted auth server with email/password (and optional plugins) and need `ownerId` from the Better Auth session (`user.id` or `user.email`).
+Use **Better Auth** when you want a self-hosted auth server with email/password and need `userId` from the Better Auth session for `ArivieChat` and `resolveUser`.
 
 ## Setup
 
-1. Copy `examples/with-better-auth/.env.example`:
+See `examples/with-arivie-chat/` — copy `.env.example`, set `DATABASE_URL`, `BETTER_AUTH_SECRET`, and model keys.
 
-   - `DATABASE_URL`
-   - `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`
-   - Model keys (optional)
+```bash
+pnpm add better-auth @arivie/react
+```
 
-2. Install:
+## Chat API route
 
-   ```bash
-   pnpm add better-auth
-   ```
+<Code code={routeTs} lang="typescript" title="app/api/chat/route.ts" />
 
-3. Configure `lib/auth.ts` per the example (Email+Password baseline for CI).
+`arivie.handler` serves the built-in `POST /api/chat` route.
 
-## Route handler
+## Session-gated chat UI
 
-<Code code={routeTs} lang="typescript" title="app/api/arivie/route.ts" />
+<Code code={pageTsx} lang="tsx" title="app/page.tsx" />
 
-## ownerId derivation
-
-<Code code={resolveOwner} lang="typescript" title="lib/resolve-owner.ts" />
-
-Session lookup uses `auth.api.getSession({ headers })`; `user.id` is preferred, then `user.email`.
+`session.user.id` becomes `userId` for `ArivieChat`. Wire the same id (and permissions / `dbRole`) in `resolveUser` inside `arivie.config.ts`.
 
 ## Runnable example
 
 ```bash
-pnpm --filter with-better-auth dev
+pnpm --filter with-arivie-chat dev
 ```
 
-Canonical tree: `arivie/examples/with-better-auth/`.
-
-_Tested with `better-auth ^1.6.11`._
+Canonical tree: `arivie/examples/with-arivie-chat/`.

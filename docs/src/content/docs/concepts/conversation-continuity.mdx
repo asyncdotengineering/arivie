@@ -1,112 +1,89 @@
 ---
 title: Conversation continuity & memory
-description: Thread-scoped memory, conversation IDs, and multi-turn context across surfaces.
+description: Thread-scoped memory, session IDs, and multi-turn context across surfaces.
 ---
 
-Arivie persists conversation history through Mastra Memory backed by Postgres. Every `agent.generate()` call receives a `{ thread, resource }` pair that scopes the conversation. The same thread ID across requests gives the agent full multi-turn context.
+Arivie persists conversation history through Mastra Memory. The runtime **session** maps to the Mastra **thread**; `resolveUser` supplies the **resource** (typically `userId`). The same session ID across requests gives the agent full multi-turn context.
 
 ## How it works
 
-Mastra Memory stores messages keyed by thread ID and resource ID. The thread groups messages into a conversation; the resource identifies the owner (typically the user). When the agent generates a response, Mastra loads prior messages in the same thread and includes them as context.
+Mastra Memory stores messages keyed by thread ID and resource ID. When the agent runs, Mastra loads prior messages in the same thread and includes them as context.
 
-## The `ask()` facade
+## `sessions.create` with a session id
 
-The typed `instance.ask()` facade handles memory plumbing for you:
+Pass `session.id` to continue a conversation:
 
 ```ts
-const result = await instance.ask({
+const handle = await arivie.sessions.create({
+  agent: "analyst",
   prompt: "What about last week?",
-  user: { userId: "u1", permissions: ["read"], dbRole: "arivie_reader" },
-  conversation: {
-    id: "conv-123",
-    resource: "u1",
-  },
+  user: { userId: "u1", permissions: ["analytics:read"], dbRole: "arivie_reader" },
+  session: { id: "conv-123" },
 });
-```
 
-- `conversation.id` → Mastra Memory `thread` (groups messages)
-- `conversation.resource` → Mastra Memory `resource` (defaults to `user.userId`)
-
-If `conversation` is omitted, a one-shot thread ID is generated per call — no continuity.
-
-## HTTP handler
-
-The HTTP handler accepts a `conversation` object in the request body:
-
-```json
-{
-  "prompt": "What about last week?",
-  "conversation": { "id": "conv-123" }
+for await (const event of handle.stream) {
+  // …
 }
 ```
 
-The handler maps:
-- `conversation.id` → `memory.thread`
-- `user.userId` → `memory.resource`
+- `session.id` → Mastra Memory `thread` (groups messages)
+- `user.userId` → Mastra Memory `resource`
 
-If no conversation ID is provided, the handler falls back to `threadId` or generates `arivie-<userId>`.
+If `session` is omitted, a fresh thread is created per run — no continuity.
+
+## One-shot with continuity
+
+`arivie.prompt` accepts the same `session` field:
+
+```ts
+const text = await arivie.prompt({
+  agent: "analyst",
+  prompt: "What about last week?",
+  user: { userId: "u1", permissions: ["analytics:read"], dbRole: "arivie_reader" },
+  session: { id: "conv-123" },
+});
+```
+
+## HTTP handler
+
+The durable session API accepts session metadata on `POST /sessions`. The built-in `POST /api/chat` route (Mastra `@mastra/ai-sdk`) accepts thread IDs in the AI SDK message protocol for web chat continuity.
 
 ### Streaming with continuity
 
-SSE streaming works the same way — pass `conversation.id` in the initial request and the agent streams the response while maintaining memory context:
+SSE streaming works the same way — pass the session/thread id and the agent streams the response while maintaining memory context:
 
 ```bash
-curl -X POST http://localhost:3000/chat \
+curl -X POST http://localhost:3000/api/chat \
   -H "Content-Type: application/json" \
   -H "Accept: text/event-stream" \
-  -d '{"prompt": "How much revenue yesterday?", "conversation": {"id": "mon-day-1"}}'
+  -d '{"messages":[{"role":"user","content":"How much revenue yesterday?"}],"threadId":"mon-day-1"}'
 ```
 
 ## CLI chat with history
 
-The kitchen-sink example's CLI chat script (`scripts/chat.ts`) demonstrates a full conversation history picker:
-
-- Conversations are saved to `workspace/conversation-history.json`
-- The `/new` command starts a fresh conversation
-- Previous conversations can be resumed by selecting from a list
-- Each conversation maintains its own thread ID for continuity
+`arivie chat` (Ink TUI) lists past conversations and resumes them by session id — no web server required.
 
 ## Memory scopes
 
-Arivie uses two memory scopes within one instance:
-
 | Scope | Thread pattern | Use case |
 |-------|---------------|----------|
-| **Personal** | `conversation.id` or `arivie-<userId>` | Per-user conversations |
-| **Instance-global** | `schedule-<id>` or `__instance__` | Schedules and shared context |
+| **Personal** | `session.id` or generated per user | Per-user conversations |
+| **Instance-global** | `schedule-<id>` | Scheduled single-prompt runs |
 | **Channel-scoped** | Derived from event metadata | Trigger-driven conversations |
 
 Channel subscriptions can dynamically scope memory using `instanceId` and `resourceId` functions that read from the event payload — for example, isolating conversations per GitHub repository.
 
-## Lifecycle hooks
-
-Memory is auditable through lifecycle hooks:
-
-```ts
-defineArivie({
-  // ...
-  hooks: {
-    onMemorySave: async ({ memory, scope, userId }) => {
-      console.log(`Memory saved for ${userId} in ${scope}`);
-    },
-    onMemoryDelete: async ({ memory, scope, userId }) => {
-      auditLog("memory_deleted", { scope, userId });
-    },
-  },
-});
-```
-
 ## `AsyncLocalStorage` context
 
-The `execute_<source>` tools need to know the current user's DB role without explicit threading. Arivie uses `AsyncLocalStorage` (pinned to `globalThis`) to carry `UserContext` through the agent's tool calls:
+The `execute_<source>` tools need the current user's DB role without explicit threading. Arivie uses `AsyncLocalStorage` to carry `UserContext` through tool calls:
 
 ```ts
 import { runWithUserContext } from "@arivie/core";
 
 await runWithUserContext(user, async () => {
   // Inside this frame, execute_<source> sees `user.dbRole`
-  const result = await agent.generate(prompt, { memory });
+  const text = await arivie.prompt({ agent: "analyst", prompt, user });
 });
 ```
 
-The `ask()` facade and HTTP handler do this automatically.
+`arivie.prompt`, `sessions.create`, and `arivie.handler` set user context automatically.

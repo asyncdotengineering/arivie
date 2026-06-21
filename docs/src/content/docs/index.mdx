@@ -1,9 +1,9 @@
 ---
 title: Arivie documentation
-description: Agentic analytics on Mastra — one instance, one owner.
+description: An agent framework you own — analytics is the flagship plugin.
 template: splash
 hero:
-  tagline: Production-grade agentic analytics for your application
+  tagline: An agent framework you own. Analytics is the flagship plugin.
   actions:
     - text: Quickstart (< 10 min)
       link: /quickstart/
@@ -19,33 +19,39 @@ import { Card, CardGrid } from '@astrojs/starlight/components';
 
 ## What you get
 
-Arivie is a TypeScript framework built **on Mastra** that adds an agentic analytics surface to your app. One Arivie instance serves **one owner**; multi-tenant SaaS deploys **N instances**.
+**Arivie** is a TypeScript-first agent framework built **on Mastra**. It adds the durable, pluggable application layer — plugin SDK, sessions/runs/events, webhook dispatch, context layer — that a generic agent toolkit deliberately omits. **Analytics** (text-to-SQL on a governed semantic layer) is the first-party flagship **plugin**, not the framework itself. One Arivie app serves **one owner**; multi-tenant SaaS deploys **N instances**.
 
 <CardGrid stagger>
-  <Card title="Semantic layer" icon="document">
-    YAML entities under `semantic/` — validated, linted, and loaded into the agent via preload or indexed (vector) context modes.
+  <Card title="Plugin SDK" icon="document">
+    `definePlugin` contributes tools, context schemas, channels, schedules, routes, capabilities, and permissions. Analytics is just the first one.
   </Card>
-  <Card title="Agent loop" icon="rocket">
-    Mastra `Agent` with `execute_<source>` tools, workspace tools, self-correction, and structured assumptions. Single-agent architecture — no supervisor.
+  <Card title="Durable runtime" icon="rocket">
+    Sessions, runs, and a cursor-replayable event log; `arivie.prompt` for one-shots, `sessions.create` for streaming control.
   </Card>
   <Card title="Boundary" icon="setting">
-    Single `owner.id` per instance with startup owner-identity assertion against Postgres.
+    Single `app.id` per instance with owner-identity assertion against Postgres.
   </Card>
   <Card title="Triggers & channels" icon="notification">
-    Webhook-driven event pipelines via `defineTrigger`, `defineChannel`, and `defineSubscription` — route GitHub pushes, alerts, or any HTTP event to the agent.
+    Webhook-driven event pipelines via `defineTrigger`, `defineChannel`, and `defineSubscription`.
   </Card>
   <Card title="Tool approval" icon="approve">
-    Configurable HITL gate via `requireToolApproval` — global, allow-list, deny-list, or per-user function.
+    Planned — human-in-the-loop tool gating via Mastra `requireApproval`. See [ADR 0001](/adr/0001-adopt-mastra-durable-execution/).
   </Card>
   <Card title="Schedules" icon="calendar">
-    Recurring analysis workflows with `defineSchedule` and Mastra cron triggers.
+    Single-prompt cron config via `defineSchedule` today; multi-step Mastra workflows on the [roadmap](/adr/0001-adopt-mastra-durable-execution/).
   </Card>
 </CardGrid>
 
 ## Start here
 
-1. [Quickstart](/quickstart/) — init to streamed answer in under 10 minutes.
+1. [Quickstart](/quickstart/) — `pnpm dlx @arivie/cli init` to streamed answer in under 10 minutes.
 2. [Concepts](/concepts/why-arivie/) — architecture, agent loop, boundary, triggers, and more.
 3. [Integrations](/integrations/better-auth/) — Better Auth or custom JWT (`jose`).
 
 Canonical runnable code lives in `arivie/examples/`; this site embeds those files at build time so docs stay in sync.
+
+| | |
+|---|---|
+| Version | **2.0.0** |
+| Packages | **17** published `@arivie/*` packages |
+| Tests | full suite green via `pnpm -r test` |
