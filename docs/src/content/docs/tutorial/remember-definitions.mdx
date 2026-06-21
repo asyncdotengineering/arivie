@@ -1,0 +1,42 @@
+---
+title: "Remember Definitions"
+description: "Part 6 of Build an Agent. Pin metric definitions in the semantic layer so every turn compiles the same SQL."
+---
+
+Every team argues about definitions. For you, does "revenue" include refunds? Does "last week" mean calendar week or trailing seven days? If the model guesses fresh each turn, you get different SQL — and different numbers — for the same question.
+
+Stop reinventing. Pin definitions in the **semantic layer** — YAML files under `semantic/entities/` that declare measures, dimensions, segments, and joins. When the agent calls `compile_metric`, it uses *your* SQL, not whatever the model would have written.
+
+## Declare revenue once
+
+```yaml title="semantic/entities/orders.yml"
+measures:
+  - name: revenue
+    description: Recognized revenue in dollars (paid orders only, excludes tax).
+    sql: "SUM(amount_cents) FILTER (WHERE status = 'paid') / 100.0"
+  - name: order_count
+    description: Count of paid orders.
+    sql: "COUNT(*) FILTER (WHERE status = 'paid')"
+
+segments:
+  - name: last_7_days
+    sql: "created_at >= CURRENT_DATE - INTERVAL '7 days'"
+  - name: last_30_days
+    sql: "created_at >= CURRENT_DATE - INTERVAL '30 days'"
+```
+
+The measure's `sql` is the canonical formula. The segment's `sql` is the date filter. Together they define what "revenue last week" means for every analyst, every turn.
+
+## Same question, same SQL
+
+```text
+What was revenue last week?
+```
+
+The agent calls `compile_metric` with `entity: "orders"`, `measure: "revenue"`, `segment: "last_7_days"`. The compiler emits the measure SQL with the segment WHERE clause — every time. Ask again tomorrow; the definition did not drift.
+
+Add `customers.yml` for dimensions like `plan` and segments like `paying`. Join paths between entities let the compiler reach across tables without the model guessing FK names.
+
+Instructions are identity ("be a careful analyst"). The semantic layer is **definitions** — the numbers your company stands behind. Keep measures here; keep one-off exploration on `execute_postgres`.
+
+Recurring analyses that combine several measures into a standing brief belong in skills — [Team Playbooks](./team-playbooks) adds the Monday-morning revenue recap.

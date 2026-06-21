@@ -26,6 +26,20 @@ export default defineConfig({
       sidebar: [
         { label: "Quickstart", slug: "quickstart" },
         {
+          label: "Build an Agent",
+          items: [
+            { slug: "tutorial/first-agent" },
+            { slug: "tutorial/how-it-runs" },
+            { slug: "tutorial/query-sample-data" },
+            { slug: "tutorial/connect-a-warehouse" },
+            { slug: "tutorial/run-analysis" },
+            { slug: "tutorial/remember-definitions" },
+            { slug: "tutorial/team-playbooks" },
+            { slug: "tutorial/guard-the-spend" },
+            { slug: "tutorial/ship-it" },
+          ],
+        },
+        {
           label: "Tutorials",
           items: [{ slug: "tutorials/first-bi-agent" }],
         },

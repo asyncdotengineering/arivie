@@ -1,0 +1,102 @@
+---
+title: "Ship It"
+description: "Part 9 of Build an Agent. Expose Northwind as an HTTP API — sessions, event replay, and useChat-compatible chat."
+---
+
+Northwind runs fine in the terminal. Now ship it — as an **HTTP API** your team, a cron job, or a web front-end can call. No custom web UI required; the server exposes three surfaces and you pick the one that fits.
+
+## The server
+
+`server.ts` mounts Arivie's Hono routes on a plain Node server:
+
+```ts title="server.ts"
+import { serve } from "@hono/node-server";
+import { Hono } from "hono";
+import { arivie } from "./arivie.config.js";
+
+const app = new Hono();
+app.get("/health", (c) => c.json({ ok: true, app: "northwind" }));
+app.route("/", arivie.hono);
+
+const port = Number(process.env.PORT ?? 3000);
+serve({ fetch: app.fetch, port });
+```
+
+`arivie.hono` brings:
+
+- **`POST /sessions`** — start a durable run, stream `ArivieEvent`s as SSE
+- **`GET /runs/:id/events?cursor=`** — reconnect and replay from a cursor
+- **`POST /api/chat`** — Vercel AI SDK `useChat`-compatible streaming
+
+Start it:
+
+```bash
+pnpm --filter build-an-agent serve
+```
+
+API on `http://localhost:3000`.
+
+## Durable session (full event stream)
+
+Create a run and watch every event — model deltas, tool calls, completion:
+
+```bash
+curl -N -X POST http://localhost:3000/sessions \
+  -H 'Content-Type: application/json' \
+  -d '{"agent":"analyst","prompt":"How many paid orders are there?","session":{"id":"demo-1"}}'
+```
+
+The response is `text/event-stream`. You will see `session.started`, `run.started`, `model.delta`, `tool.call.started`, `tool.call.completed`, `run.completed`. Save the `runId` and a `cursor` from any event.
+
+## Replay from a cursor
+
+Disconnect mid-stream? Reconnect without re-running completed steps:
+
+```bash
+curl -N "http://localhost:3000/runs/RUN_ID/events?cursor=CURSOR"
+```
+
+Events after that cursor stream down. Same durability the CLI uses — audit logs, dispatch workers, and UIs that reconnect all share this surface.
+
+## useChat-compatible chat
+
+Building a web UI? `POST /api/chat` speaks the AI SDK message protocol — `@arivie/react`'s `ArivieChat` or Vercel's `useChat` work with zero extra server code:
+
+```bash
+curl -N -X POST http://localhost:3000/api/chat \
+  -H 'Content-Type: application/json' \
+  -d '{"messages":[{"role":"user","content":"What was revenue last week?"}]}'
+```
+
+Streaming assistant tokens come back in the UI message format. Mount a React page that POSTs to `/api/chat` and you have a dashboard without rewriting the agent loop.
+
+## One-shot from your app
+
+Scripts and cron jobs can skip HTTP and call the app directly:
+
+```ts
+const text = await arivie.prompt({
+  agent: "analyst",
+  prompt: "Run the weekly revenue recap.",
+  user: { userId: "cron", permissions: ["analytics:read"], dbRole: "arivie_reader" },
+});
+```
+
+Same agent, same tools, same guards — invoked from a schedule, a Slack bot, or a CI step.
+
+## Deploy
+
+Run the Node server wherever you host APIs — a VM, a container, Railway, Fly.io. Set `OPENAI_API_KEY`, `DATABASE_URL`, and optionally `PORT`. The agent state (sessions, runs, events) lives in the Postgres you configured as `storage` in `arivie.config.ts`; conversation memory uses Mastra's store (defaults to `.arivie/memory.db` locally — swap for `@mastra/pg` in production).
+
+## What you built
+
+Across nine steps you stood up **Northwind Analytics**:
+
+- **`defineArivie`** — one config file: model, plugins, agents, durable storage
+- **Analytics plugin** — `execute_postgres`, `compile_metric`, semantic layer, skills
+- **Guards** — `arivie_reader`, SELECT-only SQL, row/time caps, cost processor
+- **HTTP API** — sessions, cursor replay, useChat — no web UI required
+
+The shape is the same for **any** agent. Swap the analytics plugin for your own `definePlugin` — CRM actions, ticket triage, document search — and keep the durable runtime, event log, and HTTP surface. Analytics is the flavor; Arivie is the framework you own.
+
+Finished code: [`examples/build-an-agent/`](https://github.com/asyncdotengineering/arivie/tree/main/examples/build-an-agent).

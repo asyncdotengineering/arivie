@@ -1,0 +1,63 @@
+---
+title: "Guard the Spend"
+description: "Part 8 of Build an Agent. Read-only roles, SQL guards, query caps, and model cost limits — by construction."
+---
+
+A runaway agent can scan your whole warehouse or burn through model tokens on a loop. Northwind guards spend and safety **by construction** — hard limits enforced in the runtime and the database, not polite prompts asking the model to be careful.
+
+There is no shipped tool-approval gate that pauses mid-run and waits for your click. That human-in-the-loop path is planned — see [ADR 0001 — adopt Mastra durable execution](/adr/0001-adopt-mastra-durable-execution/). What ships today is a stack of guards that make dangerous actions impossible or capped.
+
+## Read-only by role
+
+Every query runs as **`arivie_reader`**. The role has `SELECT` and nothing else — created in `db/schema.sql`, referenced in config:
+
+```ts title="arivie.config.ts"
+postgres: postgresSource({ url: databaseUrl, readOnlyRole: "arivie_reader" }),
+resolveUser: async () => ({
+  userId: "analyst",
+  permissions: ["analytics:read"],
+  dbRole: "arivie_reader",
+}),
+```
+
+Even if the model hallucinates `DELETE FROM orders`, Postgres rejects it. The agent literally cannot write.
+
+## SELECT-only SQL guard
+
+Defence in depth: before any query hits the database, **`validateExecuteSql`** checks the string. Non-`SELECT` statements, multi-statement queries (semicolon tricks), and CTEs that smuggle DML are rejected. The guard runs inside `execute_postgres` and `compile_metric` — not advisory, enforced on every call.
+
+## Result and time caps
+
+Wide scans cannot flood the model's context or hang forever. Analytics tools enforce **`rowsPerQuery`** (default **50** rows returned) and **`queryTimeoutMs`** (default **30 seconds**). When a result is truncated, the tool sets `truncated: true` — the agent must say so, not silently summarize partial data.
+
+These ceilings are applied inside the tool layer on every `execute_<source>` and `compile_metric` call.
+
+## Model cost cap
+
+Database guards stop bad SQL. **`CostGuardProcessor`** stops runaway model spend — a Mastra input processor that tracks cumulative estimated cost and blocks the next LLM call when a threshold is exceeded:
+
+```ts title="arivie.config.ts"
+import { CostGuardProcessor } from "@mastra/core/processors";
+
+agents: {
+  analyst: defineAgent({
+    instructions: "…",
+    capabilities: ["analytics.query", "analytics.compile_metric"],
+    inputProcessors: [
+      new CostGuardProcessor({
+        maxCost: 1.0,
+        scope: "thread",
+        window: "24h",
+      }),
+    ],
+  }),
+},
+```
+
+Processors run in Mastra's pipeline before each model call. Over budget → the turn stops with an explicit error, not a silent overage on your invoice.
+
+## Roadmap: per-query approval
+
+Per-query human approval — the agent pauses on an expensive scan, asks you, resumes on yes/no — requires durable suspend/resume from Mastra's evented engine. That work is scoped in [ADR 0001](/adr/0001-adopt-mastra-durable-execution/). Until then, lean on read-only roles, the SQL guard, row/time caps, and cost processors.
+
+The agent is guarded. Last step: expose it as an HTTP API in [Ship It](./ship-it).

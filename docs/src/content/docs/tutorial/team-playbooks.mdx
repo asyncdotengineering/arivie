@@ -1,0 +1,55 @@
+---
+title: "Team Playbooks"
+description: "Part 7 of Build an Agent. Skills as Markdown SOPs the agent reads before answering recurring analyses."
+---
+
+The semantic layer pins *definitions* — what revenue means, which date range "last week" uses. But some questions are whole *procedures*: the Monday-morning brief, the cohort retention report, the close-of-month reconciliation. Your senior analyst does not re-derive those steps every time. Neither should the agent.
+
+**Skills** are Markdown SOPs — playbooks the agent loads when a question matches. Each skill is a directory with a `SKILL.md` file: YAML frontmatter plus a teaching body. Put them under `skills/` in your project.
+
+## The weekly revenue recap
+
+The frontmatter tells the agent when to reach for this playbook:
+
+```yaml title="skills/weekly-revenue-recap/SKILL.md (frontmatter)"
+---
+name: weekly-revenue-recap
+description: The Monday-morning revenue brief. Last 7 days vs the prior 7 — revenue, order count, average order value, refunds, and revenue by plan tier.
+license: Apache-2.0
+---
+```
+
+The body opens with a math-discipline rule — every number must come from one SQL query, not arithmetic in the reply — then lists what the brief must contain and the canonical query shape:
+
+```sql title="skills/weekly-revenue-recap/SKILL.md (canonical query)"
+WITH this_week AS (
+  SELECT SUM(amount_cents) FILTER (WHERE status = 'paid') / 100.0 AS revenue,
+         COUNT(*)          FILTER (WHERE status = 'paid')         AS orders
+  FROM orders
+  WHERE created_at >= CURRENT_DATE - INTERVAL '7 days'
+),
+last_week AS (
+  SELECT SUM(amount_cents) FILTER (WHERE status = 'paid') / 100.0 AS revenue
+  FROM orders
+  WHERE created_at >= CURRENT_DATE - INTERVAL '14 days'
+    AND created_at <  CURRENT_DATE - INTERVAL '7 days'
+)
+SELECT t.revenue,
+       t.orders,
+       ROUND(100.0 * (t.revenue - l.revenue) / NULLIF(l.revenue, 0), 1) AS revenue_wow_pct
+FROM this_week t CROSS JOIN last_week l;
+```
+
+The math-discipline block at the top of the skill is deliberate. Skills teach *how* to run an analysis, including the rule that all arithmetic stays in SQL. The canonical CTE query is the senior analyst's answer encoded as prose the model reads before composing.
+
+## Run the playbook
+
+```text
+Run the weekly revenue recap.
+```
+
+The agent matches the skill's description, loads `weekly-revenue-recap`, follows the procedure — one CTE-chained query, a structured brief, assumptions stated (paid orders only, trailing seven days). A new hire asking the same question gets the same shape as someone who has run it for years.
+
+Skills are on-demand procedures. Agent `instructions` stay short (identity and standing rules). Measures live in the semantic layer. Skills cover the multi-step workflows that tie them together.
+
+Before you point this at production spend, lock down cost and safety in [Guard the Spend](./guard-the-spend).

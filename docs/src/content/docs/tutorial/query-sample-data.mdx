@@ -1,0 +1,86 @@
+---
+title: "Query Sample Data"
+description: "Part 3 of Build an Agent. Wire the analytics plugin, seed a tiny Postgres dataset, and watch the tool loop."
+---
+
+Northwind can talk, but it cannot see a single row yet. Give it a tool. The `analytics` plugin registers read-only SQL tools from your **sources** — one `execute_<name>` tool per source, plus `compile_metric` when you enable it. Point a source at Postgres and the agent can query your tables.
+
+## A tiny sample dataset
+
+Bundle a throwaway storefront so the first query works without a warehouse signup. Two tables — customers and orders — plus a read-only role the agent's SQL runs as:
+
+```sql title="db/schema.sql"
+CREATE TABLE IF NOT EXISTS customers (
+  id           SERIAL PRIMARY KEY,
+  name         TEXT NOT NULL,
+  plan         TEXT NOT NULL DEFAULT 'free',
+  signed_up_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS orders (
+  id           SERIAL PRIMARY KEY,
+  customer_id  INTEGER NOT NULL REFERENCES customers(id),
+  status       TEXT NOT NULL DEFAULT 'paid',
+  amount_cents INTEGER NOT NULL,
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- Read-only role the agent's SQL runs as (least privilege).
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'arivie_reader') THEN
+    CREATE ROLE arivie_reader NOLOGIN;
+  END IF;
+END$$;
+GRANT USAGE ON SCHEMA public TO arivie_reader;
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO arivie_reader;
+```
+
+Seed deterministic data — five customers, roughly forty orders over the last thirty days:
+
+```ts title="db/seed.ts"
+const customers = [
+  { name: "Acme", plan: "enterprise" },
+  { name: "Globex", plan: "pro" },
+  { name: "Initech", plan: "free" },
+  { name: "Hooli", plan: "pro" },
+  { name: "Umbrella", plan: "enterprise" },
+];
+
+// … deterministic pseudo-random orders over the last 30 days …
+await sql`INSERT INTO orders ${sql(orders, "customer_id", "status", "amount_cents", "created_at")}`;
+```
+
+## Wire the analytics plugin
+
+Register the Postgres source on the plugin. The source key becomes the tool name — `postgres` → `execute_postgres`:
+
+```ts title="arivie.config.ts"
+plugins: [
+  analytics({
+    semanticPath,
+    mode: "preload",
+    compileMetric: true,
+    sources: {
+      postgres: postgresSource({ url: databaseUrl, readOnlyRole: "arivie_reader" }),
+    },
+  }),
+],
+```
+
+## Set it up and ask
+
+```bash
+createdb arivie_tutorial
+pnpm --filter build-an-agent db:setup
+pnpm exec arivie chat --config examples/build-an-agent/arivie.config.ts
+```
+
+Ask something that requires a row count:
+
+```text
+How many paid orders are there?
+```
+
+Watch the loop. The model emits `execute_postgres` (or `compile_metric` once definitions land in Step 6), Arivie runs the guarded SELECT, rows come back as a tool result, and the model answers with a real number. You supplied the source; Arivie drove the loop.
+
+The sample DB is Postgres — so pointing at your real warehouse is mostly a URL swap in [Connect a Warehouse](./connect-a-warehouse).

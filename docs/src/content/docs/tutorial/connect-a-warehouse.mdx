@@ -1,0 +1,49 @@
+---
+title: "Connect a Warehouse"
+description: "Part 4 of Build an Agent. Point the agent at your Postgres warehouse with a read-only role."
+---
+
+The bundled tutorial database got Northwind running on your laptop. Your team's data already lives in Postgres — production orders, staging replicas, a read replica you trust for analytics. You do not need a new integration layer. Swap the connection URL and keep the same agent shape.
+
+## One source, one tool
+
+The analytics plugin names tools from your source keys. Register `postgres` and the agent gets `execute_postgres`. Register `warehouse` and it gets `execute_warehouse`. The tutorial uses `postgres`:
+
+```ts title="arivie.config.ts"
+analytics({
+  semanticPath,
+  mode: "preload",
+  compileMetric: true,
+  sources: {
+    // The agent's SQL runs as `arivie_reader` — read-only by construction.
+    postgres: postgresSource({ url: databaseUrl, readOnlyRole: "arivie_reader" }),
+  },
+}),
+```
+
+`postgresSource` takes your `DATABASE_URL` and a **`readOnlyRole`**. Every query the agent runs is executed `SET ROLE arivie_reader` before the SELECT. That role has `SELECT` on your tables and nothing else — no `INSERT`, no `UPDATE`, no `DROP`. Least privilege is not a prompt suggestion; it is how the connection is opened.
+
+Create the role once on your warehouse (the tutorial's `db/schema.sql` shows the grants):
+
+```sql
+CREATE ROLE arivie_reader NOLOGIN;
+GRANT USAGE ON SCHEMA public TO arivie_reader;
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO arivie_reader;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO arivie_reader;
+```
+
+Point `DATABASE_URL` at your database — local tutorial, staging, or production read replica — and restart the chat. The agent sees your real tables through the same `execute_postgres` tool.
+
+## What changes, what does not
+
+You change the URL and make sure `arivie_reader` exists on that database. You keep the semantic layer (`semantic/entities/*.yml`), skills, and agent instructions. The plugin, tools, and SQL guard are identical whether the rows are seeded tutorial data or ten years of production orders.
+
+Ask a question that only your warehouse can answer:
+
+```text
+How many enterprise customers signed up last month?
+```
+
+The model picks `execute_postgres` or `compile_metric`, the query runs as `arivie_reader`, and you get a number backed by your data.
+
+Next: two ways to query — raw SQL and semantic metrics — in [Run Analysis](./run-analysis).

@@ -1,0 +1,41 @@
+---
+title: "How It Runs"
+description: "Part 2 of Build an Agent. Sessions, runs, and the durable event stream behind every answer."
+---
+
+You asked a question and got a reply. Under the hood, Arivie opened a **session**, started a **run**, and streamed a structured **event log** — the same path whether you use the terminal chat or call the HTTP API.
+
+| Term | Meaning |
+| --- | --- |
+| **session** | The conversation thread. It persists across turns and days — this *is* the Mastra memory thread. |
+| **run** | One prompt you send and all the work it triggers (model calls, tool calls, final answer). |
+| **event** | A typed checkpoint in the run: `model.delta`, `tool.call.started`, `tool.call.completed`, `run.completed`. |
+
+When you run `arivie chat`, the CLI is just a client on that surface. It calls `sessions.create`, reads the stream, prints text deltas as they arrive, and shows tool names when SQL runs. The runtime layers a cursor-replayable event log on Mastra's agent loop — reconnect with `GET /runs/:id/events?cursor=` and pick up where you left off.
+
+Programmatic equivalents:
+
+```ts
+// One-shot — returns the terminal answer string
+const text = await arivie.prompt({
+  agent: "analyst",
+  prompt: "What's a good way to measure week-over-week revenue growth?",
+  user: { userId: "you", permissions: ["analytics:read"], dbRole: "arivie_reader" },
+});
+
+// Streaming — full control over the event stream
+const handle = await arivie.sessions.create({
+  agent: "analyst",
+  prompt: "What's a good way to measure week-over-week revenue growth?",
+  user: { userId: "you", permissions: ["analytics:read"], dbRole: "arivie_reader" },
+  session: { id: "conv-1" },
+});
+
+for await (const event of handle.stream) {
+  // model.delta, tool.call.started, tool.call.completed, run.completed, …
+}
+```
+
+You author the agent — model, instructions, plugins, tools. Arivie drives the model-to-tool loop and records every step. You never write that loop yourself.
+
+Next up: give the analyst eyes on real rows in [Query Sample Data](./query-sample-data).

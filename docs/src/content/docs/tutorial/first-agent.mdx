@@ -1,0 +1,80 @@
+---
+title: "Your First Agent"
+description: "Part 1 of Build an Agent. Stand up the app, give it an analyst persona, run it, and ask a question."
+---
+
+This guide builds one agent end to end — **Northwind Analytics**, an assistant you ask in plain English. Over nine short steps it learns to query a warehouse, run exact analysis, remember your team's metric definitions, refuse to run up the bill, and ship behind an HTTP API.
+
+It happens to be an analytics agent. The shape is the same for *any* agent: a model, an identity, and a plugin that gives it tools. Analytics is just the plugin we'll use.
+
+Step 1 gets it talking. We bundle a tiny dataset so your very first question works.
+
+## What you need
+
+- Node 20+ and [pnpm](https://pnpm.io/).
+- A local Postgres (the agent's data lives here).
+- An `OPENAI_API_KEY`. Any AI SDK model works; the example defaults to `gpt-4o-mini`.
+
+The finished code is in [`examples/build-an-agent/`](https://github.com/asyncdotengineering/arivie/tree/main/examples/build-an-agent) — run it directly, or build it yourself by following along.
+
+## Scaffold the app
+
+```bash
+pnpm dlx @arivie/cli init northwind && cd northwind
+```
+
+`init` writes a starter `arivie.config.ts`, a `semantic/` folder, and CLI wiring. The whole agent — model, tools, data, persona — is one config file. Open `arivie.config.ts`.
+
+## The shape of an app
+
+An Arivie app is `defineArivie({ ... })`. Three pieces matter today:
+
+```ts title="arivie.config.ts"
+import { defineArivie, defineAgent } from "@arivie/core";
+import { analytics } from "@arivie/plugin-analytics";
+import { postgresRuntime, postgresSource } from "@arivie/plugin-postgres";
+import { openai } from "@ai-sdk/openai";
+
+export const arivie = await defineArivie({
+  app: { id: "northwind", name: "Northwind Analytics" },
+  model: openai("gpt-4o-mini"),                      // the brain
+  storage: postgresRuntime({ url: process.env.DATABASE_URL! }),
+  plugins: [analytics({ /* tools — Step 3 */ })],    // what it can do
+  agents: { analyst: defineAgent({ /* persona — below */ }) },
+  resolveUser: async () => ({ userId: "you", permissions: ["analytics:read"], dbRole: "arivie_reader" }),
+});
+```
+
+- **`model`** is the brain. **`plugins`** give it tools (analytics brings the SQL tools — Step 3). **`agents`** are named personas. We'll fill the tools and data in over the next steps.
+
+## Give it an analyst persona
+
+An agent's `instructions` are its always-on identity and standing rules. Make it a careful analyst:
+
+```ts title="arivie.config.ts"
+agents: {
+  analyst: defineAgent({
+    instructions:
+      "You are a senior data analyst. Answer with exact, SQL-backed numbers. " +
+      "State your assumptions — date range, filters, grain. " +
+      "If you cannot answer from the data, say so plainly.",
+    capabilities: ["analytics.query", "analytics.compile_metric"],
+  }),
+},
+```
+
+Instructions are *identity*. On-demand procedures live in skills (Step 7); actions live in tools (the plugins). Keep this short — it's read on every turn.
+
+## Run it
+
+```bash
+pnpm exec arivie chat --config arivie.config.ts
+```
+
+The terminal chat opens. Ask it something it can reason about from general knowledge first:
+
+```text
+What's a good way to measure week-over-week revenue growth?
+```
+
+You get a reply in the analyst voice. It can't see a single row of your data yet — that's [How It Runs](./how-it-runs) and then [Query Sample Data](./query-sample-data). First, a look at what just happened under the hood.
