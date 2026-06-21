@@ -18,7 +18,19 @@ export async function listConversations(
   app: ArivieApp,
   resourceId: string,
 ): Promise<ConversationSummary[]> {
-  const memory = new Memory({ storage: app.memory });
+  return listConversationsFor(app.memory, resourceId);
+}
+
+/**
+ * Same as {@link listConversations} but keyed directly to a memory storage —
+ * used by the server's `/api/threads` route during app construction (before
+ * the `ArivieApp` object exists).
+ */
+export async function listConversationsFor(
+  storage: ArivieApp["memory"],
+  resourceId: string,
+): Promise<ConversationSummary[]> {
+  const memory = new Memory({ storage });
   const result = (await memory.listThreads({
     filter: { resourceId },
     perPage: false,

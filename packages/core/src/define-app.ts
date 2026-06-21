@@ -1,10 +1,13 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 import { mkdirSync } from "node:fs";
 import { Agent } from "@mastra/core/agent";
+import { Mastra } from "@mastra/core/mastra";
+import { handleChatStream, type ChatStreamHandlerParams } from "@mastra/ai-sdk";
 import { LibSQLStore } from "@mastra/libsql";
 import { Memory } from "@mastra/memory";
 import type { Hono } from "hono";
-import type { LanguageModel } from "ai";
+import { createUIMessageStreamResponse, type LanguageModel } from "ai";
+import { listConversationsFor } from "./runtime/conversations.js";
 import { assertManifestValid } from "./manifest/validate.js";
 import { buildManifest } from "./manifest/build.js";
 import type { RuntimeManifest } from "./manifest/types.js";
@@ -141,7 +144,32 @@ export async function defineArivie(config: ArivieAppConfig): Promise<ArivieApp> 
     executor,
   });
 
+  // Hold a Mastra instance so we can lean on @mastra/ai-sdk for the AI SDK
+  // useChat surface instead of hand-rolling an ArivieEvent → UIMessage bridge.
+  const mastra = new Mastra({ agents: mastraAgents });
+  const defaultAgentId = Object.keys(config.agents)[0];
+
   const hono = createSessionApp({ runtime, resolveUser: config.resolveUser });
+
+  // AI SDK chat surface — what `@arivie/react`'s `ArivieChat` / `useChat` POST
+  // to. `@mastra/ai-sdk` translates the agent stream to the UI message protocol.
+  hono.post("/api/chat", async (c) => {
+    const params = (await c.req.json().catch(() => ({}))) as ChatStreamHandlerParams & {
+      agent?: unknown;
+    };
+    const requested = typeof params.agent === "string" ? params.agent : undefined;
+    const agentId =
+      requested !== undefined && requested in mastraAgents ? requested : defaultAgentId;
+    if (agentId === undefined) return c.json({ error: "no agent defined" }, 400);
+    const stream = await handleChatStream({ mastra, agentId, params, version: "v6" });
+    return createUIMessageStreamResponse({ stream });
+  });
+
+  hono.get("/api/threads", async (c) => {
+    const resourceId = c.req.query("resource") ?? c.req.query("resourceId");
+    if (resourceId == null || resourceId === "") return c.json({ threads: [] });
+    return c.json({ threads: await listConversationsFor(memoryStorage, resourceId) });
+  });
 
   return {
     app: appMeta,
