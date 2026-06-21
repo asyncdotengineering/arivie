@@ -1,4 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
+import type { Agent } from "@mastra/core/agent";
 import type { ArivieEvent } from "../events/types.js";
 import type {
   EventInput,
@@ -6,6 +7,8 @@ import type {
   RuntimeStorage,
   SessionRecord,
 } from "../storage/types.js";
+
+type MastraAgentConfig = NonNullable<ConstructorParameters<typeof Agent>[0]>;
 
 /**
  * A named agent in the app (RFC §4.1). Domain-neutral: instructions plus the
@@ -17,6 +20,14 @@ export interface AgentDefinition {
   capabilities?: string[];
   /** Optional per-agent model override; interpreted by the executor. */
   model?: unknown;
+  /**
+   * Mastra input processors — guardrails that run BEFORE the model (PII
+   * detection/redaction, prompt-injection/jailbreak detection, moderation,
+   * unicode normalization). From `@mastra/core/processors`.
+   */
+  inputProcessors?: MastraAgentConfig["inputProcessors"];
+  /** Mastra output processors — run on the model's response (PII redaction, moderation). */
+  outputProcessors?: MastraAgentConfig["outputProcessors"];
 }
 
 /** Identity for a turn (resolved by the host; see RFC §4.6). */

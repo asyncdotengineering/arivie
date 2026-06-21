@@ -2,6 +2,7 @@
 import { describe, expect, it } from "vitest";
 import { MockLanguageModelV3, simulateReadableStream } from "ai/test";
 import { InMemoryStore } from "@mastra/core/storage";
+import type { Processor } from "@mastra/core/processors";
 import { defineArivie } from "../src/define-app.js";
 import { definePlugin } from "../src/plugins/index.js";
 import { defineAgent } from "../src/runtime/index.js";
@@ -118,6 +119,53 @@ describe("defineArivie — domain-neutral app builder", () => {
     });
     expect(text).toContain("42 orders");
     expect(chunks.join("")).toContain("42 orders"); // streamed via onText
+    await app.dispose();
+  });
+
+  it("wires input-processor guardrails: an abort blocks the turn, a normal turn passes", async () => {
+    // A minimal Mastra input processor that trips the guardrail on a keyword.
+    const guardrail: Processor = {
+      id: "blockword",
+      processInput(args) {
+        if (JSON.stringify(args.messages).includes("BLOCKME")) {
+          args.abort("blocked by guardrail");
+        }
+        return args.messages;
+      },
+    };
+    const app = await defineArivie({
+      app: { id: "t", name: "T" },
+      model: stubModel("safe answer"),
+      storage: new InMemoryRuntimeStorage(),
+      memory: new InMemoryStore(),
+      plugins: [demoPlugin()],
+      agents: {
+        helper: defineAgent({
+          instructions: "Be brief.",
+          capabilities: ["demo.help"],
+          inputProcessors: [guardrail],
+        }),
+      },
+      resolveUser: async () => ({ userId: "u1" }),
+    });
+
+    // Normal turn passes the guardrail.
+    const ok = await app.prompt({ agent: "helper", prompt: "hello", user: { userId: "u1" } });
+    expect(ok).toContain("safe answer");
+
+    // The guardrail aborts the blocked turn — it must NOT reach the model answer.
+    let blocked = "";
+    let threw = false;
+    try {
+      blocked = await app.prompt({
+        agent: "helper",
+        prompt: "BLOCKME now",
+        user: { userId: "u1" },
+      });
+    } catch {
+      threw = true;
+    }
+    expect(threw || !blocked.includes("safe answer")).toBe(true);
     await app.dispose();
   });
 

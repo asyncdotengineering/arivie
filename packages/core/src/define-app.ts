@@ -107,6 +107,9 @@ function buildMastraAgent(
     instructions,
     tools: tools as NonNullable<ConstructorParameters<typeof Agent>[0]["tools"]>,
     memory: new Memory({ storage: memoryStorage }),
+    // Guardrails (PII / prompt-injection / moderation) run in Mastra's pipeline.
+    ...(agent.inputProcessors !== undefined ? { inputProcessors: agent.inputProcessors } : {}),
+    ...(agent.outputProcessors !== undefined ? { outputProcessors: agent.outputProcessors } : {}),
   });
 }
 
