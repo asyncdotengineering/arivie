@@ -32,6 +32,33 @@ export type {
 } from "./plugins/index.js";
 export type { CapabilityDefinition } from "./capabilities/types.js";
 export {
+  ArivieEventSchema,
+  compareCursors,
+  CURSOR_WIDTH,
+  decodeNDJSON,
+  encodeNDJSON,
+  encodeSSE,
+  formatCursor,
+  isArivieEvent,
+  parseEvent,
+} from "./events/index.js";
+export type {
+  ApprovalRequestedEvent,
+  ArivieEvent,
+  ArivieEventType,
+  ArtifactWrittenEvent,
+  BaseEvent,
+  ChannelEventReceivedEvent,
+  EventRedactor,
+  ModelDeltaEvent,
+  RunCompletedEvent,
+  RunFailedEvent,
+  RunStartedEvent,
+  SessionStartedEvent,
+  ToolCallCompletedEvent,
+  ToolCallStartedEvent,
+} from "./events/index.js";
+export {
   assertManifestValid,
   buildManifest,
   hasFatalDiagnostics,
