@@ -1,0 +1,60 @@
+name: orders
+description: |
+  Orders placed through the storefront. One row per order.
+  Revenue is recognized on paid orders only — always filter status = 'paid'
+  for revenue. Refunded orders keep their row (status = 'refunded') for audit.
+  amount_cents is the order total in cents, AFTER discounts, BEFORE tax.
+
+grain: one row per order
+primary_key: id
+
+dimensions:
+  - name: id
+    sql: id
+    type: numeric
+    description: Order identifier.
+  - name: customer_id
+    sql: customer_id
+    type: numeric
+    description: FK to customers.id.
+  - name: status
+    sql: status
+    type: text
+    values: [paid, refunded, pending]
+    description: "'paid' = recognized revenue. 'refunded' = reversed. 'pending' = not yet captured."
+  - name: created_at
+    sql: created_at
+    type: timestamp
+    description: When the order was placed.
+
+measures:
+  - name: revenue
+    description: Recognized revenue in dollars (paid orders only, excludes tax).
+    sql: "SUM(amount_cents) FILTER (WHERE status = 'paid') / 100.0"
+  - name: order_count
+    description: Count of paid orders.
+    sql: "COUNT(*) FILTER (WHERE status = 'paid')"
+  - name: avg_order_value
+    description: Average value of a paid order, in dollars.
+    sql: "AVG(amount_cents) FILTER (WHERE status = 'paid') / 100.0"
+  - name: refund_amount
+    description: Total refunded value in dollars. Watch as a share of revenue.
+    sql: "SUM(amount_cents) FILTER (WHERE status = 'refunded') / 100.0"
+
+segments:
+  - name: last_7_days
+    sql: "created_at >= CURRENT_DATE - INTERVAL '7 days'"
+  - name: last_30_days
+    sql: "created_at >= CURRENT_DATE - INTERVAL '30 days'"
+  - name: this_month
+    sql: "created_at >= date_trunc('month', CURRENT_DATE)"
+
+joins:
+  - to: customers
+    on: "orders.customer_id = customers.id"
+    type: many_to_one
+
+example_questions:
+  - "What was revenue last week?"
+  - "What's our average order value this month?"
+  - "Which customers drove the most revenue?"

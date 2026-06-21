@@ -1,0 +1,30 @@
+{
+  "name": "build-an-agent",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "The agent built by the 'Build an Agent' tutorial — Northwind Analytics, an analytics agent exposed as an HTTP API.",
+  "scripts": {
+    "db:create": "psql -d postgres -c 'CREATE DATABASE arivie_tutorial OWNER CURRENT_USER;'",
+    "db:schema": "psql -d arivie_tutorial -f db/schema.sql",
+    "db:seed": "DATABASE_URL=$${DATABASE_URL:-postgresql://localhost:5432/arivie_tutorial} tsx db/seed.ts",
+    "db:setup": "pnpm run db:schema && pnpm run db:seed",
+    "serve": "tsx server.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@ai-sdk/openai": "^3.0.64",
+    "@arivie/core": "workspace:*",
+    "@arivie/plugin-analytics": "workspace:*",
+    "@arivie/plugin-postgres": "workspace:*",
+    "@hono/node-server": "^1.19.14",
+    "hono": "^4.12.0",
+    "postgres": "^3.4.7"
+  },
+  "devDependencies": {
+    "@arivie/cli": "workspace:*",
+    "@types/node": "^22.0.0",
+    "tsx": "^4.20.3",
+    "typescript": "^6.0.0"
+  }
+}

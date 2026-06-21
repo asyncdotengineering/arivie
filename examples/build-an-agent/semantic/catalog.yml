@@ -1,0 +1,7 @@
+entities:
+  - name: orders
+    description: Orders placed through the storefront — revenue, order count, average order value.
+    keywords: [orders, revenue, sales, aov, refunds]
+  - name: customers
+    description: Customers and their plan tier. Join to orders for per-customer revenue.
+    keywords: [customers, accounts, plan, signups]

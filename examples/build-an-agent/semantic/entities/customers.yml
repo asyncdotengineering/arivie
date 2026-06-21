@@ -1,0 +1,44 @@
+name: customers
+description: |
+  Customers of the storefront. One row per customer. Join to orders for
+  per-customer revenue. plan is the subscription tier they signed up on.
+
+grain: one row per customer
+primary_key: id
+
+dimensions:
+  - name: id
+    sql: id
+    type: numeric
+    description: Customer identifier.
+  - name: name
+    sql: name
+    type: text
+    description: Display name.
+  - name: plan
+    sql: plan
+    type: text
+    values: [free, pro, enterprise]
+    description: Subscription tier the customer is on.
+  - name: signed_up_at
+    sql: signed_up_at
+    type: timestamp
+    description: When the customer was created.
+
+measures:
+  - name: customer_count
+    description: Number of customers.
+    sql: "COUNT(*)"
+
+segments:
+  - name: paying
+    sql: "plan IN ('pro', 'enterprise')"
+
+joins:
+  - to: orders
+    on: "customers.id = orders.customer_id"
+    type: one_to_many
+
+example_questions:
+  - "How many paying customers do we have?"
+  - "What's revenue by plan tier?"
