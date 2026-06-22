@@ -274,6 +274,25 @@ function glossarySection(semantic: SemanticLayer): string {
   return lines.join("\n");
 }
 
+/**
+ * Temporal grounding (researched best practice): LLMs have no internal clock and
+ * otherwise guess "today" from stale training data, breaking relative-date
+ * reasoning ("this month", "last month", YTD). Inject the current time so the
+ * agent resolves relative dates against a real "now". Captured at agent
+ * construction — fresh on every serverless cold start; on a long-lived server
+ * crossing a date boundary, rebuild the agent (or add a per-turn temporal
+ * input processor) to refresh it.
+ */
+function temporalSection(): string {
+  const iso = new Date().toISOString();
+  return (
+    `## Current time\nNow is ${iso} (UTC); today is ${iso.slice(0, 10)}. ` +
+    "Use this as \"now\" for ALL relative dates (today, yesterday, this/last week, " +
+    "this/last month, this/last year, year-to-date) — never assume a date from training data. " +
+    "When the data declares a store timezone, convert to it for date boundaries."
+  );
+}
+
 export function buildSystemPrompt({
   mode,
   semantic,
@@ -284,6 +303,8 @@ export function buildSystemPrompt({
 }: BuildSystemPromptOptions): string {
   const sections: string[] = [
     PREAMBLE,
+    "",
+    temporalSection(),
     "",
     toolsSection(mode, sources),
   ];

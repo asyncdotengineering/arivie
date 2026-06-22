@@ -2,7 +2,7 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { Entity, SemanticLayer } from "@arivie/semantic";
-import { describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import {
   ASSUMPTION_STATING_RULE,
   buildSystemPrompt,
@@ -29,6 +29,9 @@ async function loadFixture(): Promise<SemanticLayer> {
     entities: new Map(fixture.entities.map((entity) => [entity.name, entity])),
   };
 }
+
+beforeAll(() => { vi.useFakeTimers(); vi.setSystemTime(new Date("2026-06-15T12:00:00Z")); });
+afterAll(() => { vi.useRealTimers(); });
 
 describe("buildSystemPromptIndexed", () => {
   it("includes WORKSPACE_NAVIGATION_RULE and per-source execute tools", () => {
@@ -337,5 +340,15 @@ describe("buildSystemPrompt — measure objective / ranking (ADR 0004)", () => {
   it("omits the ranking rule when no measure declares an objective", () => {
     const p = buildSystemPrompt({ mode: "preload", semantic: layerWithObjective(false), compileMetricEnabled: true, sources: [], skillsMode: "none" });
     expect(p).not.toMatch(/## Ranking/);
+  });
+});
+
+describe("buildSystemPrompt — temporal grounding", () => {
+  it("injects the current time so the agent can resolve relative dates", () => {
+    const layer = { entities: new Map(), catalog: { entities: [], generated_at: "x", source_files: [] } } as unknown as SemanticLayer;
+    const p = buildSystemPrompt({ mode: "preload", semantic: layer, compileMetricEnabled: true, sources: [], skillsMode: "none" });
+    expect(p).toContain("## Current time");
+    expect(p).toMatch(/today is 2026-06-15/); // frozen clock
+    expect(p).toMatch(/relative dates/i);
   });
 });
