@@ -5,6 +5,7 @@ import type { Entity, SemanticLayer } from "@arivie/semantic";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import {
   ASSUMPTION_STATING_RULE,
+  COMPOSITION_DISCIPLINE,
   buildSystemPrompt,
   buildSystemPromptIndexed,
   FINALIZE_REPORT_RULE,
@@ -350,5 +351,16 @@ describe("buildSystemPrompt — temporal grounding", () => {
     expect(p).toContain("## Current time");
     expect(p).toMatch(/today is 2026-06-15/); // frozen clock
     expect(p).toMatch(/relative dates/i);
+  });
+});
+
+describe("buildSystemPrompt — composition & exploration", () => {
+  it("frames the semantic layer as building blocks and encourages composing over refusing", () => {
+    const layer = { entities: new Map(), catalog: { entities: [], generated_at: "x", source_files: [] } } as unknown as SemanticLayer;
+    const p = buildSystemPrompt({ mode: "preload", semantic: layer, compileMetricEnabled: true, sources: [], skillsMode: "none" });
+    expect(p).toContain("## Composition & exploration");
+    expect(p).toContain(COMPOSITION_DISCIPLINE);
+    expect(p).toMatch(/BUILDING BLOCKS, not a menu/);
+    expect(p).toMatch(/Before concluding the data can't answer, TRY/);
   });
 });

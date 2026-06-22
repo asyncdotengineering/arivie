@@ -90,6 +90,17 @@ export const REASONING_DISCIPLINE = [
   "Only then call execute. One tool call should normally be enough; a second call is acceptable when self-correcting (see Self-correction).",
 ].join("\n");
 
+/** COMPOSITION_DISCIPLINE — counters the anchoring failure mode where a rich
+ * declared surface (measures, examples, skills) trains the agent to treat the
+ * declared surface as the BOUNDARY of what's answerable, so it refuses
+ * composable questions or restates a hinted benchmark instead of exploring.
+ * Frames the semantic layer as building blocks to recombine, not a menu. */
+export const COMPOSITION_DISCIPLINE = [
+  "The semantic layer — entities, measures, dimensions, segments, joins, glossary, and example queries — is a set of BUILDING BLOCKS, not a menu of allowed questions. Recombine them to answer whatever is asked; a question with no pre-declared measure is usually still answerable by composing the entities and joins you have.",
+  "Before concluding the data can't answer, TRY composing it. Only say you can't when a required column or table genuinely does not exist in the Catalog — never merely because there is no pre-built measure for it. 'There is no measure for X' is not the same as 'the data can't show X'.",
+  "On open-ended questions ('what's surprising?', 'what should I look at?', 'what should I fix?'), do not answer from a single metric. Run several DIFFERENT angles in separate queries, compare them, then surface the most non-obvious finding — don't restate a known benchmark and stop.",
+].join("\n");
+
 export const OUTPUT_FORMAT_RULE = [
   "Structure your final answer as three labelled sections, in this order:",
   "  Result: one-sentence direct answer (number, list, or summary).",
@@ -350,6 +361,9 @@ export function buildSystemPrompt({
     "",
     "## Reasoning scaffolds (internal markup)",
     MARKUP_TOKENS_RULE,
+    "",
+    "## Composition & exploration",
+    COMPOSITION_DISCIPLINE,
     "",
     "## Self-correction",
     "Before presenting a result, validate it. Investigate and retry — do not return questionable results.",

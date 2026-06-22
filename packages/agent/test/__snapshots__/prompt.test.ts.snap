@@ -85,6 +85,11 @@ After the tool returns, if the result is correct, produce the Result/Assumptions
   <intermediate_sql>the fix</intermediate_sql>
 and retry once. After at most one revision, surface the final answer or the error.
 
+## Composition & exploration
+The semantic layer — entities, measures, dimensions, segments, joins, glossary, and example queries — is a set of BUILDING BLOCKS, not a menu of allowed questions. Recombine them to answer whatever is asked; a question with no pre-declared measure is usually still answerable by composing the entities and joins you have.
+Before concluding the data can't answer, TRY composing it. Only say you can't when a required column or table genuinely does not exist in the Catalog — never merely because there is no pre-built measure for it. 'There is no measure for X' is not the same as 'the data can't show X'.
+On open-ended questions ('what's surprising?', 'what should I look at?', 'what should I fix?'), do not answer from a single metric. Run several DIFFERENT angles in separate queries, compare them, then surface the most non-obvious finding — don't restate a known benchmark and stop.
+
 ## Self-correction
 Before presenting a result, validate it. Investigate and retry — do not return questionable results.
 Zero rows: If the query returned no data, investigate before concluding there is no data — check whether the table is empty, or whether your date range or filters are too narrow. Try a broader query first.
@@ -194,6 +199,11 @@ After the tool returns, if the result is correct, produce the Result/Assumptions
   <intermediate_sql>the fix</intermediate_sql>
 and retry once. After at most one revision, surface the final answer or the error.
 
+## Composition & exploration
+The semantic layer — entities, measures, dimensions, segments, joins, glossary, and example queries — is a set of BUILDING BLOCKS, not a menu of allowed questions. Recombine them to answer whatever is asked; a question with no pre-declared measure is usually still answerable by composing the entities and joins you have.
+Before concluding the data can't answer, TRY composing it. Only say you can't when a required column or table genuinely does not exist in the Catalog — never merely because there is no pre-built measure for it. 'There is no measure for X' is not the same as 'the data can't show X'.
+On open-ended questions ('what's surprising?', 'what should I look at?', 'what should I fix?'), do not answer from a single metric. Run several DIFFERENT angles in separate queries, compare them, then surface the most non-obvious finding — don't restate a known benchmark and stop.
+
 ## Self-correction
 Before presenting a result, validate it. Investigate and retry — do not return questionable results.
 Zero rows: If the query returned no data, investigate before concluding there is no data — check whether the table is empty, or whether your date range or filters are too narrow. Try a broader query first.
@@ -294,6 +304,11 @@ After the tool returns, if the result is correct, produce the Result/Assumptions
   <revise>one sentence on what was wrong</revise>
   <intermediate_sql>the fix</intermediate_sql>
 and retry once. After at most one revision, surface the final answer or the error.
+
+## Composition & exploration
+The semantic layer — entities, measures, dimensions, segments, joins, glossary, and example queries — is a set of BUILDING BLOCKS, not a menu of allowed questions. Recombine them to answer whatever is asked; a question with no pre-declared measure is usually still answerable by composing the entities and joins you have.
+Before concluding the data can't answer, TRY composing it. Only say you can't when a required column or table genuinely does not exist in the Catalog — never merely because there is no pre-built measure for it. 'There is no measure for X' is not the same as 'the data can't show X'.
+On open-ended questions ('what's surprising?', 'what should I look at?', 'what should I fix?'), do not answer from a single metric. Run several DIFFERENT angles in separate queries, compare them, then surface the most non-obvious finding — don't restate a known benchmark and stop.
 
 ## Self-correction
 Before presenting a result, validate it. Investigate and retry — do not return questionable results.
@@ -431,6 +446,11 @@ After the tool returns, if the result is correct, produce the Result/Assumptions
   <revise>one sentence on what was wrong</revise>
   <intermediate_sql>the fix</intermediate_sql>
 and retry once. After at most one revision, surface the final answer or the error.
+
+## Composition & exploration
+The semantic layer — entities, measures, dimensions, segments, joins, glossary, and example queries — is a set of BUILDING BLOCKS, not a menu of allowed questions. Recombine them to answer whatever is asked; a question with no pre-declared measure is usually still answerable by composing the entities and joins you have.
+Before concluding the data can't answer, TRY composing it. Only say you can't when a required column or table genuinely does not exist in the Catalog — never merely because there is no pre-built measure for it. 'There is no measure for X' is not the same as 'the data can't show X'.
+On open-ended questions ('what's surprising?', 'what should I look at?', 'what should I fix?'), do not answer from a single metric. Run several DIFFERENT angles in separate queries, compare them, then surface the most non-obvious finding — don't restate a known benchmark and stop.
 
 ## Self-correction
 Before presenting a result, validate it. Investigate and retry — do not return questionable results.
