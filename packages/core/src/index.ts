@@ -9,6 +9,11 @@ export { defineArivie } from "./define-app.js";
 export type { ArivieApp, ArivieAppConfig, PromptInput } from "./define-app.js";
 export { listConversations } from "./runtime/conversations.js";
 export type { ConversationSummary } from "./runtime/conversations.js";
+export { mastraRagRetriever } from "./runtime/context-retriever.js";
+export type {
+  ContextRetriever,
+  MastraRagRetrieverOptions,
+} from "./runtime/context-retriever.js";
 export {
   assertUniquePluginIds,
   DANGEROUS_PERMISSIONS,

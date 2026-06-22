@@ -12,8 +12,10 @@ import { assertManifestValid } from "./manifest/validate.js";
 import { buildManifest } from "./manifest/build.js";
 import type { RuntimeManifest } from "./manifest/types.js";
 import type { PluginInstance } from "./plugins/types.js";
+import type { Tool } from "@mastra/core/tools";
 import { assembleAgentContext } from "./runtime/assemble.js";
 import { loadAppContext, type LoadedContext } from "./runtime/context-layer.js";
+import type { ContextRetriever } from "./runtime/context-retriever.js";
 import { createMastraExecutor } from "./runtime/mastra-executor.js";
 import { createRuntime } from "./runtime/session.js";
 import type {
@@ -37,7 +39,13 @@ export interface ArivieAppConfig {
   storage: RuntimeStorage;
   plugins?: PluginInstance[];
   agents: Record<string, AgentDefinition>;
-  context?: { root: string };
+  /**
+   * Declarative context layer (ADR 0003). `root` holds knowledge (`.md`) and
+   * executable docs. `retriever` is the STRATEGY for `usage_mode: auto` pages —
+   * pass `mastraRagRetriever({ embedding, vector })` (any Mastra store) or your
+   * own `ContextRetriever` (any RAG pipeline). Absent → `always`-inject only.
+   */
+  context?: { root: string; retriever?: ContextRetriever };
   resolveUser: (req: Request) => Promise<UserContext> | UserContext;
   /**
    * Mastra storage backing agent conversation Memory. The runtime Session is
@@ -102,6 +110,7 @@ function buildMastraAgent(
   model: LanguageModel,
   memoryStorage: MemoryStorage,
   alwaysKnowledge: string[],
+  contextTools: Record<string, Tool>,
 ): Agent {
   const { instructions, tools } = assembleAgentContext(
     agentId,
@@ -114,7 +123,10 @@ function buildMastraAgent(
     name: agentId,
     model: (agent.model ?? model) as ConstructorParameters<typeof Agent>[0]["model"],
     instructions,
-    tools: tools as NonNullable<ConstructorParameters<typeof Agent>[0]["tools"]>,
+    // Plugin tools + the context-retriever's search tools (ADR 0003).
+    tools: { ...tools, ...contextTools } as NonNullable<
+      ConstructorParameters<typeof Agent>[0]["tools"]
+    >,
     memory: new Memory({ storage: memoryStorage }),
     // Guardrails (PII / prompt-injection / moderation) run in Mastra's pipeline.
     ...(agent.inputProcessors !== undefined ? { inputProcessors: agent.inputProcessors } : {}),
@@ -145,6 +157,15 @@ export async function defineArivie(config: ArivieAppConfig): Promise<ArivieApp> 
   const loadedContext = await loadAppContext(config);
   const alwaysKnowledge = loadedContext?.alwaysKnowledge ?? [];
 
+  // `usage_mode: auto` retrieval (ADR 0003). The retriever indexes the
+  // knowledge docs once and contributes search tools merged into every agent.
+  let contextTools: Record<string, Tool> = {};
+  const retriever = config.context?.retriever;
+  if (retriever !== undefined && loadedContext !== undefined) {
+    await retriever.index?.(loadedContext.documents);
+    contextTools = retriever.tools();
+  }
+
   const mastraAgents: Record<string, Agent> = {};
   for (const [id, agentDef] of Object.entries(config.agents)) {
     mastraAgents[id] = buildMastraAgent(
@@ -154,6 +175,7 @@ export async function defineArivie(config: ArivieAppConfig): Promise<ArivieApp> 
       config.model,
       memoryStorage,
       alwaysKnowledge,
+      contextTools,
     );
   }
 
