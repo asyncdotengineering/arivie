@@ -31,12 +31,10 @@
     "dev": "tsup --watch"
   },
   "dependencies": {
-    "@ai-sdk/cohere": "^3.0.36",
-    "@ai-sdk/openai": "^3.0.64",
-    "@ai-sdk/voyage": "^1.0.4",
     "@arivie/semantic": "workspace:*",
     "ai": "^6.0.0",
-    "zod": "^4.4.0"
+    "zod": "^4.4.0",
+    "@mastra/core": "^1.45.0"
   },
   "peerDependencies": {
     "@mastra/core": "^1.45.0"

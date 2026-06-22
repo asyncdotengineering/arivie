@@ -1,11 +1,11 @@
 # @arivie/embeddings
 
-Provider adapters for RAG embedding: thin factories over AI SDK v6 (`@ai-sdk/openai`, `@ai-sdk/cohere`, `@ai-sdk/voyage`) that return an `EmbeddingProvider` record (`model`, `modelName`, `dimensions`, `costPerMillionTokens`). Downstream code calls `embedMany({ model: provider.model, values })` using the re-exported `embed` / `embedMany` from this package — no Arivie-owned embed wrapper.
+One model-router factory (Mastra `ModelRouterEmbeddingModel`, 40+ providers via a `provider/model` id) that returns an `EmbeddingProvider` record (`model`, `modelName`, `dimensions`, `costPerMillionTokens`). Downstream code calls `embedMany({ model: provider.model, values })` using the re-exported `embed` / `embedMany` from this package — no Arivie-owned embed wrapper.
 
 ```ts
-import { embedMany, openAIEmbeddings } from "@arivie/embeddings";
+import { embedMany, modelRouterEmbeddings } from "@arivie/embeddings";
 
-const provider = openAIEmbeddings({ apiKey: process.env.OPENAI_API_KEY! });
+const provider = modelRouterEmbeddings("openai/text-embedding-3-small", { dimensions: 1536 });
 const { embeddings, usage } = await embedMany({
   model: provider.model,
   values: ["chunk one", "chunk two"],
@@ -21,9 +21,9 @@ Chunk a semantic layer with `ParagraphChunker`, embed via `embedMany`, and upser
 
 ```ts
 import { PgVector } from "@mastra/pg";
-import { buildIndex, openAIEmbeddings } from "@arivie/embeddings";
+import { buildIndex, modelRouterEmbeddings } from "@arivie/embeddings";
 
-const provider = openAIEmbeddings({ apiKey: process.env.OPENAI_API_KEY! });
+const provider = modelRouterEmbeddings("openai/text-embedding-3-small", { dimensions: 1536 });
 const vector = new PgVector({
   id: "arivie-rag",
   connectionString: process.env.DATABASE_URL!,
@@ -45,9 +45,9 @@ Embed a single query string, run similarity search against a populated index, an
 
 ```ts
 import { PgVector } from "@mastra/pg";
-import { buildIndex, openAIEmbeddings, retrieve } from "@arivie/embeddings";
+import { buildIndex, modelRouterEmbeddings, retrieve } from "@arivie/embeddings";
 
-const provider = openAIEmbeddings({ apiKey: process.env.OPENAI_API_KEY! });
+const provider = modelRouterEmbeddings("openai/text-embedding-3-small", { dimensions: 1536 });
 const vector = new PgVector({
   id: "arivie-rag",
   connectionString: process.env.DATABASE_URL!,

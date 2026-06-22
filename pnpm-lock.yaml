@@ -802,18 +802,12 @@ importers:
 
   packages/embeddings:
     dependencies:
-      '@ai-sdk/cohere':
-        specifier: ^3.0.36
-        version: 3.0.36(zod@4.4.3)
-      '@ai-sdk/openai':
-        specifier: ^3.0.64
-        version: 3.0.64(zod@4.4.3)
-      '@ai-sdk/voyage':
-        specifier: ^1.0.4
-        version: 1.0.4(zod@4.4.3)
       '@arivie/semantic':
         specifier: workspace:*
         version: link:../semantic
+      '@mastra/core':
+        specifier: ^1.45.0
+        version: 1.45.0(@grpc/grpc-js@1.14.3)(ai@6.0.185(zod@4.4.3))(express@5.2.1)(zod@4.4.3)
       ai:
         specifier: ^6.0.0
         version: 6.0.185(zod@4.4.3)
@@ -821,9 +815,6 @@ importers:
         specifier: ^4.4.0
         version: 4.4.3
     devDependencies:
-      '@mastra/core':
-        specifier: ^1.45.0
-        version: 1.45.0(@grpc/grpc-js@1.14.3)(ai@6.0.185(zod@4.4.3))(express@5.2.1)(zod@4.4.3)
       '@mastra/pg':
         specifier: ^1.14.0
         version: 1.14.0(@mastra/core@1.45.0(@grpc/grpc-js@1.14.3)(ai@6.0.185(zod@4.4.3))(express@5.2.1)(zod@4.4.3))
@@ -1294,12 +1285,6 @@ packages:
     peerDependencies:
       zod: ^3.25.76 || ^4.1.8
 
-  '@ai-sdk/cohere@3.0.36':
-    resolution: {integrity: sha512-a3xUVhBYP5FuThYA3Q7NjuEyl/ObBhx9z0zFDRebW0UqEoExS3zJwtE9OB+gHc/uvwx93hNg5ZITAFAvqG3GMQ==}
-    engines: {node: '>=18'}
-    peerDependencies:
-      zod: ^3.25.76 || ^4.1.8
-
   '@ai-sdk/gateway@3.0.116':
     resolution: {integrity: sha512-k8P17w7Eho5Y4l3tZrYxqQdffkI4xwtl8GCxkZs+JdMWZhyrLLlozqWkKLaWrCSlEYQOeIhEnQLhqQgYYU86Rw==}
     engines: {node: '>=18'}
@@ -1361,12 +1346,6 @@ packages:
     engines: {node: '>=18'}
     peerDependencies:
       react: ^18 || ~19.0.1 || ~19.1.2 || ^19.2.1
-
-  '@ai-sdk/voyage@1.0.4':
-    resolution: {integrity: sha512-aHw6Ll/k4X3KcjhGJQ7bL1Ot25/+7OirnsvwhV76q5EhEr5gD8QtRgkqaRa4PegYnrg4E9PIU5P8PRn5Woh1jw==}
-    engines: {node: '>=18'}
-    peerDependencies:
-      zod: ^3.25.76 || ^4.1.8
 
   '@ai-sdk/xai@3.0.91':
     resolution: {integrity: sha512-7zhOCe7hoLfJ5VMTLejzAjBuhaBWIakfd6ZBeQBveshP+DKAPTbl08wTVqnjRLqP1Dw2zN2oT3eyz1EtiFzyBg==}
@@ -8841,12 +8820,6 @@ snapshots:
       '@ai-sdk/provider-utils': 4.0.27(zod@4.4.3)
       zod: 4.4.3
 
-  '@ai-sdk/cohere@3.0.36(zod@4.4.3)':
-    dependencies:
-      '@ai-sdk/provider': 3.0.10
-      '@ai-sdk/provider-utils': 4.0.27(zod@4.4.3)
-      zod: 4.4.3
-
   '@ai-sdk/gateway@3.0.116(zod@4.4.3)':
     dependencies:
       '@ai-sdk/provider': 3.0.10
@@ -8916,12 +8889,6 @@ snapshots:
       throttleit: 2.1.0
     transitivePeerDependencies:
       - zod
-
-  '@ai-sdk/voyage@1.0.4(zod@4.4.3)':
-    dependencies:
-      '@ai-sdk/provider': 3.0.10
-      '@ai-sdk/provider-utils': 4.0.27(zod@4.4.3)
-      zod: 4.4.3
 
   '@ai-sdk/xai@3.0.91(zod@4.4.3)':
     dependencies:
