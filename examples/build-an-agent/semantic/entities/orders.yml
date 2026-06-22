@@ -31,6 +31,7 @@ measures:
   - name: revenue
     description: Recognized revenue in dollars (paid orders only, excludes tax).
     sql: "SUM(amount_cents) FILTER (WHERE status = 'paid') / 100.0"
+    objective: maximize
   - name: order_count
     description: Count of paid orders.
     sql: "COUNT(*) FILTER (WHERE status = 'paid')"
@@ -40,6 +41,7 @@ measures:
   - name: refund_amount
     description: Total refunded value in dollars. Watch as a share of revenue.
     sql: "SUM(amount_cents) FILTER (WHERE status = 'refunded') / 100.0"
+    objective: minimize
 
 segments:
   - name: last_7_days

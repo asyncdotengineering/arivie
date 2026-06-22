@@ -6,6 +6,13 @@ export const MeasureSchema = z
     name: z.string().min(1),
     description: z.string(),
     sql: z.string().min(1),
+    /**
+     * Which direction is "better" when ranking by this measure. `maximize` →
+     * higher is better (revenue); `minimize` → lower is better (food_cost_pct,
+     * churn). Lets the agent resolve "best/worst/top/bottom" correctly instead
+     * of assuming bigger = better. Defaults to `maximize` when omitted.
+     */
+    objective: z.enum(["maximize", "minimize"]).optional(),
   })
   .strict();
 

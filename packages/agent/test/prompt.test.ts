@@ -309,3 +309,30 @@ describe("buildSystemPrompt — sample_values + canonical query patterns (ADR 00
     expect(p).toMatch(/Canonical query patterns/);
   });
 });
+
+describe("buildSystemPrompt — measure objective / ranking (ADR 0004)", () => {
+  function layerWithObjective(withObjective: boolean): SemanticLayer {
+    return {
+      entities: new Map([
+        ["orders", {
+          name: "orders", description: "x", grain: "one row per order", primary_key: "id",
+          measures: [
+            { name: "revenue", description: "rev", sql: "SUM(x)", ...(withObjective ? { objective: "maximize" as const } : {}) },
+            { name: "refunds", description: "ref", sql: "SUM(y)", ...(withObjective ? { objective: "minimize" as const } : {}) },
+          ],
+        } as unknown as Entity],
+      ]),
+      catalog: { entities: [], generated_at: "x", source_files: [] },
+    };
+  }
+  it("renders objective on the measure + the ranking rule when declared", () => {
+    const p = buildSystemPrompt({ mode: "preload", semantic: layerWithObjective(true), compileMetricEnabled: true, sources: [], skillsMode: "none" });
+    expect(p).toMatch(/objective: minimize/);
+    expect(p).toMatch(/## Ranking/);
+    expect(p).toMatch(/best = LOWEST/);
+  });
+  it("omits the ranking rule when no measure declares an objective", () => {
+    const p = buildSystemPrompt({ mode: "preload", semantic: layerWithObjective(false), compileMetricEnabled: true, sources: [], skillsMode: "none" });
+    expect(p).not.toMatch(/## Ranking/);
+  });
+});

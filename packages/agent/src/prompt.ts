@@ -67,6 +67,12 @@ export const HINT_SCOPE_RULE = [
   "When unsure, return the raw total AND state in Assumptions that you did not apply the entity's revenue-specific filters.",
 ].join("\n");
 
+export const MEASURE_OBJECTIVE_RULE =
+  "RANKING by a measure: for 'best/top/highest/most' vs 'worst/bottom/lowest/least', respect the " +
+  "measure's `objective`. `maximize` → higher is better (best = highest, worst = lowest). `minimize` → " +
+  "lower is better (best = LOWEST, worst = highest), e.g. food_cost_pct or churn. A measure with no " +
+  "stated objective defaults to `maximize`.";
+
 export const COMPILE_METRIC_FILTER_SHAPE = [
   "compile_metric filter values are EQUALITY-ONLY against real entity columns: { col: scalar }. Examples that work: { status: 'completed' }, { currency: 'USD' }, { customer_id: 'cust-04' }.",
   "Time ranges, IN-lists, and range comparisons (>=, <=, BETWEEN) are NOT supported as filters today. For time ranges use a declared `segments[]` entry (e.g. 'current_quarter') OR fall back to execute with hand-written SQL.",
@@ -284,6 +290,9 @@ export function buildSystemPrompt({
 
   if (mode === "preload") {
     sections.push("", semanticLayerSection(semantic));
+    if (semanticHasObjective(semantic)) {
+      sections.push("", `## Ranking\n${MEASURE_OBJECTIVE_RULE}`);
+    }
     for (const entity of entitiesAlphabetical(semantic)) {
       if (entity.hints != null && entity.hints.length > 0) {
         sections.push("", formatHintsSubsection(entity));
@@ -501,8 +510,18 @@ export function formatEntity(
   return lines.join("\n");
 }
 
+/** True when any measure declares an `objective` (gate the ranking rule). */
+function semanticHasObjective(semantic: SemanticLayer): boolean {
+  for (const entity of semantic.entities.values()) {
+    if (entity.measures?.some((m) => m.objective != null)) return true;
+  }
+  return false;
+}
+
 function formatMeasure(measure: Measure): string {
-  return `- **${measure.name}**: ${measure.description} | SQL: ${measure.sql}`;
+  const objective =
+    measure.objective != null ? ` | objective: ${measure.objective} (lower is better if minimize)` : "";
+  return `- **${measure.name}**: ${measure.description} | SQL: ${measure.sql}${objective}`;
 }
 
 function formatDimension(dimension: Dimension): string {
