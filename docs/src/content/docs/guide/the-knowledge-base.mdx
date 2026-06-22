@@ -1,0 +1,60 @@
+---
+title: "The Knowledge Base"
+description: "Part 3 of the Knowledge Agent guide. Author FAQ pages as Markdown — retrieved on demand, not stuffed into every prompt."
+---
+
+[Always-on policy](./always-on-policy) pins the non-negotiable truths. Everything else — password resets, billing, integrations — belongs in **reference articles** your agent pulls when a question needs them. In Arivie these are the same Markdown files, with one different frontmatter field: `usage_mode: auto`.
+
+## An FAQ page
+
+Drop files under `context/`. Each is a knowledge page with a short summary and tags for discovery:
+
+```md title="context/faq-password.md"
+---
+summary: How a user resets their Aurora password.
+usage_mode: auto
+tags: [account, password, login]
+---
+# Resetting your password
+
+1. Go to **aurora.example/login** and click **"Forgot password?"**.
+2. Enter the email on your Aurora account and submit.
+3. Check your inbox for a reset link (it expires in **60 minutes**).
+4. Click the link, choose a new password (min 12 characters), and sign in.
+
+If the email never arrives, check spam, then confirm the address is the one tied to your workspace. SSO users cannot reset a password here — they sign in through their identity provider.
+```
+
+Billing works the same way — declarative facts, not a procedure:
+
+```md title="context/faq-billing.md"
+---
+summary: Where to change billing, plans, and payment methods in Aurora.
+usage_mode: auto
+tags: [billing, plans, invoices]
+---
+# Billing and plans
+
+- **Change plan:** Workspace owners go to **Settings → Billing → Change plan**. Upgrades are immediate and prorated; downgrades apply at the next renewal.
+- **Update card:** **Settings → Billing → Payment method**.
+- **Invoices:** **Settings → Billing → Invoices** — download any past invoice as PDF.
+- **Seats:** adding a teammate adds a seat to the next invoice; removing one credits the proration.
+
+Only a **workspace owner or billing admin** can see the Billing tab.
+```
+
+## Frontmatter that matters
+
+| Field | Role |
+|---|---|
+| `summary` | One-line description — used when listing and ranking pages |
+| `tags` | Loose categories (`billing`, `account`, …) for humans and retrieval |
+| `usage_mode: auto` | Page is **not** injected every turn; the agent retrieves it when relevant |
+
+Add as many pages as you need — `faq-integrations.md`, `faq-sso.md`, `faq-export.md`, whatever your product surface requires. Commit them; your team's normal doc review is the governance loop. Context is *what's true*; if you need a *how to run the weekly audit* runbook, that is a skill, not a context page.
+
+## Not in the prompt — until they are
+
+Unlike `always` policy, these bodies never land in the instructions wholesale. On startup Arivie loads them from `context.root`; at question time the agent decides whether to search. Ask *"How do I reset my password?"* and the model calls `search_context`, gets the password FAQ back, and quotes the steps — Forgot password link, 60-minute expiry, the works. Ask about refunds and the always-injected policy still wins without a search.
+
+That retrieval step is configured once in `arivie.config.ts`. Next: [how `auto` pages become searchable](./retrieval).

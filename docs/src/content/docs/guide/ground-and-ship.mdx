@@ -1,0 +1,76 @@
+---
+title: "Ground and Ship"
+description: "Part 5 of the Knowledge Agent guide. Keep the agent honest, harden the surface, and ship Aurora Support to your team."
+---
+
+You have policy that injects every turn, FAQ pages that retrieve on demand, and a retriever that connects them. The last piece is **reliability** — making "I don't know" a feature, not a failure — and **shipping** the agent where your customers or teammates actually talk.
+
+## Grounding, not guessing
+
+Three layers stack:
+
+1. **Instructions** — the agent is told to answer only from the knowledge base, call `search_context` when an article may help, and escalate when coverage runs out:
+
+```ts title="arivie.config.ts"
+defineAgent({
+  instructions:
+    "You are Aurora's customer support agent. Be warm, concise, and accurate. " +
+    "Answer ONLY from Aurora's knowledge base. When a question may be covered by a help " +
+    "article, call search_context first and base your answer on what it returns — quote the " +
+    "exact steps. If the knowledge base does not cover it, say so and offer to escalate. " +
+    "Never invent policy, prices, or features.",
+}),
+```
+
+2. **Always policy** — refunds, escalation path, and tone sit in instructions every turn ([Always-On Policy](./always-on-policy)).
+3. **Retrieval** — `auto` pages supply evidence when the model searches ([Retrieval](./retrieval)).
+
+Together they produce clean refusal. Ask *"Does Aurora integrate with SAP and what does it cost?"* — not in the FAQ, not in policy. The agent says the knowledge base does not specify, offers to escalate to a human, and asks for the workspace name. No fabricated SAP tier, no invented price. That is the design working: grounded when it can, explicit when it cannot.
+
+## Optional hardening
+
+Prompts and policy are the primary guardrails for a knowledge agent. For a public-facing surface, Mastra's processor pipeline adds another layer — drop a guard onto `defineAgent` via `inputProcessors`:
+
+```ts
+import { PromptInjectionDetector } from "@mastra/core/processors";
+
+defineAgent({
+  instructions: "…",
+  inputProcessors: [new PromptInjectionDetector({ /* … */ })],
+}),
+```
+
+Processors run before each model call (`PIIDetector`, `ModerationProcessor`, and others ship the same way). They do not replace grounding; they filter adversarial input on the way in.
+
+## Ship it
+
+**Terminal** — the fastest loop while authoring context:
+
+```bash
+pnpm exec arivie chat --config arivie.config.ts
+```
+
+**HTTP** — same agent, durable runs, and a web widget path. Mount `arivie.hono` on any Hono app:
+
+```ts title="server.ts"
+import { serve } from "@hono/node-server";
+import { Hono } from "hono";
+import { arivie } from "./arivie.config.js";
+
+const app = new Hono();
+app.route("/", arivie.hono);
+
+serve({ fetch: app.fetch, port: Number(process.env.PORT ?? 3000) });
+```
+
+That brings:
+
+- **`POST /sessions`** — start a durable run, stream events as SSE
+- **`GET /runs/:id/events?cursor=`** — reconnect and replay
+- **`POST /api/chat`** — Vercel AI SDK `useChat`-compatible streaming for a React widget
+
+One config file, no analytics plugins, no warehouse. The finished example lives at [`examples/support-agent/`](https://github.com/asyncdotengineering/arivie/tree/main/examples/support-agent).
+
+## What you built
+
+Aurora Support is the other half of Arivie: declarative knowledge instead of SQL. The same shape builds any knowledge agent — customer support, employee onboarding, internal docs, a policy assistant. Pin what must always be true, author the rest as Markdown, plug in a retriever, and ship on the CLI or HTTP surface you already have.

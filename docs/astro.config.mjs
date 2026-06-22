@@ -40,6 +40,16 @@ export default defineConfig({
           ],
         },
         {
+          label: "Knowledge Agent",
+          items: [
+            { slug: "guide/knowledge-agent" },
+            { slug: "guide/always-on-policy" },
+            { slug: "guide/the-knowledge-base" },
+            { slug: "guide/retrieval" },
+            { slug: "guide/ground-and-ship" },
+          ],
+        },
+        {
           label: "Tutorials",
           items: [{ slug: "tutorials/first-bi-agent" }],
         },

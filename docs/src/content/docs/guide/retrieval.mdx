@@ -1,0 +1,77 @@
+---
+title: "Retrieval"
+description: "Part 4 of the Knowledge Agent guide. Turn auto pages into a searchable index — and swap the retriever when you outgrow the default."
+---
+
+Your FAQ pages exist on disk. The agent's instructions say to call `search_context` when a help article might help. Something has to make those pages findable — that is the **retriever**, a pluggable strategy Arivie calls at startup and merges into every agent's toolset ([ADR 0003](/adr/0003-context-layer-and-skills-segregation/)).
+
+## The default: Mastra RAG
+
+The support agent uses the built-in retriever:
+
+```ts title="arivie.config.ts"
+context: {
+  root: "./context",
+  retriever: mastraRagRetriever({
+    embedding: "openai/text-embedding-3-small",
+  }),
+},
+```
+
+At startup, for each `usage_mode: auto` page, `mastraRagRetriever`:
+
+1. **Chunks** the Markdown (`MDocument.fromMarkdown` → `chunk`, markdown strategy, 512-token windows),
+2. **Embeds** each chunk (`embedMany` with your embedding model),
+3. **Upserts** vectors + metadata into a vector store,
+4. **Exposes** Mastra's `createVectorQueryTool` as `search_context` on every agent.
+
+Out of the box the vector store is a local LibSQL file (`.arivie/context.db`) — zero infra, same spirit as the in-memory runtime. The agent sees one tool: search the knowledge base, return relevant passages.
+
+Live behavior: *"How do I reset my password?"* → the agent **calls `search_context`**, retrieves `faq-password.md`, answers with the exact steps. Policy questions skip retrieval because `always` pages are already in the instructions.
+
+## Swap the vector store
+
+`retriever` accepts any Mastra vector implementation. Point at Postgres when you want the index beside your other data:
+
+```ts
+import { PgVector } from "@mastra/pg";
+
+context: {
+  root: "./context",
+  retriever: mastraRagRetriever({
+    embedding: "openai/text-embedding-3-small",
+    vector: new PgVector({
+      id: "aurora-context",
+      connectionString: process.env.DATABASE_URL!,
+    }),
+  }),
+},
+```
+
+LibSQLVector, Pinecone, whatever Mastra supports — same retriever, different `vector:`. Chunk size, overlap, and index name are optional knobs on `mastraRagRetriever({ chunk?, indexName? })`.
+
+## Swap the whole pipeline
+
+The retriever is a **port**. Arivie owns governance — load pages, honor `usage_mode`, inject `always` bodies, validate refs. The retriever owns mechanics — indexing and the search tool. Implement `ContextRetriever` yourself when Mastra RAG is not the right fit (hybrid lexical+semantic, GraphRAG, a remote search API):
+
+```ts
+import type { ContextRetriever } from "@arivie/core";
+
+const hybridRetriever: ContextRetriever = {
+  async index(docs) {
+    // build or refresh your index from auto pages
+  },
+  tools() {
+    return { search_context: mySearchTool };
+  },
+};
+
+context: {
+  root: "./context",
+  retriever: hybridRetriever,
+},
+```
+
+`index?` runs once at startup with the loaded knowledge docs; `tools()` merges into every agent. Keep the tool id `search_context` (or update your instructions to match). The agent loop does not care whether chunks came from pgvector or your own pipeline.
+
+Retrieval grounds answers in real articles. Reliability — refusing to invent what is not there — comes from instructions plus always-policy together: [Ground and Ship](./ground-and-ship).

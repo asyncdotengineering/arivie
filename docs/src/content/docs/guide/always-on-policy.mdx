@@ -1,0 +1,39 @@
+---
+title: "Always-On Policy"
+description: "Part 2 of the Knowledge Agent guide. Pin the truths your agent must never get wrong — refunds, escalation, tone — in context that injects every turn."
+---
+
+In [Build a Knowledge Agent](./knowledge-agent) you scaffolded Aurora Support with an empty knowledge base. The agent had instructions but nothing to ground them in. The first file to add is not an FAQ — it is **policy**: the truths the agent must carry on every turn, whether or not the customer asks about them.
+
+## The always page
+
+Create `context/policy.md` with `usage_mode: always`:
+
+```md title="context/policy.md"
+---
+summary: Aurora's core support policies — always in context.
+usage_mode: always
+tags: [policy, refunds, escalation]
+---
+# Aurora support policy (always true)
+
+- **Refunds:** Aurora offers a **30-day money-back guarantee** on all paid plans. After 30 days, plans are non-refundable but can be cancelled to stop future billing.
+- **Escalation:** If you cannot resolve an issue from the knowledge base, offer to **escalate to a human at support@aurora.example** and collect the customer's workspace name.
+- **Tone:** Never promise features, prices, or timelines that are not in the knowledge base.
+```
+
+That is the whole authoring loop for policy: Markdown your team already writes, reviewed in git like any other doc. No CMS, no database table.
+
+## Where it lands in the prompt
+
+Recall the assembly order from page 1: Mastra's **memory** block first, then the agent's **instructions**, then the user's message. Arivie appends every `usage_mode: always` page to those instructions at startup. Your refund rule and escalation path sit in the system context *before* the question arrives — not retrieved, not optional, not subject to the model "forgetting" to search.
+
+The `auto` FAQ pages are not here yet. Policy is small and non-negotiable; articles are large and on-demand. That split is deliberate ([ADR 0003](/adr/0003-context-layer-and-skills-segregation/)).
+
+## What it changes in practice
+
+Restart the chat and ask *"What's your refund policy?"* The agent answers from the injected policy — **30-day money-back guarantee** — without calling `search_context`. The truth was already in the instructions.
+
+Ask something the knowledge base does not cover: *"Does Aurora integrate with SAP and what does it cost?"* There is no SAP article and no price list. Because escalation and tone are always present, the agent does not invent a integration fee. It says the knowledge base does not specify, offers to escalate to a human, and asks for the workspace name. That is the always-policy doing its job — refusal is baked in, not hoped for.
+
+Policy alone does not answer *"How do I reset my password?"* — that lives in a help article the agent retrieves when needed. Time to build the FAQ: [The Knowledge Base](./the-knowledge-base).
