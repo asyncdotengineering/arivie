@@ -1,4 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
+import { mkdirSync } from "node:fs";
 import type { ContextDocument } from "@arivie/context";
 import { ModelRouterEmbeddingModel } from "@mastra/core/llm";
 import type { Tool } from "@mastra/core/tools";
@@ -46,8 +47,11 @@ export function mastraRagRetriever(options: MastraRagRetrieverOptions): ContextR
     typeof options.embedding === "string"
       ? new ModelRouterEmbeddingModel(options.embedding)
       : options.embedding;
-  const store =
-    options.vector ?? new LibSQLVector({ id: "arivie-context", url: "file:.arivie/context.db" });
+  let store = options.vector;
+  if (store === undefined) {
+    mkdirSync(".arivie", { recursive: true }); // ensure the zero-infra default DB dir exists
+    store = new LibSQLVector({ id: "arivie-context", url: "file:.arivie/context.db" });
+  }
   const indexName = options.indexName ?? "arivie_context";
 
   return {
