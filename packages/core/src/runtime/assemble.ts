@@ -30,6 +30,12 @@ export function assembleAgentContext(
   agentId: string,
   agent: AgentDefinition,
   manifest: RuntimeManifest,
+  /**
+   * Bodies of `usage_mode: always` knowledge pages from the context layer,
+   * injected into every agent's instructions (ADR 0003). Procedural `skills`
+   * stay out of here — this is the declarative knowledge pillar.
+   */
+  alwaysKnowledge: string[] = [],
 ): AssembledAgentContext {
   const capabilityIds = agent.capabilities ?? [];
   const pluginIds = new Set<string>();
@@ -54,7 +60,7 @@ export function assembleAgentContext(
     .filter((ref) => pluginIds.has(ref.pluginId))
     .map((ref) => ref.value);
 
-  const instructions = [agent.instructions, ...fragments]
+  const instructions = [agent.instructions, ...fragments, ...alwaysKnowledge]
     .filter((part) => part.length > 0)
     .join("\n\n");
 

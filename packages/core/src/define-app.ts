@@ -13,6 +13,7 @@ import { buildManifest } from "./manifest/build.js";
 import type { RuntimeManifest } from "./manifest/types.js";
 import type { PluginInstance } from "./plugins/types.js";
 import { assembleAgentContext } from "./runtime/assemble.js";
+import { loadAppContext, type LoadedContext } from "./runtime/context-layer.js";
 import { createMastraExecutor } from "./runtime/mastra-executor.js";
 import { createRuntime } from "./runtime/session.js";
 import type {
@@ -76,6 +77,8 @@ export interface ArivieApp {
   runtime: Runtime;
   /** Mastra storage backing conversation Memory — list/resume threads from it. */
   memory: MemoryStorage;
+  /** The loaded declarative context layer (ADR 0003), or undefined if no `context` configured. */
+  context?: LoadedContext;
   sessions: Runtime["sessions"];
   events: Runtime["events"];
   /**
@@ -98,8 +101,14 @@ function buildMastraAgent(
   manifest: RuntimeManifest,
   model: LanguageModel,
   memoryStorage: MemoryStorage,
+  alwaysKnowledge: string[],
 ): Agent {
-  const { instructions, tools } = assembleAgentContext(agentId, agent, manifest);
+  const { instructions, tools } = assembleAgentContext(
+    agentId,
+    agent,
+    manifest,
+    alwaysKnowledge,
+  );
   return new Agent({
     id: agentId,
     name: agentId,
@@ -129,6 +138,13 @@ export async function defineArivie(config: ArivieAppConfig): Promise<ArivieApp> 
   assertManifestValid(diagnostics);
 
   const memoryStorage = config.memory ?? defaultMemoryStore();
+
+  // Declarative knowledge pillar (ADR 0003). `usage_mode: always` pages inject
+  // into every agent; the loaded layer is exposed on the app for the context
+  // tools + `arivie info`.
+  const loadedContext = await loadAppContext(config);
+  const alwaysKnowledge = loadedContext?.alwaysKnowledge ?? [];
+
   const mastraAgents: Record<string, Agent> = {};
   for (const [id, agentDef] of Object.entries(config.agents)) {
     mastraAgents[id] = buildMastraAgent(
@@ -137,6 +153,7 @@ export async function defineArivie(config: ArivieAppConfig): Promise<ArivieApp> 
       manifest,
       config.model,
       memoryStorage,
+      alwaysKnowledge,
     );
   }
 
@@ -179,6 +196,7 @@ export async function defineArivie(config: ArivieAppConfig): Promise<ArivieApp> 
     manifest,
     runtime,
     memory: memoryStorage,
+    ...(loadedContext !== undefined ? { context: loadedContext } : {}),
     sessions: runtime.sessions,
     events: runtime.events,
     async prompt(input: PromptInput): Promise<string> {

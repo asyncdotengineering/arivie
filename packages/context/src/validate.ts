@@ -73,6 +73,15 @@ export function resolveSchemaDefinition(
     return { schemaId: only.id, definition: only };
   }
 
+  // Knowledge pages are prose — their frontmatter is free-form metadata, with
+  // no data to validate. So a plain wiki `.md` loads without a registered
+  // schema (ktx parity: drop a markdown file and it just works). Executable
+  // docs still require an explicit schema — they carry structured `data` that
+  // must be validated.
+  if (kind === "knowledge") {
+    return { schemaId: "knowledge", definition: { id: "knowledge", kind: "knowledge" } };
+  }
+
   if (catalog.length === 0) {
     return {
       severity: "error",
