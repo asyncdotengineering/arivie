@@ -65,7 +65,6 @@ export const config: ArivieAppConfig = {
       capabilities: ["analytics.query", "analytics.compile_metric"],
     }),
   },
-  context: { root: semanticPath },
   resolveUser: async () => ({
     userId: "woocommerce-analyst",
     permissions: ["analytics:read", "finance:read"],

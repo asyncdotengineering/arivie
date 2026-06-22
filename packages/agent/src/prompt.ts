@@ -234,6 +234,37 @@ export function buildSystemPromptIndexed({
   return sections.join("\n");
 }
 
+/**
+ * Render the business-term glossary (ADR 0004). Defined terms ground the agent;
+ * `status: ambiguous` terms get a hard CLARIFY rule — the agent must ask which
+ * definition the user means instead of guessing. Returns "" when no glossary.
+ */
+function glossarySection(semantic: SemanticLayer): string {
+  const glossary = semantic.catalog.glossary ?? [];
+  if (glossary.length === 0) return "";
+  const defined = glossary.filter((t) => t.status !== "ambiguous");
+  const ambiguous = glossary.filter((t) => t.status === "ambiguous");
+  const lines = ["## Glossary"];
+  for (const t of defined) {
+    lines.push(`- **${t.term}** — ${t.definition}`);
+  }
+  if (ambiguous.length > 0) {
+    lines.push(
+      "",
+      "### Ambiguous terms — HARD RULE, overrides everything below",
+      `These terms are AMBIGUOUS: ${ambiguous.map((t) => `\`${t.term}\``).join(", ")}. ` +
+        "If the user's question uses one of them, your FIRST and ONLY action is to ask ONE concise " +
+        "clarifying question naming the options. Do NOT call compile_metric, execute_postgres, or any " +
+        "tool, and do NOT produce a number, until the user picks a definition. This rule overrides the " +
+        '"answer with SQL" guidance — guessing a definition is a wrong answer, not a helpful one.',
+    );
+    for (const t of ambiguous) {
+      lines.push(`- **${t.term}** — ${t.definition}`);
+    }
+  }
+  return lines.join("\n");
+}
+
 export function buildSystemPrompt({
   mode,
   semantic,
@@ -247,6 +278,9 @@ export function buildSystemPrompt({
     "",
     toolsSection(mode, sources),
   ];
+
+  const glossarySectionText = glossarySection(semantic);
+  if (glossarySectionText.length > 0) sections.push("", glossarySectionText);
 
   if (mode === "preload") {
     sections.push("", semanticLayerSection(semantic));

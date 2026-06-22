@@ -70,7 +70,6 @@ export async function getArivieRuntime(): Promise<{ arivie: ArivieApp }> {
           capabilities: ["analytics.query", "analytics.compile_metric"],
         }),
       },
-      context: { root: semanticPath },
       resolveUser: async () => ({
         userId: "demo-user",
         permissions: ["analytics:read"],

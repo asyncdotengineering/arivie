@@ -234,3 +234,44 @@ describe("buildSystemPrompt", () => {
     expect(skillIdx).toBeLessThan(reasoningIdx);
   });
 });
+
+describe("buildSystemPrompt — glossary (ADR 0004)", () => {
+  function layerWithGlossary(): SemanticLayer {
+    return {
+      entities: new Map(),
+      catalog: {
+        entities: [],
+        glossary: [
+          { term: "revenue", status: "ambiguous", definition: "gross vs net vs GL" },
+          { term: "AOV", status: "defined", definition: "average order value" },
+        ],
+        generated_at: "2026-01-01T00:00:00Z",
+        source_files: [],
+      },
+    };
+  }
+
+  it("renders defined terms and a hard CLARIFY rule for ambiguous terms", () => {
+    const prompt = buildSystemPrompt({
+      mode: "preload",
+      semantic: layerWithGlossary(),
+      compileMetricEnabled: true,
+      sources: [],
+      skillsMode: "none",
+    });
+    expect(prompt).toContain("## Glossary");
+    expect(prompt).toContain("**AOV** — average order value");
+    expect(prompt).toMatch(/AMBIGUOUS:\s*`revenue`/);
+    expect(prompt).toMatch(/ask ONE concise clarifying question/i);
+    expect(prompt).toMatch(/Do NOT call compile_metric/i);
+  });
+
+  it("omits the glossary section when no glossary is present", () => {
+    const layer: SemanticLayer = {
+      entities: new Map(),
+      catalog: { entities: [], generated_at: "x", source_files: [] },
+    };
+    const prompt = buildSystemPrompt({ mode: "preload", semantic: layer, compileMetricEnabled: true, sources: [], skillsMode: "none" });
+    expect(prompt).not.toContain("## Glossary");
+  });
+});

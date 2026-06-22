@@ -73,7 +73,6 @@ const config: ArivieAppConfig = {
       capabilities: ["analytics.query", "analytics.compile_metric"],
     }),
   },
-  context: { root: semanticPath },
   resolveUser: async () => ({
     userId: "arivie-mcp",
     permissions: ["analytics:read"],

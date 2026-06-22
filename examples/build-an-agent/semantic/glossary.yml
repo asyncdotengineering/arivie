@@ -1,0 +1,19 @@
+# Business-term glossary. `status: ambiguous` → the agent must ask which
+# definition you mean before writing SQL (instead of guessing).
+terms:
+  - term: revenue
+    status: ambiguous
+    definition: >
+      Could mean gross order value (all orders), recognized revenue (paid only),
+      or net of refunds. Ask which the user means before computing.
+    entities: [orders]
+
+  - term: AOV
+    status: defined
+    definition: Average order value — paid revenue divided by paid order count.
+    entities: [orders]
+
+  - term: active customer
+    status: defined
+    definition: A customer with at least one paid order in the last 30 days.
+    entities: [customers, orders]

@@ -50,7 +50,9 @@ export const config: ArivieAppConfig = {
       capabilities: ["analytics.query", "analytics.compile_metric"],
     }),
   },
-  context: { root: semanticPath },
+  // No `context` layer here — this analytics example's knowledge lives in the
+  // semantic layer (entities + glossary.yml), loaded by the analytics plugin.
+  // The context layer is for prose knowledge pages (see examples/support-agent).
   resolveUser: async () => ({
     userId: "analyst",
     permissions: ["analytics:read"],

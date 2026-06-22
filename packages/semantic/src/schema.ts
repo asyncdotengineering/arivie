@@ -83,6 +83,24 @@ export const EntitySchema = z
   })
   .strict();
 
+/**
+ * A business-term glossary entry. `status: "ambiguous"` is the key signal: the
+ * agent must ask a clarifying question instead of guessing which definition the
+ * user means (e.g. "revenue" = gross vs net vs GL). Authored in `glossary.yml`
+ * at the semantic root.
+ */
+export const GlossaryTermSchema = z
+  .object({
+    term: z.string().min(1),
+    status: z.enum(["defined", "ambiguous"]).default("defined"),
+    definition: z.string().min(1),
+    /** Related entity names (for grounding). */
+    entities: z.array(z.string()).optional(),
+  })
+  .strict();
+
+export const GlossarySchema = z.array(GlossaryTermSchema);
+
 export const CatalogSchema = z
   .object({
     entities: z.array(
@@ -94,6 +112,7 @@ export const CatalogSchema = z
         })
         .strict(),
     ),
+    glossary: GlossarySchema.optional(),
     generated_at: z.string(),
     source_files: z.array(z.string()),
   })

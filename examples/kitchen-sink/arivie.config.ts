@@ -67,7 +67,6 @@ export const config: ArivieAppConfig = {
       capabilities: ["analytics.query", "analytics.compile_metric"],
     }),
   },
-  context: { root: semanticPath },
   resolveUser: async () => ({
     userId: "northstar-gm",
     permissions: ["analytics:read", "ops:read"],
