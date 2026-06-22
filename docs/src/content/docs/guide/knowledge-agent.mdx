@@ -1,0 +1,91 @@
+---
+title: "Build a Knowledge Agent"
+description: "Part 1 of the Knowledge Agent guide. An agent that answers from a governed knowledge base — no database, no SQL. Just context."
+---
+
+The [Build an Agent](../tutorial/first-agent) tutorial builds an analytics agent over a warehouse. This guide builds the *other* half of Arivie: a **knowledge agent**. No database, no SQL, no semantic layer — just an agent and a pile of Markdown your team already writes.
+
+We'll build **Aurora Support**, a customer-support agent. It answers from a knowledge base you control, refuses to invent policy, and escalates when it doesn't know. The whole thing runs with zero infrastructure. The finished code is [`examples/support-agent/`](https://github.com/asyncdotengineering/arivie/tree/main/examples/support-agent).
+
+## Two kinds of knowledge
+
+A support agent needs to know two different *kinds* of things, and Arivie keeps them separate (see [ADR 0003](/adr/0003-context-layer-and-skills-segregation/)):
+
+- **Always-true policy** — *"we offer 30-day refunds."* The agent must never get this wrong, so it's in context on **every** turn.
+- **Reference articles** — *"how to reset your password," "how billing works."* There are dozens; you don't want all of them in the prompt at once. The agent **retrieves** the right one when a question needs it.
+
+In Arivie these are both **context** — Markdown pages with frontmatter — distinguished by one field, `usage_mode`:
+
+```md
+---
+usage_mode: always   # injected into instructions every turn
+---
+```
+```md
+---
+usage_mode: auto     # embedded + retrieved on demand
+---
+```
+
+(Procedures — *"here's how to run the weekly refund audit"* — would be **skills**, not context. Context is *what's true*; a skill is *how to do a task*. A knowledge agent is almost all context.)
+
+## What's actually in the prompt
+
+Worth knowing, because it's where the agent's reliability comes from. On each turn, Mastra assembles the model's context in this order:
+
+1. Mastra's **memory** block (conversation history; working-memory and semantic-recall are off unless you enable them),
+2. then the agent's **instructions** — which is where Arivie injects your `always` pages,
+3. then the **user's message**.
+
+So your `always` policy sits in the system instructions, every turn, *after* memory and *before* the question. The `auto` pages aren't in the prompt at all until the agent calls the `search_context` tool and pulls the relevant one. Nothing collides; nothing is wasted.
+
+## Prerequisites
+
+- Node 20+ and [pnpm](https://pnpm.io/).
+- An `OPENAI_API_KEY` (the example uses `gpt-4o-mini` + `text-embedding-3-small`). Any AI SDK model works.
+
+No database. No Postgres. The runtime, the memory, and the knowledge index all run from local files.
+
+## Scaffold
+
+```bash
+pnpm dlx @arivie/cli init aurora-support && cd aurora-support
+```
+
+## The app — an agent with no plugins
+
+This agent has no analytics, no SQL tools, no plugins at all. Its only capability is reading the knowledge base:
+
+```ts title="arivie.config.ts"
+import { defineArivie, defineAgent, InMemoryRuntimeStorage, mastraRagRetriever } from "@arivie/core";
+import { openai } from "@ai-sdk/openai";
+
+export const arivie = await defineArivie({
+  app: { id: "aurora-support", name: "Aurora Support" },
+  model: openai("gpt-4o-mini"),
+  storage: new InMemoryRuntimeStorage(),         // zero infra — no database
+  agents: {
+    support: defineAgent({
+      instructions:
+        "You are Aurora's support agent. Answer ONLY from the knowledge base. " +
+        "Call search_context when a help article may cover the question, and quote the steps. " +
+        "If the knowledge base doesn't cover it, say so and offer to escalate. Never invent policy or prices.",
+    }),
+  },
+  context: {
+    root: "./context",
+    retriever: mastraRagRetriever({ embedding: "openai/text-embedding-3-small" }),
+  },
+  resolveUser: async () => ({ userId: "customer", permissions: [] }),
+});
+```
+
+Three things to notice: `storage` is in-memory (no DB), the agent declares **no capabilities** (no plugins), and `context.retriever` is what turns your `auto` pages into a searchable tool. We'll unpack the retriever in [Retrieval](./retrieval).
+
+## Run it
+
+```bash
+pnpm exec arivie chat --config arivie.config.ts
+```
+
+Ask it *"What's your refund policy?"* before you've written a single FAQ page — it can't answer yet, because the knowledge base is empty. That's the next step: [giving it the policy it must always know](./always-on-policy).
