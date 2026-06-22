@@ -1,0 +1,77 @@
+---
+title: "Deployment (multi-cloud)"
+description: "Ship an Arivie agent anywhere Node runs — long-lived servers and serverless (Vercel, AWS Lambda, Netlify, Cloudflare). What's automatic, and the two things you handle."
+---
+
+Arivie runs anywhere Node runs — a long-lived server (Docker, Fly, Railway, a VM) or serverless (Vercel, AWS Lambda, Netlify, Cloudflare Workers). The runtime is the same; what differs is the **filesystem** and **process lifetime**, and Arivie's zero-config defaults adapt to both.
+
+## What's automatic — storage degrades across the FS reality
+
+The zero-config defaults (conversation memory, the default context vector index) want a writable local file. Arivie probes for a writable directory and degrades gracefully — you don't configure anything for it to *boot*:
+
+1. **`./.arivie`** — project-local, durable in development.
+2. **`<os.tmpdir()>/arivie`** — writable on Vercel / Lambda / Netlify, durable within a warm instance.
+3. **in-memory** — no-FS runtimes (Cloudflare Workers); logs a one-line warning.
+
+So a first deploy never dies on a read-only filesystem. But "boots" isn't "production-ready" — see the next two sections.
+
+## Thing 1 — persistent state needs a hosted store
+
+On serverless, the default stores are **ephemeral**: in-memory state is lost between cold starts, and a `<tmp>` file only lives as long as a warm instance. For anything users come back to, pass durable stores:
+
+```ts
+import { defineArivie } from "@arivie/core";
+import { postgresRuntime } from "@arivie/plugin-postgres";
+import { PostgresStore } from "@mastra/pg";
+
+export const arivie = await defineArivie({
+  // …
+  storage: postgresRuntime({ url: process.env.DATABASE_URL! }),   // durable sessions/runs/events
+  memory: new PostgresStore({ connectionString: process.env.DATABASE_URL! }), // durable conversation memory
+  // context retriever: pass a hosted vector store (the default LibSQL file is per-instance):
+  // mastraRagRetriever({ embedding, vector: new PgVector({ connectionString }) }),
+});
+```
+
+> Rule of thumb: **stateless Q&A** (ask a question, get an answer) is fine on the ephemeral defaults. **Multi-turn memory, durable runs, or a shared context index** need a hosted store (Postgres/Upstash/Pinecone), because serverless instances don't share a filesystem.
+
+## Thing 2 — bundle your data files
+
+Arivie reads your `semantic/*.yml` and `context/*.md` files at startup. Bundlers trace *code* dependencies, not arbitrary data files — so on serverless those files must be **explicitly included**, or the agent boots with an empty layer.
+
+**Next.js** (App Router) — `next.config.mjs`:
+
+```js
+const nextConfig = {
+  serverExternalPackages: ["@arivie/core", "@arivie/plugin-analytics", "@arivie/plugin-postgres", "postgres", "@mastra/core"],
+  outputFileTracingIncludes: { "/api/**": ["./semantic/**/*", "./context/**/*"] },
+};
+export default nextConfig;
+```
+
+Resolve the path from the project root so it works locally and in the bundle:
+
+```ts
+const semanticPath = join(process.cwd(), "semantic");
+```
+
+**Other targets** — include the data dir in the deployment artifact: SST/CDK `copyFiles`/asset bundling, a `Dockerfile` `COPY semantic/ ./semantic/`, or your bundler's static-asset config. Long-lived Node servers just read from disk — nothing to bundle.
+
+## Per-platform summary
+
+| Target | Storage default | What to add |
+|---|---|---|
+| **Long-lived Node** (Docker, Fly, Railway, VM) | `./.arivie` file (durable) | nothing — it just works |
+| **Vercel / Netlify / AWS Lambda** | `<tmp>` file (per-instance) | hosted `storage`/`memory`/`vector` for persistence · bundle data files |
+| **Cloudflare Workers** | in-memory (no FS) | hosted stores (required) · bundle data files · ensure `nodejs_compat` |
+
+## Verify live — deploy success ≠ working
+
+A green build and a "READY" deploy do not mean the agent works. The function can still 500 on a read-only path, a missing data file, or an unreachable DB — none of which the build catches. Always hit the deployed endpoint:
+
+```bash
+curl -s -X POST https://your-app/api/ask -H 'content-type: application/json' \
+  -d '{"question":"how many orders this month?"}'
+```
+
+For a worked end-to-end example (read-only role, dashboard-exact semantic alignment, the serverless fixes above), see **ADR 0005 — Reference deployment**.

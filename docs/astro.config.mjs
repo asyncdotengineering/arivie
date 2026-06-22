@@ -68,6 +68,7 @@ export default defineConfig({
             { slug: "concepts/triggers-channels" },
             { slug: "concepts/mcp-equivalence" },
             { slug: "concepts/evaluation" },
+            { slug: "concepts/deployment" },
           ],
         },
         {
