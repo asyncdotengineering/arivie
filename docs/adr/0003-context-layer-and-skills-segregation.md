@@ -1,0 +1,64 @@
+# ADR 0003 — Context layer (wiki/knowledge pillar) + the skills↔context boundary
+
+**Status:** Accepted — design for a focused build
+**Date:** 2026-06-22
+**Driver:** `@arivie/context` models a prose-knowledge pillar (ktx-style "wiki") but is **never wired** — `config.context: { root }` is an inert option. And Arivie **conflates skills with context**: skills are the only prose surface, so declarative knowledge leaks into skill bodies and entity `description` fields.
+
+## Prior art — ktx's context layer (studied)
+
+ktx frames its product as a **context layer** with two pillars, both git-reviewed files:
+
+1. **semantic layer** — executable YAML (entities/measures/joins) → compiles to SQL.
+2. **wiki** — prose business knowledge as Markdown, frontmatter: `summary`, `tags`, `refs` (page→page), **`sl_refs`** (page→semantic entity/measure), **`usage_mode: always | auto | never`**, `source`, `usage` (stats).
+
+- **Serving = hybrid retrieval** (FTS5 bm25 + embedding cosine + token overlap, fused via Reciprocal Rank Fusion), not concatenation. `always` pages inject every turn; `auto` pages are retrieved by relevance; agents then `wiki_read` to hydrate.
+- **Reference integrity:** `refs`/`[[wikilinks]]` validated at write time (reject); `sl_refs` pruned on ingest when targets vanish.
+- **Engine:** ingest → reconcile → validate → provenance (inline `<!-- from: ... -->`), git-reviewed.
+- **ktx has no "skills"** — it is context-only. So Arivie's skills are a pillar ktx lacks.
+
+## The segregation (the core decision)
+
+Skills and context are **different surfaces with different jobs**. Do not conflate them.
+
+| | **Skill** | **Context (knowledge / wiki)** |
+|---|---|---|
+| Nature | **Procedural** — *how to do a task* | **Declarative** — *what a term means / what is true* |
+| Mood | Imperative | Indicative |
+| Triggered by | A named task ("run the weekly recap") | Relevance / binding to the question |
+| Bound to | A workflow / cadence | An **entity** (`sl_refs`) |
+| Serving | Loaded **on-demand when invoked** | `always` inject · `auto` retrieve · `never` |
+| Analogy | Runbook | Glossary / wiki |
+
+**The test:** answers *"how do I produce report X?"* → **skill**. Answers *"what does this word/number mean?"* → **context**. A skill **references** context; it never **redefines** it.
+
+## Decision
+
+1. **Keep skills procedural.** No declarative business knowledge in skill bodies — they point at context for definitions.
+2. **Wire the declarative pillar for real** via `@arivie/context`. `config.context: { root }` stops being inert:
+   - load `knowledge` (`.md` + frontmatter) and `executable` documents from `root`;
+   - `usage_mode: always` → injected into agent instructions at assembly;
+   - `usage_mode: auto` → retrievable via a `read_context` / `search_context` tool;
+   - `usage_mode: never` → loaded for reference integrity but never surfaced;
+   - `sl_refs` bind a knowledge page to a semantic entity/measure, **validated** (dangling `sl_ref` = a diagnostic, surfaced in `arivie info`).
+3. **Reference integrity at load**, surfaced in diagnostics (mirrors ktx's write-time validation): orphaned `refs`, dangling `sl_refs`.
+4. **Retrieval starts simple, lexical** (the framework already has `@arivie/embeddings` for a later semantic lane). Don't build the full RRF pipeline up front — `always`-inject + lexical `auto` retrieval is the MVP; embeddings/RRF is a follow-up.
+
+## Implementation plan (tiny commits)
+
+1. **Wire load:** `defineArivie` calls `@arivie/context`'s loader on `config.context.root`; expose the loaded `ContextLayer` on the app + `arivie info` (counts, dangling-ref diagnostics). *(Closes the "inert option" lie.)*
+2. **Inject `always`:** `assembleAgentContext` appends `usage_mode: always` knowledge bodies to instructions.
+3. **`read_context` / `search_context` tool:** core-provided tool over the layer (lexical search + page read) for `auto` pages.
+4. **`sl_refs` integrity:** validate knowledge `sl_refs` against the analytics semantic entities; dangling → diagnostic.
+5. **Example:** add `examples/build-an-agent/context/revenue.md` (a real wiki page, `sl_refs: [orders.revenue]`, `usage_mode: always`) and document the skills↔context split in the tutorial's *Remember Definitions* page.
+
+## Consequences
+
+- **+** Declarative knowledge gets a real home; the `context` option stops lying; ktx-parity on the second pillar.
+- **+** Clear authoring guidance: definitions → context, procedures → skills.
+- **−** New surface (cognitive load) — mitigated by the sharp one-line test above.
+- Embeddings/RRF retrieval + an ingest/provenance engine are **out of scope** for the MVP (future ADR if we want generated context).
+
+## Related
+
+- ADR 0001 (durable execution), ADR 0002 (Arivie vs Mastra ownership).
+- `@arivie/context` (the package that finally gets wired), `@arivie/plugin-analytics` (semantic pillar), `@arivie/embeddings` (future semantic retrieval lane).
