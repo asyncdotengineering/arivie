@@ -1,6 +1,6 @@
 {
   "name": "@arivie/ui-catalog",
-  "version": "2.3.0",
+  "version": "2.4.0",
   "private": false,
   "type": "module",
   "description": "Shared json-render component catalog for Arivie surfaces (MCP server + React chat). Single source of truth for what the agent can render.",
