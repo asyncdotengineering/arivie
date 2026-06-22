@@ -1,6 +1,6 @@
 {
   "name": "@arivie/plugin-analytics",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "private": false,
   "type": "module",
   "description": "Arivie analytics plugin — semantic context schema, SQL query tools, metric compilation, and analytics evals.",
