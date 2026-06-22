@@ -482,7 +482,9 @@ export function formatEntity(
   }
 
   if (entity.example_queries?.length) {
-    lines.push("", "Example queries:");
+    // Canonical query patterns: reuse these join/SQL shapes for similar
+    // questions rather than inventing a structure.
+    lines.push("", "Canonical query patterns (reuse these join/SQL shapes):");
     for (const example of entity.example_queries) {
       lines.push(formatExampleQuery(example));
     }
@@ -508,8 +510,13 @@ function formatDimension(dimension: Dimension): string {
     dimension.values != null && dimension.values.length > 0
       ? ` | values: ${dimension.values.join(", ")}`
       : "";
+  // Real sample values ground WHERE filters on high-cardinality columns.
+  const samples =
+    dimension.sample_values != null && dimension.sample_values.length > 0
+      ? ` | e.g. ${dimension.sample_values.join(", ")}`
+      : "";
   const desc = dimension.description ? ` — ${dimension.description}` : "";
-  return `- **${dimension.name}**: sql=${dimension.sql}${values}${desc}`;
+  return `- **${dimension.name}**: sql=${dimension.sql}${values}${samples}${desc}`;
 }
 
 function formatSegment(segment: Segment): string {

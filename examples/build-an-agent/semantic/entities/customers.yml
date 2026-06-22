@@ -15,6 +15,7 @@ dimensions:
     sql: name
     type: text
     description: Display name.
+    sample_values: [Acme, Globex, Initech, Hooli, Umbrella]
   - name: plan
     sql: plan
     type: text

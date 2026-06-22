@@ -14,7 +14,14 @@ export const DimensionSchema = z
     name: z.string().min(1),
     sql: z.string().min(1),
     type: z.enum(["text", "numeric", "timestamp", "date", "boolean"]).optional(),
+    /** The full allowed enum (low-cardinality columns). */
     values: z.array(z.union([z.string(), z.number()])).optional(),
+    /**
+     * Illustrative real values for HIGH-cardinality columns you can't enumerate
+     * (ids, names, slugs). Grounds the agent so it writes correct WHERE filters
+     * instead of inventing a value's shape. Distinct from `values` (the full enum).
+     */
+    sample_values: z.array(z.union([z.string(), z.number()])).optional(),
     description: z.string().optional(),
   })
   .strict();

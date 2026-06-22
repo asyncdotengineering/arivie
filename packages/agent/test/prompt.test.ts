@@ -275,3 +275,37 @@ describe("buildSystemPrompt — glossary (ADR 0004)", () => {
     expect(prompt).not.toContain("## Glossary");
   });
 });
+
+describe("buildSystemPrompt — sample_values + canonical query patterns (ADR 0004)", () => {
+  it("renders dimension sample_values (grounds WHERE filters) distinct from values", () => {
+    const layer: SemanticLayer = {
+      entities: new Map([
+        ["customers", {
+          name: "customers", description: "x", grain: "one row per customer", primary_key: "id",
+          dimensions: [
+            { name: "name", sql: "name", type: "text", sample_values: ["Acme", "Globex"] },
+            { name: "plan", sql: "plan", type: "text", values: ["free", "pro"] },
+          ],
+        } as unknown as Entity],
+      ]),
+      catalog: { entities: [], generated_at: "x", source_files: [] },
+    };
+    const p = buildSystemPrompt({ mode: "preload", semantic: layer, compileMetricEnabled: true, sources: [], skillsMode: "none" });
+    expect(p).toMatch(/e\.g\. Acme, Globex/);   // sample_values
+    expect(p).toMatch(/values: free, pro/);      // enum still rendered
+  });
+
+  it("frames example_queries as canonical query patterns to reuse", () => {
+    const layer: SemanticLayer = {
+      entities: new Map([
+        ["orders", {
+          name: "orders", description: "x", grain: "one row per order", primary_key: "id",
+          example_queries: [{ question: "revenue by month?", sql: "SELECT 1" }],
+        } as unknown as Entity],
+      ]),
+      catalog: { entities: [], generated_at: "x", source_files: [] },
+    };
+    const p = buildSystemPrompt({ mode: "preload", semantic: layer, compileMetricEnabled: true, sources: [], skillsMode: "none" });
+    expect(p).toMatch(/Canonical query patterns/);
+  });
+});
