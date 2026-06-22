@@ -30,7 +30,7 @@ Measures:
 Dimensions:
 - **country**: sql=country | values: US, CA, UK — Billing country.
 
-Example queries:
+Canonical query patterns (reuse these join/SQL shapes):
 - Q: How many customers do we have?
   SQL: SELECT COUNT(DISTINCT id) AS customer_count FROM customers
 ### Entity: orders
@@ -50,7 +50,7 @@ Segments:
 Joins:
 - **customers** (many_to_one): orders.customer_id = customers.id
 
-Example queries:
+Canonical query patterns (reuse these join/SQL shapes):
 - Q: Total revenue this quarter
   SQL: SELECT SUM(total_amount) AS revenue FROM orders WHERE status = 'completed' AND created_at >= date_trunc('quarter', CURRENT_DATE)
 
@@ -368,7 +368,7 @@ Measures:
 Dimensions:
 - **country**: sql=country | values: US, CA, UK — Billing country.
 
-Example queries:
+Canonical query patterns (reuse these join/SQL shapes):
 - Q: How many customers do we have?
   SQL: SELECT COUNT(DISTINCT id) AS customer_count FROM customers
 ### Entity: orders
@@ -388,7 +388,7 @@ Segments:
 Joins:
 - **customers** (many_to_one): orders.customer_id = customers.id
 
-Example queries:
+Canonical query patterns (reuse these join/SQL shapes):
 - Q: Total revenue this quarter
   SQL: SELECT SUM(total_amount) AS revenue FROM orders WHERE status = 'completed' AND created_at >= date_trunc('quarter', CURRENT_DATE)
 
