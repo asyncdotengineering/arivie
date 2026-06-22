@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-import { mkdirSync } from "node:fs";
+import { join } from "node:path";
 import type { ContextDocument } from "@arivie/context";
 import { ModelRouterEmbeddingModel } from "@mastra/core/llm";
 import type { Tool } from "@mastra/core/tools";
@@ -7,7 +7,9 @@ import type { MastraVector } from "@mastra/core/vector";
 import { LibSQLVector } from "@mastra/libsql";
 import { MDocument, createVectorQueryTool } from "@mastra/rag";
 import { type EmbeddingModel, embedMany } from "ai";
+import { ArivieConfigError } from "../errors.js";
 import { usageModeOf } from "./context-layer.js";
+import { resolveArivieDir } from "./storage-paths.js";
 
 /**
  * The retrieval STRATEGY for `usage_mode: auto` knowledge pages (ADR 0003).
@@ -49,8 +51,15 @@ export function mastraRagRetriever(options: MastraRagRetrieverOptions): ContextR
       : options.embedding;
   let store = options.vector;
   if (store === undefined) {
-    mkdirSync(".arivie", { recursive: true }); // ensure the zero-infra default DB dir exists
-    store = new LibSQLVector({ id: "arivie-context", url: "file:.arivie/context.db" });
+    // Default vector store — multi-cloud safe (writable dir in dev / serverless tmp).
+    const dir = resolveArivieDir();
+    if (dir === null) {
+      throw new ArivieConfigError(
+        "No writable filesystem for the default context vector store. Pass " +
+          "`vector:` with a hosted Mastra store (PgVector, Pinecone, …) on no-FS runtimes.",
+      );
+    }
+    store = new LibSQLVector({ id: "arivie-context", url: `file:${join(dir, "context.db")}` });
   }
   const indexName = options.indexName ?? "arivie_context";
 

@@ -1,8 +1,9 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-import { mkdirSync } from "node:fs";
+import { join } from "node:path";
 import { Agent } from "@mastra/core/agent";
 import { Mastra } from "@mastra/core/mastra";
 import { handleChatStream, type ChatStreamHandlerParams } from "@mastra/ai-sdk";
+import { InMemoryStore } from "@mastra/core/storage";
 import { LibSQLStore } from "@mastra/libsql";
 import { Memory } from "@mastra/memory";
 import type { Hono } from "hono";
@@ -17,6 +18,7 @@ import { assembleAgentContext } from "./runtime/assemble.js";
 import { loadAppContext, type LoadedContext } from "./runtime/context-layer.js";
 import type { ContextRetriever } from "./runtime/context-retriever.js";
 import { createMastraExecutor } from "./runtime/mastra-executor.js";
+import { resolveArivieDir } from "./runtime/storage-paths.js";
 import { createRuntime } from "./runtime/session.js";
 import type {
   AgentDefinition,
@@ -59,12 +61,25 @@ export interface ArivieAppConfig {
   memory?: MemoryStorage;
 }
 
-const DEFAULT_MEMORY_DB = "file:.arivie/memory.db";
-
-/** Durable, zero-infra default memory (LibSQL file). Ensures the dir exists. */
+/**
+ * Zero-infra default memory — multi-cloud safe. A durable LibSQL file where the
+ * filesystem is writable (`./.arivie` in dev, `<tmp>/arivie` on serverless), and
+ * an in-memory store where it is not (no-FS runtimes like Cloudflare Workers).
+ * Falling back lets the app boot anywhere; pass `memory:` with a hosted store
+ * (PostgresStore / remote LibSQL / Upstash) for memory that persists across
+ * serverless invocations.
+ */
 function defaultMemoryStore(): MemoryStorage {
-  mkdirSync(".arivie", { recursive: true });
-  return new LibSQLStore({ id: "arivie-memory", url: DEFAULT_MEMORY_DB });
+  const dir = resolveArivieDir();
+  if (dir === null) {
+    console.warn(
+      "[arivie] no writable filesystem — using in-memory conversation memory " +
+        "(not persisted across invocations). Pass `memory:` with a durable store " +
+        "for serverless persistence.",
+    );
+    return new InMemoryStore();
+  }
+  return new LibSQLStore({ id: "arivie-memory", url: `file:${join(dir, "memory.db")}` });
 }
 
 /** Input to the one-shot {@link ArivieApp.prompt} convenience. */
