@@ -54,6 +54,10 @@
     "./triggers": {
       "import": "./dist/triggers/index.js",
       "types": "./dist/triggers/index.d.ts"
+    },
+    "./mastra": {
+      "import": "./dist/mastra.js",
+      "types": "./dist/mastra.d.ts"
     }
   },
   "files": [

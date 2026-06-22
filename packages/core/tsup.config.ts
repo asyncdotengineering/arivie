@@ -9,6 +9,7 @@ import baseConfig from "../../tsup.base.ts";
 // depends on db-postgres.
 const sharedEntries = [
   "src/context.ts",
+  "src/mastra.ts",
   "src/public-types.ts",
   "src/eval/index.ts",
   "src/server/index.ts",
