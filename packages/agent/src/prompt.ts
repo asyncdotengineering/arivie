@@ -257,12 +257,15 @@ function glossarySection(semantic: SemanticLayer): string {
   if (ambiguous.length > 0) {
     lines.push(
       "",
-      "### Ambiguous terms — HARD RULE, overrides everything below",
+      "### Ambiguous terms — clarify ONCE, then act",
       `These terms are AMBIGUOUS: ${ambiguous.map((t) => `\`${t.term}\``).join(", ")}. ` +
-        "If the user's question uses one of them, your FIRST and ONLY action is to ask ONE concise " +
-        "clarifying question naming the options. Do NOT call compile_metric, execute_postgres, or any " +
-        "tool, and do NOT produce a number, until the user picks a definition. This rule overrides the " +
-        '"answer with SQL" guidance — guessing a definition is a wrong answer, not a helpful one.',
+        "If the user's question uses one AND they haven't indicated which sense they mean, ask ONE short " +
+        "clarifying question naming the options, then stop and wait. " +
+        "BUT the moment the user answers — even with a single word or fragment (e.g. \"gross\", \"net\", " +
+        "\"after returns\") — map their answer to the closest definition and ANSWER the original question. " +
+        "Do NOT ask a second clarifying question, and do NOT re-confirm a definition they just gave — asking " +
+        "twice is worse than proceeding. If their answer is genuinely unmappable, pick the most likely sense, " +
+        "state that assumption in one short line, and answer anyway. Never loop.",
     );
     for (const t of ambiguous) {
       lines.push(`- **${t.term}** — ${t.definition}`);

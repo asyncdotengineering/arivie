@@ -262,8 +262,11 @@ describe("buildSystemPrompt — glossary (ADR 0004)", () => {
     expect(prompt).toContain("## Glossary");
     expect(prompt).toContain("**AOV** — average order value");
     expect(prompt).toMatch(/AMBIGUOUS:\s*`revenue`/);
-    expect(prompt).toMatch(/ask ONE concise clarifying question/i);
-    expect(prompt).toMatch(/Do NOT call compile_metric/i);
+    expect(prompt).toMatch(/ask ONE short clarifying question/i);
+    // clarify ONCE, then act — the rule must have an exit (no re-clarify loop).
+    expect(prompt).toMatch(/clarify ONCE, then act/i);
+    expect(prompt).toMatch(/Do NOT ask a second clarifying question/i);
+    expect(prompt).toMatch(/Never loop/i);
   });
 
   it("omits the glossary section when no glossary is present", () => {
