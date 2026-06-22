@@ -107,6 +107,7 @@ export default defineConfig({
             { slug: "adr/0001-adopt-mastra-durable-execution" },
             { slug: "adr/0002-arivie-vs-mastra-ownership" },
             { slug: "adr/0003-context-layer-and-skills-segregation" },
+            { slug: "adr/0004-product-angle-build-tool-for-data-agents" },
           ],
         },
       ],

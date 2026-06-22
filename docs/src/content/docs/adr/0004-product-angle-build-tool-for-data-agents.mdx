@@ -1,0 +1,65 @@
+---
+title: "ADR 0004 — Product angle: the tool to build data agents"
+description: "Arivie as the vertical, self-host TS framework for building governed data-agent products on Mastra — the build-loop assessment and where we stand."
+---
+
+**Status:** Accepted (north star)
+**Date:** 2026-06-22
+**Driver:** Market research (YC W24→F25, web-cited) + a grounded audit of our own build loop. The clarifying insight from the founder: *"I'm looking at this as a DX tool that lets you build startups like these — build the tools to build the tools."*
+
+## The angle
+
+Arivie is **not** an analytics product competing with MinusX / Datost / Dataherald. Arivie is the **framework you use to build one** — the batteries-included, TypeScript, self-host-first toolkit for shipping a **governed data/analytics agent**, on top of Mastra.
+
+> Mastra is the *horizontal* agent framework (agents, memory, workflows, RAG, MCP). Arivie is the *vertical* layer on top: semantic layer + SQL governance + skills + context layer + the data-agent CLI. You don't build a blank agent loop — you get a governed, accurate, SQL-safe data agent out of the box.
+
+## Why the category is right (and largely empty)
+
+The "ask your data in natural language" space is hot, but **open-source, self-hosted, TypeScript build-tools for it are underserved**. The closest peers are not real substitutes:
+
+- **Dataherald** (YC S23) — an *embeddable NL-to-SQL engine* (Python/LangChain), not a composable TS framework.
+- **Kaelio / ktx** (YC W25) — a *context-layer piece*, not the whole framework; very early (~324 weekly npm downloads, Jun 2026).
+- **Atlas** (open-source, AGPL) — a *deploy-anywhere text-to-SQL agent* on Hono / Vercel AI SDK / Bun — closest in stack/shape; study it (separate deep-dive).
+- **Mastra** (YC W25, $35M, Shopify-standardized) — *horizontal*; we build on it, not against it.
+
+Nobody clearly owns *"the batteries-included TS framework to build a governed data agent."* That's our slot.
+
+## The defensible wedge vs. the commodity
+
+Per the research (Databox, Gartner, Forrester, Atlan):
+
+| Build (the moat) | Don't build (commodity — lean on Mastra/vendors) |
+|---|---|
+| **Governed semantic layer** — *"LLM accuracy commoditizes; your semantic layer encoding YOUR business logic doesn't."* Gartner: 60% of agentic analytics fail without one. | ❌ basic RAG / vector search (Pinecone/Weaviate/Qdrant) |
+| **SQL safety by construction** — read-only role, SELECT-only guard, owner boundary | ❌ MCP protocol (use Mastra's) |
+| **Context layer + skills as a system** (declarative knowledge + procedures, governed in git) | ❌ a BI/dashboard tool (generate artifacts, don't build Looker) |
+| **Accuracy you can prove** (evals) | ❌ the general agent runtime (Mastra) |
+
+## Where we stand — the build loop
+
+Judge a build-tool by **scaffold → define → run → measure → ship**. Audited against our code:
+
+| Stage | Surface | State |
+|---|---|---|
+| Scaffold | `arivie init` (real scaffold) | ✅ solid (no `create-arivie`; it's `pnpm dlx @arivie/cli init`) |
+| **Define** | `defineArivie` + plugin SDK, semantic layer, SQL governance, skills, context layer, MCP both ends | ✅ **strong — the moat** |
+| Run | `arivie chat` (Ink TUI), `arivie dev`, `/api/chat`, `arivie info` | ✅ solid |
+| Iterate | `arivie types` codegen, `arivie add`/`ui`/`entity`/`skill` | ✅ good |
+| **Measure** | `arivie eval` (golden-SQL, PGlite) | ⚠️ **exists but dogfood-internal — not a user-facing accuracy framework** |
+| **Ship** | `arivie deploy` | ❌ **STUB — "not implemented"** |
+
+**Verdict:** strong, well-chosen, defensible category on the winning substrate (Mastra), at **~70% of the build loop**. We nail *define a governed data agent*. We are thin on the two ends every YC competitor leads with: **measure accuracy** (benchmarks) and **ship it** (deploy/hosted). For a tool to build *products*, those gaps are what stop someone shipping a MinusX/Datost on Arivie.
+
+## Priority moves (close the loop)
+
+1. **Ship the deploy path** — turn `arivie deploy` / `@arivie/deploy` from stub into a real "ship it." Highest leverage: without it, it's a toy, not a build-tool.
+2. **User-facing accuracy harness** — adopt `@mastra/evals` + expose the golden-SQL loop, so a builder can *prove* their agent is accurate. The competitive axis.
+3. **A build console** (Mastra-Studio-style) — see/iterate the agent. Bigger lift, later.
+
+Everything else (RAG, MCP, memory, durable workflows) → lean on Mastra; don't build (ADR 0002 leaf/spine; ADR 0001 durable execution; ADR 0003 context layer).
+
+## References
+
+- Market research report (web-cited): `.handoff/result-market-research.md` (to be persisted).
+- YC peers: MinusX (S25), Datost (W25), Lopus (W25), Kaelio/ktx (W25), Dataherald (S23), Atlas (OSS), Mastra (W25).
+- ADR 0001 (durable execution), 0002 (Arivie vs Mastra ownership), 0003 (context layer).
