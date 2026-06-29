@@ -1,40 +1,42 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /**
- * Regenerate evals/baseline.json from first principles.
+ * Measure the analytics system-prompt token cost, and (only at the right ref)
+ * regenerate evals/baseline.json.
  *
- * ## What this script measures
+ * ## What evals/baseline.json is
  *
- * The recorded baseline (evals/baseline.json) represents the preload-mode
- * system prompt token cost: at git ref f0084fb, buildSystemPrompt({ mode:
- * "preload", ... }) injected all entity YAML files inline into the system
- * prompt (via semanticLayerSection → formatEntity). Token count was estimated
- * with the formula: ceil(promptText.length / 4).
+ * A FROZEN historical artifact: the PRELOAD-mode system-prompt token cost at git
+ * ref `f0084fb` (the last commit before the navigation rework / ADR 0006). At that
+ * ref, `buildSystemPrompt({ mode: "preload", ... })` injected every entity YAML
+ * inline (via `semanticLayerSection` → `formatEntity`, rendering `### Entity:` blocks).
+ * Tokens estimated as `ceil(promptText.length / 4)`. Recorded numbers: 12/12 probes,
+ * mean_input_tokens 3073.58. The eval gate (`scripts/run-eval.ts` → `loadBaseline`)
+ * REQUIRES `ref === "f0084fb" && mode === "preload"`, so a baseline captured anywhere
+ * else is rejected by design.
  *
- * ## How to reproduce the recorded numbers exactly
+ * ## Why this script will NOT overwrite the baseline on HEAD
  *
- *   git stash
- *   git checkout f0084fb
- *   pnpm --filter @arivie/semantic --filter @arivie/agent build
- *   npx tsx scripts/measure-preload-baseline.ts
- *   git checkout -
- *   git stash pop
+ * Preload mode was DELETED in 3.0.0 — on HEAD `buildSystemPrompt` renders the compact
+ * `governanceCoreSection` (no `### Entity:` blocks) and entity detail is fetched on
+ * demand via workspace tools. Measuring HEAD yields the NAVIGATION cost, not preload.
+ * Writing that into baseline.json would make the gate compare navigation-vs-navigation
+ * (gutting the −10.5% assertion). This script therefore REFUSES to write unless it is
+ * running on a genuine preload tree at ref f0084fb. By default it only REPORTS.
  *
- * On current HEAD (post-refactor), `buildSystemPrompt` no longer injects full
- * entity YAML — it renders a compact `governanceCoreSection` instead. Running
- * this script on current HEAD writes a CURRENT baseline (smaller tokens because
- * entity detail is fetched on demand via workspace tools). The eval gate in
- * `scripts/run-eval.test.ts` checks the RECORDED baseline; update
- * evals/baseline.json only if intentionally resetting the reference point.
+ * ## Regenerating the baseline (only if the golden set or estimator changes)
+ *
+ * See evals/README.md → "Regenerating baseline.json". In short: check out f0084fb in a
+ * git worktree, where preload mode still exists, and measure there.
  *
  * ## Usage
  *
- *   npx tsx scripts/measure-preload-baseline.ts [--dry-run]
- *
- * With `--dry-run`, prints the report without writing to evals/baseline.json.
+ *   npx tsx scripts/measure-preload-baseline.ts            # report current prompt cost (no write)
+ *   npx tsx scripts/measure-preload-baseline.ts --write    # write baseline.json — ONLY succeeds on a preload tree at f0084fb
  */
 import { writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { execSync } from "node:child_process";
 import { loadSemanticLayerSync, estimateTokens } from "@arivie/semantic";
 import { buildSystemPrompt } from "@arivie/agent";
 
@@ -43,13 +45,19 @@ const ARIVIE_ROOT = join(__dirname, "..");
 const SEMANTIC_DIR = join(ARIVIE_ROOT, "evals", "semantic");
 const BASELINE_PATH = join(ARIVIE_ROOT, "evals", "baseline.json");
 
-const DRY_RUN = process.argv.includes("--dry-run");
+const WRITE = process.argv.includes("--write");
+const BASELINE_REF = "f0084fb";
+
+function currentGitRef(): string {
+  try {
+    return execSync("git rev-parse --short HEAD", { encoding: "utf8" }).trim();
+  } catch {
+    return "unknown";
+  }
+}
 
 async function main(): Promise<void> {
   const semantic = loadSemanticLayerSync(SEMANTIC_DIR);
-
-  // Build the system prompt as of the CURRENT codebase (compact catalog).
-  // At f0084fb, the prompt was ~3× longer due to full entity YAML injection.
   const systemPrompt = buildSystemPrompt({
     semantic,
     compileMetricEnabled: false,
@@ -58,20 +66,41 @@ async function main(): Promise<void> {
     skillsMode: "none",
   });
 
+  // Preload injected full entity detail as "### Entity:" blocks; navigation does not.
+  const isPreloadTree = systemPrompt.includes("### Entity:");
+  const ref = currentGitRef();
   const inputTokens = estimateTokens(systemPrompt);
+  const mode = isPreloadTree ? "preload" : "navigation";
+
+  console.log(`ref: ${ref}`);
+  console.log(`mode (detected from prompt): ${mode}`);
+  console.log(`system prompt: ${systemPrompt.length} chars`);
+  console.log(`estimated tokens (ceil(chars/4)): ${inputTokens}`);
+
+  if (!WRITE) {
+    console.log("\n(report only — pass --write to regenerate baseline.json)");
+    return;
+  }
+
+  if (!isPreloadTree || ref !== BASELINE_REF) {
+    console.error(
+      `\nREFUSING to write evals/baseline.json.\n` +
+        `  baseline.json is the FROZEN preload reference (ref ${BASELINE_REF}, mode preload).\n` +
+        `  This tree is mode "${mode}" at ref "${ref}".\n` +
+        `  Writing it here would corrupt the eval gate's reference point.\n` +
+        `  To regenerate, see evals/README.md → "Regenerating baseline.json" (use a worktree of ${BASELINE_REF}).`,
+    );
+    process.exit(1);
+  }
 
   const report = {
     comment:
-      "Measured using scripts/measure-preload-baseline.ts. " +
-      "For the RECORDED baseline (f0084fb preload mode with full entity YAML injection), " +
-      "run this script at git ref f0084fb. " +
-      "Token estimator: ceil(promptText.length / 4).",
-    ref: currentGitRef(),
+      `Frozen preload baseline captured at ref ${BASELINE_REF} via scripts/measure-preload-baseline.ts --write. ` +
+      `Token estimator: ceil(promptText.length / 4). See evals/README.md.`,
+    ref: BASELINE_REF,
     mode: "preload" as const,
     model: "eval-mock" as const,
     token_estimator: "ceil(chars/4)" as const,
-    // In preload mode every probe sees the same system prompt (entity YAML is
-    // static). The 12 golden probes each get exactly `inputTokens` on first call.
     passed: 12,
     total: 12,
     accuracy: 1,
@@ -84,31 +113,8 @@ async function main(): Promise<void> {
       agent_sql: null,
     })),
   };
-
-  console.log("System prompt length:", systemPrompt.length, "chars");
-  console.log("Estimated tokens (ceil(chars/4)):", inputTokens);
-  console.log("");
-  console.log("Report:", JSON.stringify({ mean_input_tokens: report.mean_input_tokens }, null, 2));
-
-  if (DRY_RUN) {
-    console.log("\n[dry-run] would write to", BASELINE_PATH);
-    return;
-  }
-
   await writeFile(BASELINE_PATH, JSON.stringify(report, null, 2) + "\n");
-  console.log("Written to", BASELINE_PATH);
-  console.log(
-    "\nNOTE: Update the `ref` validation in scripts/run-eval.ts (loadBaseline) if you change the baseline.",
-  );
-}
-
-function currentGitRef(): string {
-  try {
-    const { execSync } = require("node:child_process");
-    return execSync("git rev-parse --short HEAD", { encoding: "utf8" }).trim() as string;
-  } catch {
-    return "unknown";
-  }
+  console.log("\nWritten to", BASELINE_PATH);
 }
 
 main().catch((err) => {
