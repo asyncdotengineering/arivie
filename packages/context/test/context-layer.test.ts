@@ -314,4 +314,109 @@ refs:
       path: "docs/missing-ref.md",
     });
   });
+
+  it("recognizes semantic refs without orphan-flagging when resolved", async () => {
+    const root = mkdtempSync(join(tmpdir(), "arivie-context-"));
+    writeFixture(
+      root,
+      "concepts/revenue.md",
+      `---
+id: net-revenue-playbook
+type: playbook
+schema: docs.page
+refs:
+  - semantic:orders
+  - semantic:orders.net_revenue
+---
+# Revenue playbook
+`,
+    );
+
+    const layer = defineContextLayer({
+      root,
+      schemas: [knowledgeSchema],
+      knownSemanticIds: ["orders", "orders.net_revenue"],
+    });
+
+    const result = await layer.load();
+
+    expect(result.issues.filter((issue) => issue.severity === "error")).toEqual([]);
+    expect(
+      result.issues.filter((issue) => issue.message.includes("semantic:")),
+    ).toEqual([]);
+    expect(layer.get("net-revenue-playbook")?.refs).toEqual([
+      "semantic:orders",
+      "semantic:orders.net_revenue",
+    ]);
+  });
+
+  it("warns on malformed semantic refs", async () => {
+    const root = mkdtempSync(join(tmpdir(), "arivie-context-"));
+    writeFixture(
+      root,
+      "concepts/bad-ref.md",
+      `---
+id: bad-semantic-ref
+schema: docs.page
+refs:
+  - semantic:orders..net_revenue
+---
+# Bad ref
+`,
+    );
+
+    const layer = defineContextLayer({
+      root,
+      schemas: [knowledgeSchema],
+    });
+
+    const result = await layer.load();
+    const warning = result.issues.find(
+      (issue) =>
+        issue.severity === "warning" &&
+        issue.message.includes('Malformed semantic reference "semantic:orders..net_revenue"'),
+    );
+
+    expect(warning).toMatchObject({ path: "concepts/bad-ref.md" });
+    expect(result.issues.filter((issue) => issue.severity === "error")).toEqual([]);
+  });
+
+  it("warns on unresolved semantic refs against knownSemanticIds", async () => {
+    const root = mkdtempSync(join(tmpdir(), "arivie-context-"));
+    writeFixture(
+      root,
+      "concepts/missing-entity.md",
+      `---
+id: missing-entity-ref
+schema: docs.page
+refs:
+  - semantic:unknown_entity
+  - semantic:orders.missing_measure
+---
+# Missing semantic targets
+`,
+    );
+
+    const layer = defineContextLayer({
+      root,
+      schemas: [knowledgeSchema],
+      knownSemanticIds: ["orders", "orders.net_revenue"],
+    });
+
+    const result = await layer.load();
+    const warnings = result.issues.filter(
+      (issue) =>
+        issue.severity === "warning" &&
+        issue.message.includes("Unresolved semantic reference"),
+    );
+
+    expect(warnings).toHaveLength(2);
+    expect(warnings.map((issue) => issue.message)).toEqual(
+      expect.arrayContaining([
+        'Unresolved semantic reference "semantic:unknown_entity" from document "missing-entity-ref"',
+        'Unresolved semantic reference "semantic:orders.missing_measure" from document "missing-entity-ref"',
+      ]),
+    );
+    expect(result.issues.filter((issue) => issue.severity === "error")).toEqual([]);
+  });
 });

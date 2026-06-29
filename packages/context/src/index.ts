@@ -11,6 +11,7 @@ export { ContextError, ContextLoadError } from "./errors.js";
 export interface ContextLayerConfig {
   root: string;
   schemas?: ContextSchemaDefinition[];
+  knownSemanticIds?: string[];
   indexing?: {
     mode: "none" | "lexical" | "hybrid";
     embeddings?: unknown;

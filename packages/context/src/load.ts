@@ -259,7 +259,11 @@ export async function loadContextLayer(
     }
   }
 
-  issues.push(...validateOrphanedRefs(documents));
+  issues.push(
+    ...validateOrphanedRefs(documents, {
+      knownSemanticIds: config.knownSemanticIds,
+    }),
+  );
 
   const catalog = catalogFromIndex ?? synthesizeCatalog(documents);
 
