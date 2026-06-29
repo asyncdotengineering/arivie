@@ -1,12 +1,7 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 import { existsSync } from "node:fs";
+import { buildSystemPrompt } from "@arivie/agent";
 import {
-  autoDetectMode,
-  buildSystemPrompt,
-  type ContextMode,
-} from "@arivie/agent";
-import {
-  ArivieConfigError,
   definePlugin,
   type CapabilityDefinition,
   type PluginFactory,
@@ -28,8 +23,6 @@ export interface AnalyticsPluginConfig {
   sources: Record<string, SourceAdapter<unknown>>;
   /** Register the compile_metric tool. Default false. */
   compileMetric?: boolean;
-  /** Context mode. v1 supports "auto" | "preload"; "indexed" is OUT OF SCOPE. */
-  mode?: "auto" | "preload";
   /** Owner id for query audit / hooks. Defaults to "analytics". */
   ownerId?: string;
 }
@@ -96,19 +89,6 @@ function loadSemanticLayerAtSetup(rootDir: string): SemanticLayer {
   }
 }
 
-function resolveContextMode(
-  mode: AnalyticsPluginConfig["mode"] | undefined,
-  semantic: SemanticLayer,
-): ContextMode {
-  const resolved = mode === "auto" ? autoDetectMode(semantic) : (mode ?? "preload");
-  if (resolved === "indexed") {
-    throw new ArivieConfigError(
-      "indexed mode not supported in plugin-analytics v1",
-    );
-  }
-  return resolved;
-}
-
 function capabilitiesFor(config: AnalyticsPluginConfig): CapabilityDefinition[] {
   return config.compileMetric === true
     ? [ANALYTICS_QUERY_CAPABILITY, ANALYTICS_COMPILE_METRIC_CAPABILITY]
@@ -133,7 +113,6 @@ export const analytics: PluginFactory<AnalyticsPluginConfig> = (config) =>
     contextSchemas: [analyticsEntityContextSchema],
     setup(ctx) {
       const semantic = loadSemanticLayerAtSetup(ctx.config.semanticPath);
-      const contextMode = resolveContextMode(ctx.config.mode, semantic);
       const compileMetric = ctx.config.compileMetric === true;
       const ownerId = ctx.config.ownerId ?? "analytics";
       const sourceDescriptors = Object.entries(ctx.config.sources).map(
@@ -151,7 +130,6 @@ export const analytics: PluginFactory<AnalyticsPluginConfig> = (config) =>
           compileMetric,
         }),
         instructions: buildSystemPrompt({
-          mode: contextMode,
           semantic,
           compileMetricEnabled: compileMetric,
           sources: sourceDescriptors,

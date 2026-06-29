@@ -74,7 +74,6 @@ describe("@arivie/plugin-analytics", () => {
       semanticPath,
       sources: { warehouse: fakePostgresSource() },
       compileMetric: true,
-      mode: "preload",
     };
 
     const { definition } = analytics(config);
@@ -105,5 +104,10 @@ describe("@arivie/plugin-analytics", () => {
     expect(contribution?.tools).toHaveProperty("compile_metric");
     expect(contribution?.instructions).toEqual(expect.any(String));
     expect(contribution?.instructions).not.toHaveLength(0);
+    expect(contribution?.instructions).toContain("## Semantic catalog");
+    expect(contribution?.instructions).toContain("## WORKSPACE_NAVIGATION_RULE");
+    expect(contribution?.instructions).toContain("mastra_workspace_read_file");
+    expect(contribution?.instructions).not.toContain("### Entity: orders");
+    expect(contribution?.instructions).not.toContain("Total order revenue");
   });
 });
