@@ -1,6 +1,6 @@
 {
   "name": "support-agent",
-  "version": "0.0.0",
+  "version": "0.0.2",
   "private": true,
   "type": "module",
   "description": "Aurora Support — a non-analytics customer-support agent built entirely on the Arivie context layer (always-inject policy + auto-retrieved FAQ). Zero infra.",

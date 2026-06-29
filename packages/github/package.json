@@ -1,6 +1,6 @@
 {
   "name": "@arivie/github",
-  "version": "2.4.0",
+  "version": "3.0.0",
   "description": "Arivie GitHub channel — webhook verification and push-event trigger.",
   "type": "module",
   "license": "Apache-2.0",

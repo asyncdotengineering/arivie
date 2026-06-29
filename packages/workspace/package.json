@@ -1,6 +1,6 @@
 {
   "name": "@arivie/workspace",
-  "version": "2.4.0",
+  "version": "3.0.0",
   "description": "Arivie workspace — read-only SemanticLayerFilesystem over Mastra Workspace.",
   "type": "module",
   "license": "Apache-2.0",

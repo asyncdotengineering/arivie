@@ -1,6 +1,6 @@
 {
   "name": "@arivie/cli",
-  "version": "2.4.0",
+  "version": "3.0.0",
   "private": false,
   "type": "module",
   "description": "Arivie CLI — citty-based init, setup, add, lint, eval, dev, deploy.",

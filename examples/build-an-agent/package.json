@@ -1,6 +1,6 @@
 {
   "name": "build-an-agent",
-  "version": "0.0.0",
+  "version": "0.0.2",
   "private": true,
   "type": "module",
   "description": "The agent built by the 'Build an Agent' tutorial — Northwind Analytics, an analytics agent exposed as an HTTP API.",

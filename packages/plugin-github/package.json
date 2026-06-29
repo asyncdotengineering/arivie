@@ -1,6 +1,6 @@
 {
   "name": "@arivie/plugin-github",
-  "version": "2.4.0",
+  "version": "3.0.0",
   "private": false,
   "type": "module",
   "description": "Arivie GitHub plugin — push channel registered through the plugin SDK and persisted dispatch queue.",

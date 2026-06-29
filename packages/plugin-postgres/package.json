@@ -1,6 +1,6 @@
 {
   "name": "@arivie/plugin-postgres",
-  "version": "2.4.0",
+  "version": "3.0.0",
   "private": false,
   "type": "module",
   "description": "Arivie Postgres plugin — durable runtime storage and SQL source adapter.",
