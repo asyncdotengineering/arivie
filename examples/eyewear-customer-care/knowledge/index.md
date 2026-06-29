@@ -6,6 +6,7 @@ description: Customer-care playbooks and policy references for prescription eyew
 
 Concepts cross-linked to the eyewear semantic layer (`examples/eyewear-customer-care/semantic/`).
 
+- [playbook] handle-customer-query — SOP: identify order → SQL lookup → policy → draft in store voice
 - [playbook] return-policy — Return eligibility, condition requirements, and non-returnable Rx orders
 - [playbook] refund-window — Cash refund vs store credit, eligibility windows, and settlement timing
 - [playbook] prescription-remake — Rx redo policy, reason codes, and order Rx verification steps
