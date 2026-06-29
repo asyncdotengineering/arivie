@@ -93,6 +93,7 @@ export {
   executeRun,
   governanceCoreCacheProviderOptions,
   isAnthropicModel,
+  wrapInstructionsForCache,
   streamEvents,
   temporalGrounding,
 } from "./runtime/index.js";

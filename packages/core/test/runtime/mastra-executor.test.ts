@@ -1,7 +1,6 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 import { describe, expect, it } from "vitest";
 import type { Agent } from "@mastra/core/agent";
-import { MockLanguageModelV3 } from "ai/test";
 import { getCurrentUserContext } from "../../src/context.js";
 import { InMemoryRuntimeStorage } from "../../src/storage/index.js";
 import type { ArivieEvent } from "../../src/events/index.js";
@@ -72,7 +71,6 @@ describe("createMastraExecutor (streaming)", () => {
       agents: { analyst: defineAgent({ instructions: "Answer." }) },
       executor: createMastraExecutor({
         agents: { analyst: fakeAgent(seen, capture) },
-        defaultModel: new MockLanguageModelV3({ provider: "mock", modelId: "mock" }),
       }),
     });
 
@@ -90,21 +88,15 @@ describe("createMastraExecutor (streaming)", () => {
     expect(capture.options?.providerOptions).toBeUndefined();
   });
 
-  it("attaches Anthropic cacheControl providerOptions for Anthropic models", async () => {
+  it("does not attach call-level providerOptions (cache_control is on the agent instructions, not stream options)", async () => {
     const storage = new InMemoryRuntimeStorage();
     const seen: { dbRole?: string } = {};
     const capture: StreamCapture = {};
-    const anthropicModel = new MockLanguageModelV3({
-      provider: "anthropic",
-      modelId: "claude-sonnet-4-20250514",
-    });
     const rt = createRuntime({
       storage,
       agents: { analyst: defineAgent({ instructions: "Answer." }) },
       executor: createMastraExecutor({
         agents: { analyst: fakeAgent(seen, capture) },
-        defaultModel: anthropicModel,
-        models: { analyst: anthropicModel },
       }),
     });
 
@@ -115,9 +107,7 @@ describe("createMastraExecutor (streaming)", () => {
     });
     await collect(handle.stream);
 
-    expect(capture.options?.providerOptions).toEqual({
-      anthropic: { cacheControl: { type: "ephemeral" } },
-    });
+    expect(capture.options?.providerOptions).toBeUndefined();
   });
 
   it("streams chunks to structured events under the user context", async () => {
@@ -128,7 +118,6 @@ describe("createMastraExecutor (streaming)", () => {
       agents: { analyst: defineAgent({ instructions: "Answer." }) },
       executor: createMastraExecutor({
         agents: { analyst: fakeAgent(seen) },
-        defaultModel: new MockLanguageModelV3({ provider: "mock", modelId: "mock" }),
       }),
     });
 
@@ -163,10 +152,7 @@ describe("createMastraExecutor (streaming)", () => {
     const rt = createRuntime({
       storage,
       agents: { ghost: defineAgent({ instructions: "x" }) },
-      executor: createMastraExecutor({
-        agents: {},
-        defaultModel: new MockLanguageModelV3({ provider: "mock", modelId: "mock" }),
-      }),
+      executor: createMastraExecutor({ agents: {} }),
     });
     const handle = await rt.sessions.create({
       agent: "ghost",

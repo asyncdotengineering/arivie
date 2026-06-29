@@ -18,6 +18,7 @@ import { assembleAgentContext } from "./runtime/assemble.js";
 import { loadAppContext, type LoadedContext } from "./runtime/context-layer.js";
 import type { ContextRetriever } from "./runtime/context-retriever.js";
 import { createMastraExecutor } from "./runtime/mastra-executor.js";
+import { wrapInstructionsForCache } from "./runtime/prompt-cache.js";
 import { resolveArivieDir } from "./runtime/storage-paths.js";
 import { createRuntime } from "./runtime/session.js";
 import type {
@@ -133,11 +134,12 @@ function buildMastraAgent(
     manifest,
     alwaysKnowledge,
   );
+  const effectiveModel = agent.model ?? model;
   return new Agent({
     id: agentId,
     name: agentId,
-    model: (agent.model ?? model) as ConstructorParameters<typeof Agent>[0]["model"],
-    instructions,
+    model: effectiveModel as ConstructorParameters<typeof Agent>[0]["model"],
+    instructions: wrapInstructionsForCache(instructions, effectiveModel) as ConstructorParameters<typeof Agent>[0]["instructions"],
     // Plugin tools + the context-retriever's search tools (ADR 0003).
     tools: { ...tools, ...contextTools } as NonNullable<
       ConstructorParameters<typeof Agent>[0]["tools"]
@@ -194,16 +196,7 @@ export async function defineArivie(config: ArivieAppConfig): Promise<ArivieApp> 
     );
   }
 
-  const executor = createMastraExecutor({
-    agents: mastraAgents,
-    defaultModel: config.model,
-    models: Object.fromEntries(
-      Object.entries(config.agents).map(([id, agentDef]) => [
-        id,
-        agentDef.model ?? config.model,
-      ]),
-    ),
-  });
+  const executor = createMastraExecutor({ agents: mastraAgents });
   const runtime = createRuntime({
     storage: config.storage,
     agents: config.agents,

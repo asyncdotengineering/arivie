@@ -8,6 +8,7 @@ export { temporalGrounding } from "./temporal-grounding.js";
 export {
   governanceCoreCacheProviderOptions,
   isAnthropicModel,
+  wrapInstructionsForCache,
 } from "./prompt-cache.js";
 export { executeRun } from "./run.js";
 export {
