@@ -9,6 +9,7 @@ import {
   buildSystemPrompt,
   buildSystemPromptIndexed,
   FINALIZE_REPORT_RULE,
+  governanceCoreSection,
   SELF_CORRECTION_RULES,
   SKILL_DISCIPLINE_EAGER,
   SKILL_DISCIPLINE_ONDEMAND,
@@ -33,6 +34,84 @@ async function loadFixture(): Promise<SemanticLayer> {
 
 beforeAll(() => { vi.useFakeTimers(); vi.setSystemTime(new Date("2026-06-15T12:00:00Z")); });
 afterAll(() => { vi.useRealTimers(); });
+
+describe("governanceCoreSection", () => {
+  it("renders a byte-stable catalog, join skeleton, and glossary without entity detail", () => {
+    const semantic: SemanticLayer = {
+      catalog: {
+        entities: [
+          { name: "orders", description: "Orders.", keywords: ["sales"] },
+          { name: "customers", description: "Customers.", keywords: ["buyers"] },
+        ],
+        glossary: [
+          { term: "revenue", status: "ambiguous", definition: "Gross or net sales." },
+          { term: "AOV", status: "defined", definition: "Average order value." },
+        ],
+        generated_at: "2026-06-29T12:34:56.000Z",
+        source_files: ["entities/orders.yml", "entities/customers.yml"],
+      },
+      entities: new Map([
+        [
+          "orders",
+          {
+            name: "orders",
+            description: "Orders.",
+            grain: "one row per order",
+            primary_key: "id",
+            measures: [{ name: "revenue", description: "Revenue.", sql: "SUM(total)" }],
+            dimensions: [{ name: "status", sql: "status", type: "text", sample_values: ["paid"] }],
+            joins: [
+              { to: "customers", on: "orders.customer_id = customers.id" },
+              { to: "customers", on: "orders.billing_customer_id = customers.id" },
+            ],
+          } as Entity,
+        ],
+        [
+          "customers",
+          {
+            name: "customers",
+            description: "Customers.",
+            grain: "one row per customer",
+            primary_key: "id",
+          },
+        ],
+      ]),
+    };
+
+    const first = governanceCoreSection(semantic);
+    const second = governanceCoreSection(semantic);
+
+    expect(first).toBe(second);
+    expect(first).toContain("## Semantic catalog");
+    expect(first.indexOf("**customers**:")).toBeLessThan(first.indexOf("**orders**:"));
+    expect(first).toContain("- **customers** joins: none");
+    expect(first).toContain("- **orders** joins: customers");
+    expect(first).toContain("## Glossary");
+    expect(first).toContain("**AOV** — Average order value.");
+    expect(first).toContain("**revenue** — Gross or net sales.");
+    expect(first).not.toContain("2026-06-29");
+    expect(first).not.toContain("Measures:");
+    expect(first).not.toContain("Dimensions:");
+    expect(first).not.toContain("sample_values");
+    expect(first).not.toContain("SUM(total)");
+    expect(first).not.toContain("orders.customer_id = customers.id");
+  });
+
+  it("renders an empty catalog without throwing", () => {
+    const semantic: SemanticLayer = {
+      catalog: {
+        entities: [],
+        generated_at: "2026-06-29T12:34:56.000Z",
+        source_files: [],
+      },
+      entities: new Map(),
+    };
+
+    expect(governanceCoreSection(semantic)).toBe(
+      "## Semantic catalog\n\n### Catalog",
+    );
+  });
+});
 
 describe("buildSystemPromptIndexed", () => {
   it("includes WORKSPACE_NAVIGATION_RULE and per-source execute tools", () => {

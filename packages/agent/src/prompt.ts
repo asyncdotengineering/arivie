@@ -259,8 +259,12 @@ export function buildSystemPromptIndexed({
 function glossarySection(semantic: SemanticLayer): string {
   const glossary = semantic.catalog.glossary ?? [];
   if (glossary.length === 0) return "";
-  const defined = glossary.filter((t) => t.status !== "ambiguous");
-  const ambiguous = glossary.filter((t) => t.status === "ambiguous");
+  const defined = glossary
+    .filter((t) => t.status !== "ambiguous")
+    .sort((a, b) => a.term.localeCompare(b.term));
+  const ambiguous = glossary
+    .filter((t) => t.status === "ambiguous")
+    .sort((a, b) => a.term.localeCompare(b.term));
   const lines = ["## Glossary"];
   for (const t of defined) {
     lines.push(`- **${t.term}** — ${t.definition}`);
@@ -283,6 +287,32 @@ function glossarySection(semantic: SemanticLayer): string {
     }
   }
   return lines.join("\n");
+}
+
+function joinSkeletonSection(semantic: SemanticLayer): string {
+  const entities = entitiesAlphabetical(semantic);
+  if (entities.length === 0) return "";
+
+  return [
+    "## Join graph",
+    ...entities.map((entity) => {
+      const joinedEntities = [
+        ...new Set((entity.joins ?? []).map((join) => join.to)),
+      ].sort((a, b) => a.localeCompare(b));
+      return `- **${entity.name}** joins: ${joinedEntities.join(", ") || "none"}`;
+    }),
+  ].join("\n");
+}
+
+export function governanceCoreSection(semantic: SemanticLayer): string {
+  return [
+    "## Semantic catalog",
+    formatCatalog(semantic.catalog, { includeGeneratedAt: false }),
+    joinSkeletonSection(semantic),
+    glossarySection(semantic),
+  ]
+    .filter((section) => section.length > 0)
+    .join("\n\n");
 }
 
 /**
@@ -479,9 +509,17 @@ function formatHintsSubsection(entity: Entity): string {
   ].join("\n");
 }
 
-function formatCatalog(catalog: Catalog): string {
-  const lines = ["### Catalog", `Generated: ${catalog.generated_at}`];
-  for (const entry of catalog.entities) {
+function formatCatalog(
+  catalog: Catalog,
+  options: { includeGeneratedAt?: boolean } = {},
+): string {
+  const lines = ["### Catalog"];
+  if (options.includeGeneratedAt !== false) {
+    lines.push(`Generated: ${catalog.generated_at}`);
+  }
+  for (const entry of [...catalog.entities].sort((a, b) =>
+    a.name.localeCompare(b.name),
+  )) {
     lines.push(
       `- **${entry.name}**: ${entry.description.trim()} (keywords: ${entry.keywords.join(", ")})`,
     );
