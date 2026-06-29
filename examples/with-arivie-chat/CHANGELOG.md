@@ -1,5 +1,12 @@
 # with-arivie-chat
 
+## 0.0.3
+
+### Patch Changes
+
+- Updated dependencies [61b3447]
+  - @arivie/mcp@3.1.0
+
 ## 0.0.2
 
 ### Patch Changes
