@@ -50,12 +50,15 @@ export const schedules = defineSchedules([
   },
 ]);
 
+const knowledgePath = join(__dirname, "knowledge");
+
 const config: ArivieAppConfig = {
   app: {
     id: process.env.ARIVIE_OWNER_ID ?? "lumiere-chain",
     name: "Lumiere Chain",
   },
   model: resolveModel(),
+  context: { root: knowledgePath },
   storage: postgresRuntime({ url: databaseUrl }),
   plugins: [
     analytics({
