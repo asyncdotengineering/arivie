@@ -359,7 +359,6 @@ export function makeAgent(opts: MakeAgentOptions): Agent {
       "(reports, CSVs) directly through workspace tools.",
     model: opts.model as ConstructorParameters<typeof Agent>[0]["model"],
     instructions: buildSystemPrompt({
-      mode: opts.contextMode,
       semantic: opts.semantic,
       compileMetricEnabled: compileMetric,
       sources:
