@@ -23,7 +23,15 @@ async function collect(stream: ReadableStream<ArivieEvent>): Promise<ArivieEvent
  * (`agent.stream(...).fullStream` + `.text`). Records the user context that
  * was active when the stream ran, and emits a tool call + a text delta.
  */
-function fakeAgent(seenUser: { dbRole?: string }): Agent {
+interface StreamCapture {
+  prompt?: string;
+  options?: Record<string, unknown>;
+}
+
+function fakeAgent(
+  seenUser: { dbRole?: string },
+  capture?: StreamCapture,
+): Agent {
   const chunks = [
     {
       type: "tool-call",
@@ -37,8 +45,12 @@ function fakeAgent(seenUser: { dbRole?: string }): Agent {
     { type: "finish", payload: {} },
   ];
   return {
-    stream: async () => {
+    stream: async (prompt: string, options?: Record<string, unknown>) => {
       seenUser.dbRole = getCurrentUserContext()?.dbRole;
+      if (capture !== undefined) {
+        capture.prompt = prompt;
+        capture.options = options;
+      }
       return {
         fullStream: (async function* () {
           for (const chunk of chunks) yield chunk;
@@ -50,6 +62,29 @@ function fakeAgent(seenUser: { dbRole?: string }): Agent {
 }
 
 describe("createMastraExecutor (streaming)", () => {
+  it("prepends per-turn temporal grounding to the user prompt", async () => {
+    const storage = new InMemoryRuntimeStorage();
+    const seen: { dbRole?: string } = {};
+    const capture: StreamCapture = {};
+    const rt = createRuntime({
+      storage,
+      agents: { analyst: defineAgent({ instructions: "Answer." }) },
+      executor: createMastraExecutor({ agents: { analyst: fakeAgent(seen, capture) } }),
+    });
+
+    const handle = await rt.sessions.create({
+      agent: "analyst",
+      prompt: "how many?",
+      user: { userId: "u1" },
+    });
+    await collect(handle.stream);
+
+    expect(capture.prompt).toMatch(
+      /^## Current time\nNow is \d{4}-\d{2}-\d{2}T[\d:.]+Z \(UTC\); today is \d{4}-\d{2}-\d{2}\./,
+    );
+    expect(capture.prompt).toContain("how many?");
+  });
+
   it("streams chunks to structured events under the user context", async () => {
     const storage = new InMemoryRuntimeStorage();
     const seen: { dbRole?: string } = {};

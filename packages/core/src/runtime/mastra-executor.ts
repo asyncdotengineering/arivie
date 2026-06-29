@@ -3,6 +3,7 @@ import type { Agent } from "@mastra/core/agent";
 import { runWithUserContext } from "../context.js";
 import { ArivieConfigError } from "../errors.js";
 import type { UserContext as OwnerUserContext } from "../types.js";
+import { temporalGrounding } from "./temporal-grounding.js";
 import type {
   AgentExecutor,
   AgentTurnResult,
@@ -55,12 +56,16 @@ export function createMastraExecutor(options: MastraExecutorOptions): AgentExecu
         `No Mastra agent registered for "${ctx.agent.id}"`,
       );
     }
-    const prompt = ctx.input.prompt ?? "";
+    const userTurn = ctx.input.prompt ?? "";
     const ownerUser = toOwnerUser(ctx.input.user);
     const sessionId = ctx.session.id;
+    const now = new Date();
+    const temporal = temporalGrounding(now);
+    const runPrompt =
+      userTurn.length > 0 ? `${temporal}\n\n${userTurn}` : temporal;
 
     return runWithUserContext(ownerUser, async () => {
-      const stream = await agent.stream(prompt, {
+      const stream = await agent.stream(runPrompt, {
         memory: { thread: sessionId, resource: ctx.session.resource },
       });
 

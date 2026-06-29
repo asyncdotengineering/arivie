@@ -4,6 +4,7 @@ export { assembleAgentContext } from "./assemble.js";
 export type { AssembledAgentContext } from "./assemble.js";
 export { createMastraExecutor } from "./mastra-executor.js";
 export type { MastraExecutorOptions } from "./mastra-executor.js";
+export { temporalGrounding } from "./temporal-grounding.js";
 export { executeRun } from "./run.js";
 export {
   decodeContinuation,

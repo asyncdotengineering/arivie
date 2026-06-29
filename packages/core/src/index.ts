@@ -92,6 +92,7 @@ export {
   encodeContinuation,
   executeRun,
   streamEvents,
+  temporalGrounding,
 } from "./runtime/index.js";
 export type {
   AgentDefinition,
