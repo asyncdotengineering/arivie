@@ -91,6 +91,8 @@ export {
   defineAgent,
   encodeContinuation,
   executeRun,
+  governanceCoreCacheProviderOptions,
+  isAnthropicModel,
   streamEvents,
   temporalGrounding,
 } from "./runtime/index.js";

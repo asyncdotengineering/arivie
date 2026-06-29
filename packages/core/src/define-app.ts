@@ -194,7 +194,16 @@ export async function defineArivie(config: ArivieAppConfig): Promise<ArivieApp> 
     );
   }
 
-  const executor = createMastraExecutor({ agents: mastraAgents });
+  const executor = createMastraExecutor({
+    agents: mastraAgents,
+    defaultModel: config.model,
+    models: Object.fromEntries(
+      Object.entries(config.agents).map(([id, agentDef]) => [
+        id,
+        agentDef.model ?? config.model,
+      ]),
+    ),
+  });
   const runtime = createRuntime({
     storage: config.storage,
     agents: config.agents,

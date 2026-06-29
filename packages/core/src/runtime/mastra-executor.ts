@@ -3,6 +3,7 @@ import type { Agent } from "@mastra/core/agent";
 import { runWithUserContext } from "../context.js";
 import { ArivieConfigError } from "../errors.js";
 import type { UserContext as OwnerUserContext } from "../types.js";
+import { governanceCoreCacheProviderOptions } from "./prompt-cache.js";
 import { temporalGrounding } from "./temporal-grounding.js";
 import type {
   AgentExecutor,
@@ -14,6 +15,13 @@ import type {
 export interface MastraExecutorOptions {
   /** Built Mastra agents keyed by the same id as the runtime AgentDefinition. */
   agents: Record<string, Agent>;
+  /**
+   * Language model per agent id — used to attach Anthropic cache breakpoints on
+   * the stable governance-core instructions (REQ-5). Falls back to `defaultModel`.
+   */
+  models?: Record<string, unknown>;
+  /** App-level default model when an agent has no per-agent override. */
+  defaultModel?: unknown;
 }
 
 /** Map the runtime's user identity to the owner-boundary UserContext the tools read. */
@@ -63,10 +71,14 @@ export function createMastraExecutor(options: MastraExecutorOptions): AgentExecu
     const temporal = temporalGrounding(now);
     const runPrompt =
       userTurn.length > 0 ? `${temporal}\n\n${userTurn}` : temporal;
+    const model =
+      options.models?.[ctx.agent.id] ?? options.defaultModel;
+    const providerOptions = governanceCoreCacheProviderOptions(model);
 
     return runWithUserContext(ownerUser, async () => {
       const stream = await agent.stream(runPrompt, {
         memory: { thread: sessionId, resource: ctx.session.resource },
+        ...(providerOptions !== undefined ? { providerOptions } : {}),
       });
 
       for await (const chunk of stream.fullStream) {
