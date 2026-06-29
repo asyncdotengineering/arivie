@@ -47,7 +47,6 @@ export const config: ArivieAppConfig = {
   plugins: [
     analytics({
       semanticPath,
-      mode: "preload",
       sources: {
         postgres: postgresSource({
           url: databaseUrl,

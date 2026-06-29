@@ -55,7 +55,6 @@ export async function getArivieRuntime(): Promise<{ arivie: ArivieApp }> {
       plugins: [
         analytics({
           semanticPath,
-          mode: "preload",
           sources: {
             postgres: postgresSource({ url: databaseUrl, readOnlyRole: "arivie_reader" }),
             mixpanel,
