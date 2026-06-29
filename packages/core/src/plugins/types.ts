@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 import type { StandardSchemaV1 } from "@standard-schema/spec";
 import type { Tool } from "@mastra/core/tools";
+import type { Workspace } from "@mastra/core/workspace";
 import type { ContextSchemaDefinition } from "@arivie/context";
 import type { CapabilityDefinition } from "../capabilities/types.js";
 import type { ChannelDefinition } from "../triggers/channel.js";
@@ -113,6 +114,14 @@ export interface PluginSetupContext<TConfig = unknown> {
 export interface PluginRuntimeContribution {
   /** Mastra tools keyed by tool name. We build on Mastra's tool surface. */
   tools?: Record<string, Tool>;
+  /**
+   * A Mastra Workspace contributed by the plugin. An agent that backs one of
+   * this plugin's capabilities will receive this workspace so that the
+   * workspace navigation tools (`mastra_workspace_list_files`, etc.) resolve
+   * against the plugin's managed directory (e.g. the semantic layer root for
+   * the analytics plugin).
+   */
+  workspace?: Workspace;
   /**
    * A system-prompt fragment contributed to any agent that uses one of this
    * plugin's capabilities. The agent builder (defineArivie) concatenates the

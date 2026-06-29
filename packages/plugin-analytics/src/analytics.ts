@@ -7,6 +7,7 @@ import {
   type PluginFactory,
   type SourceAdapter,
 } from "@arivie/core";
+import { InProcessSandboxFilesystem, makeWorkspace } from "@arivie/workspace";
 import {
   LoadError,
   loadSemanticLayerSync,
@@ -111,7 +112,7 @@ export const analytics: PluginFactory<AnalyticsPluginConfig> = (config) =>
     ],
     capabilities: capabilitiesFor(config),
     contextSchemas: [analyticsEntityContextSchema],
-    setup(ctx) {
+    async setup(ctx) {
       const semantic = loadSemanticLayerAtSetup(ctx.config.semanticPath);
       const compileMetric = ctx.config.compileMetric === true;
       const ownerId = ctx.config.ownerId ?? "analytics";
@@ -121,6 +122,13 @@ export const analytics: PluginFactory<AnalyticsPluginConfig> = (config) =>
           description: `Analytical ${source.kind} source "${name}" (${source.id}).`,
         }),
       );
+
+      const { workspace } = await makeWorkspace({
+        filesystem: new InProcessSandboxFilesystem({
+          rootDir: ctx.config.semanticPath,
+          readOnly: true,
+        }),
+      });
 
       return {
         tools: buildAnalyticsTools({
@@ -136,6 +144,7 @@ export const analytics: PluginFactory<AnalyticsPluginConfig> = (config) =>
           hasFinalizeReport: false,
           skillsMode: "none",
         }),
+        workspace,
         // Close source connection pools when the app is disposed.
         dispose: async () => {
           for (const source of Object.values(ctx.config.sources)) {

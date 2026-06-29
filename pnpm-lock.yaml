@@ -931,6 +931,9 @@ importers:
       '@arivie/semantic':
         specifier: workspace:*
         version: link:../semantic
+      '@arivie/workspace':
+        specifier: workspace:*
+        version: link:../workspace
     devDependencies:
       '@types/node':
         specifier: ^22.0.0

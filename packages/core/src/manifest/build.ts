@@ -38,6 +38,7 @@ function emptyManifest(app: { id: string; name: string }): RuntimeManifest {
     schedules: [],
     evals: [],
     instructions: [],
+    workspaces: [],
     disposers: [],
     diagnostics: [],
     hasRuntime: false,
@@ -114,6 +115,9 @@ function mergeContribution(
   }
   if (contribution.instructions !== undefined) {
     manifest.instructions.push({ pluginId, value: contribution.instructions });
+  }
+  if (contribution.workspace !== undefined) {
+    manifest.workspaces.push({ pluginId, value: contribution.workspace });
   }
   if (contribution.dispose !== undefined) {
     manifest.disposers.push(contribution.dispose);

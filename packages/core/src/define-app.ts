@@ -128,7 +128,7 @@ function buildMastraAgent(
   alwaysKnowledge: string[],
   contextTools: Record<string, Tool>,
 ): Agent {
-  const { instructions, tools } = assembleAgentContext(
+  const { instructions, tools, workspace } = assembleAgentContext(
     agentId,
     agent,
     manifest,
@@ -148,6 +148,7 @@ function buildMastraAgent(
     // Guardrails (PII / prompt-injection / moderation) run in Mastra's pipeline.
     ...(agent.inputProcessors !== undefined ? { inputProcessors: agent.inputProcessors } : {}),
     ...(agent.outputProcessors !== undefined ? { outputProcessors: agent.outputProcessors } : {}),
+    ...(workspace !== undefined ? { workspace } : {}),
   });
 }
 

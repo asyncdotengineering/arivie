@@ -68,6 +68,32 @@ afterEach(async () => {
 });
 
 describe("@arivie/plugin-analytics", () => {
+  it("contributes a workspace rooted at semanticPath so mastra_workspace_list_files resolves against the semantic directory", async () => {
+    const semanticPath = await makeSemanticRoot();
+    const config: AnalyticsPluginConfig = {
+      semanticPath,
+      sources: { warehouse: fakePostgresSource() },
+    };
+
+    const { definition } = analytics(config);
+    const contribution = await definition.setup?.({
+      config,
+      app: { id: "t", name: "t" },
+      permissions: new Set(["analytics.sql.read"]),
+    });
+
+    expect(contribution?.workspace).toBeDefined();
+
+    // The workspace filesystem is rooted at semanticPath: listing the entities
+    // sub-directory returns the seeded orders.yml file — confirming that
+    // mastra_workspace_list_files (which calls workspace.filesystem.readdir)
+    // resolves against the semantic directory.
+    const entries = await contribution?.workspace?.filesystem.readdir("entities");
+    expect(entries).toEqual(
+      expect.arrayContaining([expect.objectContaining({ name: "orders.yml", type: "file" })]),
+    );
+  });
+
   it("declares analytics metadata and contributes tools plus instructions", async () => {
     const semanticPath = await makeSemanticRoot();
     const config: AnalyticsPluginConfig = {

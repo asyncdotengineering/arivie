@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 import type { Tool } from "@mastra/core/tools";
+import type { Workspace } from "@mastra/core/workspace";
 import { ArivieConfigError } from "../errors.js";
 import type { RuntimeManifest } from "../manifest/types.js";
 import type { AgentDefinition } from "./types.js";
@@ -14,6 +15,8 @@ export interface AssembledAgentContext {
   capabilities: string[];
   /** The plugin ids backing those capabilities. */
   pluginIds: string[];
+  /** The first workspace contributed by any of the agent's backing plugins. */
+  workspace?: Workspace;
 }
 
 /**
@@ -64,10 +67,13 @@ export function assembleAgentContext(
     .filter((part) => part.length > 0)
     .join("\n\n");
 
+  const workspace = manifest.workspaces.find((ref) => pluginIds.has(ref.pluginId))?.value;
+
   return {
     instructions,
     tools,
     capabilities: capabilityIds,
     pluginIds: [...pluginIds],
+    ...(workspace !== undefined ? { workspace } : {}),
   };
 }
