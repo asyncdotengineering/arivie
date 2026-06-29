@@ -140,6 +140,40 @@ importers:
         specifier: ^6.0.0
         version: 6.0.3
 
+  examples/eyewear-customer-care:
+    dependencies:
+      '@ai-sdk/openai':
+        specifier: ^3.0.64
+        version: 3.0.64(zod@4.4.3)
+      '@arivie/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@arivie/plugin-analytics':
+        specifier: workspace:*
+        version: link:../../packages/plugin-analytics
+      '@arivie/plugin-postgres':
+        specifier: workspace:*
+        version: link:../../packages/plugin-postgres
+    devDependencies:
+      '@arivie/db-postgres':
+        specifier: workspace:*
+        version: link:../../packages/db-postgres
+      '@mastra/core':
+        specifier: ^1.45.0
+        version: 1.45.0(@grpc/grpc-js@1.14.3)(ai@6.0.190(zod@4.4.3))(express@5.2.1)(zod@4.4.3)
+      '@types/node':
+        specifier: ^22.0.0
+        version: 22.19.19
+      ai:
+        specifier: ^6.0.0
+        version: 6.0.190(zod@4.4.3)
+      tsx:
+        specifier: ^4.20.5
+        version: 4.22.3
+      typescript:
+        specifier: ^6.0.0
+        version: 6.0.3
+
   examples/kitchen-sink:
     dependencies:
       '@ai-sdk/openai':

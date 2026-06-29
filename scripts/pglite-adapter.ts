@@ -46,6 +46,7 @@ export async function pglitePostgresAdapter(
     host: "127.0.0.1",
   });
   await server.start();
+  let closed = false;
 
   const url = `postgres://${server.getServerConn()}/postgres`;
 
@@ -56,7 +57,10 @@ export async function pglitePostgresAdapter(
     sql: createSqlProxy(pg) as unknown as postgres.Sql,
     execute: async (executeOpts) => {
       const started = Date.now();
-      const result = await pg.query(executeOpts.query, executeOpts.params);
+      const result = await pg.query(
+        executeOpts.query,
+        executeOpts.params ? [...executeOpts.params] : undefined,
+      );
       return {
         rows: result.rows as Record<string, unknown>[],
         rowCount: result.rows.length,
@@ -87,6 +91,10 @@ export async function pglitePostgresAdapter(
       throw new Error("compileMetric not implemented for PGlite adapter");
     },
     close: async () => {
+      // Idempotent: the analytics plugin disposes the injected source on
+      // app.dispose(), and callers may also close it explicitly.
+      if (closed) return;
+      closed = true;
       await server.stop();
       await pg.close();
     },
