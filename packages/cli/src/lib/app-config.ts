@@ -7,13 +7,7 @@ export type CliArivieConfig = ArivieAppConfig;
 
 interface AnalyticsLikeConfig {
   semanticPath: string;
-  mode?: "auto" | "preload" | "indexed";
   sources: Record<string, unknown>;
-  embeddings?: {
-    provider: unknown;
-    vector: unknown;
-    indexName: string;
-  };
 }
 
 export function isArivieAppConfig(value: unknown): value is CliArivieConfig {
@@ -50,12 +44,6 @@ export function findAnalyticsConfig(config: CliArivieConfig): AnalyticsLikeConfi
 
 export function semanticPathFromConfig(config: CliArivieConfig): string {
   return findAnalyticsConfig(config).semanticPath;
-}
-
-export function semanticModeFromConfig(
-  config: CliArivieConfig,
-): "auto" | "preload" | "indexed" {
-  return findAnalyticsConfig(config).mode ?? "auto";
 }
 
 export function postgresAdapterFromAnalytics(

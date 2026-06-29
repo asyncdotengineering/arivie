@@ -14,6 +14,10 @@ const sharedEntries = [
   "src/eval/index.ts",
   "src/server/index.ts",
   "src/triggers/index.ts",
+  // Cycle-free: prompt-cache.ts has no imports. Exposed as a shared subpath so
+  // `@arivie/agent` can import `wrapInstructionsForCache` WITHOUT depending on
+  // core's main (cyclic) entry — whose DTS is built after agent's.
+  "src/runtime/prompt-cache.ts",
 ];
 const mainEntries = ["src/index.ts"];
 

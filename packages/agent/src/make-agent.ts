@@ -21,7 +21,7 @@ import { createTool, type Tool } from "@mastra/core/tools";
 import type { RequireToolApproval } from "@mastra/core/tools";
 import { z } from "zod";
 import { getCurrentUserContext } from "@arivie/core/context";
-import { wrapInstructionsForCache } from "@arivie/core";
+import { wrapInstructionsForCache } from "@arivie/core/prompt-cache";
 
 import { assertToolShape, type AssertToolShapeConfig } from "./contract-invariants.js";
 import { buildSystemPrompt, type SkillsMode } from "./prompt.js";

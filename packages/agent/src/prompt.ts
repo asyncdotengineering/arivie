@@ -5,8 +5,6 @@ import type {
   SemanticLayer,
 } from "@arivie/semantic";
 
-export { temporalGrounding } from "@arivie/core";
-
 /**
  * How skills are presented to the agent:
  * - `"none"`: no skills attached.

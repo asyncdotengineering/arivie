@@ -28,7 +28,6 @@ export type {
 export {
   buildSystemPrompt,
   buildSystemPromptIndexed,
-  temporalGrounding,
   WORKSPACE_NAVIGATION_RULE,
   ASSUMPTION_STATING_RULE,
   SELF_CORRECTION_RULES,

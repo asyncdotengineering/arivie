@@ -5,30 +5,7 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { runCli } from "../src/cli.js";
 import { runEvalCommand } from "../src/commands/eval.js";
-import { resolveEvalMode } from "../src/lib/resolve-eval-mode.js";
 import { ARIVIE_MONOREPO_ROOT } from "../src/lib/arivie-root.js";
-describe("resolveEvalMode", () => {
-  it("uses explicit CLI mode over config", async () => {
-    const mode = await resolveEvalMode(
-      join(ARIVIE_MONOREPO_ROOT, "packages/cli/test/fixtures/setup-config/arivie.config.ts"),
-      "indexed",
-    );
-    expect(mode).toBe("indexed");
-  });
-
-  it("still validates config when --mode is explicit", async () => {
-    await expect(
-      resolveEvalMode(join(tmpdir(), "missing-arivie.config.ts"), "preload"),
-    ).rejects.toThrow();
-  });
-
-  it("reads preload from setup fixture config", async () => {
-    const mode = await resolveEvalMode(
-      join(ARIVIE_MONOREPO_ROOT, "packages/cli/test/fixtures/setup-config/arivie.config.ts"),
-    );
-    expect(mode).toBe("preload");
-  });
-});
 
 describe("runCli eval config validation", () => {
   let errSpy: ReturnType<typeof vi.spyOn>;
@@ -53,7 +30,7 @@ describe("runCli eval config validation", () => {
 
   it("exits non-zero with friendly error when config is missing", async () => {
     const missingConfig = join(workDir, "missing.config.ts");
-    const code = await runCli(["eval", "--config", missingConfig, "--mode", "preload"]);
+    const code = await runCli(["eval", "--config", missingConfig]);
     expect(code).not.toBe(0);
     expect(errSpy).toHaveBeenCalledWith(
       expect.stringMatching(/Arivie eval failed:/),
@@ -66,24 +43,22 @@ describe("runCli eval config validation", () => {
 });
 
 describe("runEvalCommand", () => {
-  it("invokes runner with --mode preload", async () => {
+  it("validates the config then invokes the gate runner (no mode)", async () => {
     const runner = { run: vi.fn().mockResolvedValue(0) };
     const code = await runEvalCommand(
       join(ARIVIE_MONOREPO_ROOT, "packages/cli/test/fixtures/setup-config/arivie.config.ts"),
-      "preload",
       runner,
     );
     expect(code).toBe(0);
-    expect(runner.run).toHaveBeenCalledWith("preload");
+    expect(runner.run).toHaveBeenCalledWith();
   });
 
-  it("wires indexed mode", async () => {
+  it("returns non-zero when the config cannot be loaded", async () => {
     const runner = { run: vi.fn().mockResolvedValue(0) };
-    await runEvalCommand(
-      join(ARIVIE_MONOREPO_ROOT, "packages/cli/test/fixtures/setup-config/arivie.config.ts"),
-      "indexed",
-      runner,
-    );
-    expect(runner.run).toHaveBeenCalledWith("indexed");
+    const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const code = await runEvalCommand(join(tmpdir(), "missing-arivie.config.ts"), runner);
+    expect(code).toBe(1);
+    expect(runner.run).not.toHaveBeenCalled();
+    errSpy.mockRestore();
   });
 });

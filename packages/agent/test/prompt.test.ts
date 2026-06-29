@@ -10,7 +10,6 @@ import {
   buildSystemPromptIndexed,
   FINALIZE_REPORT_RULE,
   governanceCoreSection,
-  temporalGrounding,
   SELF_CORRECTION_RULES,
   SKILL_DISCIPLINE_EAGER,
   SKILL_DISCIPLINE_ONDEMAND,
@@ -324,15 +323,6 @@ describe("buildSystemPrompt — on-demand entity detail", () => {
     expect(p).not.toContain("Canonical query patterns");
     expect(p).not.toContain("objective: maximize");
     expect(p).not.toContain("SUM(x)");
-  });
-});
-
-describe("temporalGrounding", () => {
-  it("renders the current time so the agent can resolve relative dates", () => {
-    const text = temporalGrounding(new Date("2026-06-15T12:00:00Z"));
-    expect(text).toContain("## Current time");
-    expect(text).toMatch(/today is 2026-06-15/);
-    expect(text).toMatch(/relative dates/i);
   });
 });
 

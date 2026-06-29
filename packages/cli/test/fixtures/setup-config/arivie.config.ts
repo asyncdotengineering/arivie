@@ -14,7 +14,6 @@ export const config = {
       definition: { id: "analytics", version: "0.0.0" },
       config: {
         semanticPath: "./semantic",
-        mode: "auto" as const,
         sources: { postgres: pg },
       },
     },

@@ -1,18 +1,9 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-import { existsSync } from "node:fs";
-import { autoDetectMode } from "@arivie/agent";
 import type { PostgresAdapter } from "@arivie/db-postgres";
-import { buildIndex } from "@arivie/embeddings";
-import { loadSemanticLayerSync } from "@arivie/semantic";
 import { PostgresStore } from "@mastra/pg";
 import { defineCommand } from "citty";
 import type { CliArivieConfig } from "../lib/app-config.js";
-import {
-  findAnalyticsConfig,
-  ownerIdFromConfig,
-  semanticModeFromConfig,
-  semanticPathFromConfig,
-} from "../lib/app-config.js";
+import { ownerIdFromConfig } from "../lib/app-config.js";
 import { loadArivieConfig } from "../lib/load-config.js";
 import { postgresAdapterFromConfig } from "../lib/postgres-from-config.js";
 import { printCliCommandError } from "../lib/cli-errors.js";
@@ -22,7 +13,6 @@ const READER_ROLE = "arivie_reader";
 export interface SetupResult {
   roleMessage: string;
   mastraMessage: string;
-  indexMessage?: string;
   ownerMessage: string;
 }
 
@@ -63,21 +53,8 @@ async function ensureOwnerIdentity(
   return "verified";
 }
 
-function resolveEffectiveMode(config: CliArivieConfig): "preload" | "indexed" {
-  const mode = semanticModeFromConfig(config);
-  if (mode !== "auto") {
-    return mode;
-  }
-  const semanticRoot = semanticPathFromConfig(config);
-  if (!existsSync(semanticRoot)) {
-    return "preload";
-  }
-  const layer = loadSemanticLayerSync(semanticRoot);
-  return autoDetectMode(layer);
-}
-
 /**
- * Idempotent project setup (role, Mastra memory, optional RAG index, owner identity).
+ * Idempotent project setup (role, Mastra memory, owner identity).
  * @see RFC-002 §4.12
  */
 export async function runSetup(config: CliArivieConfig): Promise<SetupResult> {
@@ -111,25 +88,6 @@ export async function runSetup(config: CliArivieConfig): Promise<SetupResult> {
       ? "✓ Mastra Memory migrations applied"
       : "✓ Mastra Memory: no migrations to apply";
 
-  let indexMessage: string | undefined;
-  const effectiveMode = resolveEffectiveMode(config);
-  if (effectiveMode === "indexed") {
-    const analytics = findAnalyticsConfig(config);
-    if (analytics.embeddings == null) {
-      throw new Error(
-        "semantic.embeddings is required when mode resolves to indexed; export a full config for setup",
-      );
-    }
-    const layer = loadSemanticLayerSync(semanticPathFromConfig(config));
-    await buildIndex({
-      layer,
-      provider: analytics.embeddings.provider as never,
-      vector: analytics.embeddings.vector as never,
-      indexName: analytics.embeddings.indexName,
-    });
-    indexMessage = `✓ Embedding index built (mode=indexed)`;
-  }
-
   const ownerState = await ensureOwnerIdentity(adapter, ownerId);
   const ownerMessage =
     ownerState === "inserted"
@@ -139,7 +97,6 @@ export async function runSetup(config: CliArivieConfig): Promise<SetupResult> {
   return {
     roleMessage,
     mastraMessage,
-    ...(indexMessage !== undefined ? { indexMessage } : {}),
     ownerMessage,
   };
 }
@@ -148,7 +105,7 @@ export const setupCommand = defineCommand({
   meta: {
     name: "setup",
     description:
-      "Create DB role, run Mastra Memory migrations, optional RAG index, owner smoke test. Idempotent.",
+      "Create DB role, run Mastra Memory migrations, owner smoke test. Idempotent.",
   },
   args: {
     config: {
@@ -175,9 +132,6 @@ export const setupCommand = defineCommand({
       const result = await runSetup(config);
       console.log(result.roleMessage);
       console.log(result.mastraMessage);
-      if (result.indexMessage != null) {
-        console.log(result.indexMessage);
-      }
       console.log(result.ownerMessage);
       return 0;
     } catch (err) {
@@ -205,7 +159,6 @@ async function configFromUrl(
         definition: { id: "analytics", version: "0.0.0" },
         config: {
           semanticPath: "./semantic",
-          mode: "preload",
           sources: {
             postgres: pg,
           },

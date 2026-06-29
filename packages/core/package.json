@@ -23,6 +23,9 @@
       ],
       "triggers": [
         "./dist/triggers/index.d.ts"
+      ],
+      "prompt-cache": [
+        "./dist/runtime/prompt-cache.d.ts"
       ]
     }
   },
@@ -58,6 +61,10 @@
     "./mastra": {
       "import": "./dist/mastra.js",
       "types": "./dist/mastra.d.ts"
+    },
+    "./prompt-cache": {
+      "import": "./dist/runtime/prompt-cache.js",
+      "types": "./dist/runtime/prompt-cache.d.ts"
     }
   },
   "files": [

@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 import { execSync } from "node:child_process";
-import { mkdir, rm, writeFile } from "node:fs/promises";
+import { mkdir, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { PostgreSqlContainer } from "@testcontainers/postgresql";
@@ -105,35 +105,4 @@ describeIntegration.sequential("setup idempotency (testcontainer)", () => {
     ]);
   });
 
-  it("setup reports friendly error for malformed entity YAML", { timeout: 60_000 }, async () => {
-    const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-    const { printCliCommandError } = await import("../src/lib/cli-errors.js");
-    const badDir = join(
-      fileURLToPath(new URL(".", import.meta.url)),
-      `semantic-bad-${Date.now()}`,
-    );
-    await mkdir(join(badDir, "entities"), { recursive: true });
-    await writeFile(join(badDir, "entities/orders.yml"), "name: [\n", "utf8");
-    await writeFile(join(badDir, "catalog.yml"), "entities: []\n", "utf8");
-
-    const config = await loadArivieConfig("./arivie.config.ts");
-    const analytics = findAnalyticsConfig(config);
-    analytics.semanticPath = badDir;
-    analytics.mode = "auto";
-
-    let code = 0;
-    try {
-      await runSetup(config);
-    } catch (err) {
-      printCliCommandError("setup", err);
-      code = 1;
-    }
-
-    expect(code).toBe(1);
-    expect(errSpy).toHaveBeenCalledWith(
-      expect.stringMatching(/Arivie setup failed:/),
-    );
-    errSpy.mockRestore();
-    await rm(badDir, { recursive: true, force: true });
-  });
 });
