@@ -1,5 +1,6 @@
 ---
 type: playbook
+usage_mode: always
 title: Refund window and issuance
 description: Cash refund eligibility, store-credit alternative, and settlement timing for Lens & Luxe orders.
 refs:
@@ -44,3 +45,19 @@ Set reply expectations from these ranges; do not quote same-day card settlement.
 2. If cash, verify no existing `refunds` row for the same `order_id` unless partial line refund is intended.
 3. Select the correct `reason` — drives ops reporting and CSQA.
 4. Draft the reply with amount, method, and expected settlement window.
+
+## Looking up an existing refund
+
+`refunds.order_id` is the numeric `orders.id`, not the customer-facing
+`orders.order_number`. To find whether a customer's order was already refunded,
+resolve the order id first, then join:
+
+```sql
+SELECT r.amount, r.reason, r.refund_date
+FROM refunds r
+JOIN orders o ON o.id = r.order_id
+JOIN customers c ON c.id = o.customer_id
+WHERE c.email = '<email>' AND o.order_number = '<order_number>';
+```
+
+A direct `WHERE order_id = '<order_number>'` on `refunds` returns zero rows — the order_number is text and is not the FK.

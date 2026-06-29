@@ -1,5 +1,6 @@
 ---
 type: playbook
+usage_mode: always
 title: Return policy
 description: When and how Lens & Luxe customers can return eyewear; condition requirements and non-returnable Rx orders.
 refs:

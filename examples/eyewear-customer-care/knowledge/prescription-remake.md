@@ -1,5 +1,6 @@
 ---
 type: playbook
+usage_mode: always
 title: Prescription remake policy
 description: Rx redo eligibility — wrong prescription, adaptation, breakage — and how to verify the order Rx before filing a remake.
 refs:

@@ -1,5 +1,6 @@
 ---
 type: playbook
+usage_mode: always
 title: Handle customer query
 description: SOP for draft-assist customer care — identify the order, look up facts, pick policy, draft in store voice, flag human judgment.
 refs:
@@ -37,6 +38,21 @@ Query only what the question needs:
 | Return eligibility | `orders`, `order_items`, delivery context |
 | Rx / vision issues | `order_items` (`prescription`, `lens_type`) + `remakes` (`reason`, `status`) |
 | Warranty / defect | `order_items` (`frame_sku`, `product_name`) + order age |
+
+**Foreign-key chain (critical).** `refunds.order_id`, `remakes.order_id`, and
+`order_items.order_id` all reference the numeric `orders.id` — NOT the
+customer-facing `orders.order_number` (e.g. id `103` vs order_number `'1003'`).
+Resolve the order first, then join on `orders.id`. Refund lookup recipe:
+
+```sql
+SELECT r.amount, r.reason, r.refund_date
+FROM refunds r
+JOIN orders o ON o.id = r.order_id
+JOIN customers c ON c.id = o.customer_id
+WHERE c.email = '<email>' AND o.order_number = '<order_number>';
+```
+
+Filtering `refunds` directly by the order_number string returns zero rows — always go through `orders.id`.
 
 Never expose full payment identifiers. Summarize amounts and dates only.
 

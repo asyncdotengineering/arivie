@@ -32,7 +32,7 @@ DATABASE_URL=postgresql://localhost:5432/arivie_eyewear \
   pnpm --filter @arivie/example-eyewear-customer-care db:seed
 ```
 
-`OPENAI_API_KEY` is optional. Without it, the smoke script and config fall back to a deterministic mock model.
+`OPENAI_API_KEY` is required to run a live draft. Without it the smoke script prints a notice and exits 0 (it does not draft) — a draft-assist agent needs a real model to compose grounded replies.
 
 ## Run
 

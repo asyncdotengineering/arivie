@@ -1,5 +1,6 @@
 ---
 type: reference
+usage_mode: always
 title: Store voice and tone
 description: Reply tone for Lens & Luxe customer care — warm, concise, owns the issue; no medical Rx advice.
 refs:
