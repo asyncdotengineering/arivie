@@ -4,5 +4,5 @@ import base from "../../tsup.base.ts";
 
 export default defineConfig({
   ...base,
-  entry: ["src/index.ts", "src/next.ts", "src/stdio.ts"],
+  entry: ["src/index.ts", "src/next.ts", "src/stdio.ts", "src/mcp-stdio.ts"],
 });

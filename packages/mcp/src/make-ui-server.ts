@@ -44,6 +44,14 @@ export interface MakeMcpUiServerOptions extends McpOptions {
 export async function makeMcpUiServer(
   opts: MakeMcpUiServerOptions,
 ): Promise<CreateMcpAppReturn> {
+  // The UI server is the fully-wired surface; the zero-config discovery server
+  // (makeMcpServer / `npx @arivie/mcp`) is where agent/db/semantic are optional.
+  if (!opts.agent || !opts.db || !opts.semantic) {
+    throw new Error(
+      "makeMcpUiServer requires agent, db, and semantic. Use makeMcpServer for the zero-config server.",
+    );
+  }
+  const { agent, db, semantic } = opts;
   const html = opts.html ?? DEFAULT_UI_SHELL_HTML;
 
   const server = await createMcpApp({
@@ -84,7 +92,7 @@ export async function makeMcpUiServer(
       },
     },
     async ({ prompt }: { prompt: string }) => {
-      const result = await opts.agent.generate(prompt);
+      const result = await agent.generate(prompt);
       const text =
         result != null && typeof result === "object" && "text" in result
           ? String((result as { text: unknown }).text)
@@ -109,7 +117,7 @@ export async function makeMcpUiServer(
       const trimmed = sql.trim();
       validateExecuteSql(trimmed);
       const start = Date.now();
-      const result = await opts.db.execute({
+      const result = await db.execute({
         query: trimmed,
         runAsRole: "arivie_reader",
         userId: "mcp",
@@ -151,8 +159,8 @@ export async function makeMcpUiServer(
         {
           type: "text" as const,
           text: JSON.stringify({
-            catalog: opts.semantic.catalog,
-            entities: [...opts.semantic.entities.values()],
+            catalog: semantic.catalog,
+            entities: [...semantic.entities.values()],
           }),
         },
       ],

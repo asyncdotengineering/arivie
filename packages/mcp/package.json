@@ -3,10 +3,13 @@
   "version": "3.0.0",
   "private": false,
   "type": "module",
-  "description": "Arivie Mastra MCP server — ask, query, schema, and memory tools over MCPServer.",
+  "description": "Arivie Mastra MCP server — ask, query, schema, and memory tools plus analytics prompts and semantic-layer resources over MCPServer. Run zero-config with `npx -y @arivie/mcp`.",
   "license": "Apache-2.0",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "bin": {
+    "arivie-mcp": "./dist/mcp-stdio.js"
+  },
   "exports": {
     ".": {
       "import": "./dist/index.js",
