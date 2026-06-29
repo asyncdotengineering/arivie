@@ -1,0 +1,21 @@
+{
+  "name": "@arivie/example-eyewear-customer-care",
+  "version": "3.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "db:seed": "psql \"${DATABASE_URL:-postgresql://localhost:5432/arivie_eyewear}\" -f db/seed.sql",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@ai-sdk/openai": "^3.0.64",
+    "@arivie/core": "workspace:*",
+    "@arivie/plugin-analytics": "workspace:*",
+    "@arivie/plugin-postgres": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsx": "^4.20.5",
+    "typescript": "^6.0.0"
+  }
+}

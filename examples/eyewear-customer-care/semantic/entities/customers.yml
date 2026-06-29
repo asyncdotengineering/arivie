@@ -1,0 +1,36 @@
+name: customers
+description: |
+  Eyewear shoppers. One row per customer. Join to orders for order history and
+  care lookups by email. PII — use only what is needed to draft a reply.
+
+grain: one row per customer
+primary_key: id
+
+measures:
+  - name: customer_count
+    description: Number of customers in the result set.
+    sql: "COUNT(*)"
+
+dimensions:
+  - name: id
+    sql: id
+    type: numeric
+
+  - name: email
+    sql: email
+    type: text
+    description: Primary lookup key for customer-care drafts.
+
+  - name: name
+    sql: name
+    type: text
+    description: Display name for salutations in draft replies.
+
+joins:
+  - to: orders
+    on: "customers.id = orders.customer_id"
+    type: one_to_many
+
+example_questions:
+  - "Find orders for jane@example.com"
+  - "How many customers placed orders last month?"

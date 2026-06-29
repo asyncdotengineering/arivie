@@ -1,0 +1,50 @@
+name: remakes
+description: |
+  Prescription eyewear remake (redo) requests. Triggered when Rx was wrong, frames broke,
+  or fit could not be corrected. Separate from cash refunds — a remake may ship at no charge
+  while the original order stays completed.
+
+grain: one row per remake request
+primary_key: id
+
+measures:
+  - name: remake_count
+    description: Number of remake requests.
+    sql: "COUNT(*)"
+
+  - name: open_remake_count
+    description: Remakes not yet completed or shipped.
+    sql: "COUNT(*) FILTER (WHERE status NOT IN ('completed', 'shipped'))"
+
+dimensions:
+  - name: id
+    sql: id
+    type: numeric
+
+  - name: order_id
+    sql: order_id
+    type: numeric
+
+  - name: reason
+    sql: reason
+    values: [wrong_prescription, breakage, fit_issue, lens_defect, frame_defect]
+    description: Why the customer needs a redo.
+
+  - name: status
+    sql: status
+    values: [pending, in_production, shipped, completed, cancelled]
+    description: Fulfillment state of the remake job.
+
+  - name: created_at
+    sql: created_at
+    type: timestamp
+    description: When the remake was requested.
+
+joins:
+  - to: orders
+    on: "remakes.order_id = orders.id"
+    type: many_to_one
+
+example_questions:
+  - "Does order 1002 have an open remake?"
+  - "How many breakage remakes were filed this month?"

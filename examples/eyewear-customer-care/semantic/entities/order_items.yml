@@ -1,0 +1,93 @@
+name: order_items
+description: |
+  Eyewear line items — frame SKU, lens type, and per-eye prescription (sphere, cylinder, axis).
+  One row per frame+lens configuration on an order. Use for Rx verification and remake triage.
+
+grain: one row per order line item
+primary_key: id
+
+measures:
+  - name: units_sold
+    description: Total frames/lens units across lines.
+    sql: "SUM(quantity)"
+
+  - name: line_revenue
+    description: Sum of line prices before order-level tax and shipping.
+    sql: "SUM(price * quantity)"
+
+dimensions:
+  - name: id
+    sql: id
+    type: numeric
+
+  - name: order_id
+    sql: order_id
+    type: numeric
+
+  - name: product_name
+    sql: product_name
+    type: text
+    description: Merchandised product title (frame + lens bundle).
+
+  - name: frame_sku
+    sql: frame_sku
+    type: text
+    description: Frame catalog SKU (e.g. LL-AVI-52-BLK).
+
+  - name: lens_type
+    sql: lens_type
+    values: [single_vision, progressive, blue_light, polarized, readers]
+    description: Lens product category on the line.
+
+  - name: rx_sphere_od
+    sql: rx_sphere_od
+    type: numeric
+    description: Right eye sphere (diopters).
+
+  - name: rx_cylinder_od
+    sql: rx_cylinder_od
+    type: numeric
+    description: Right eye cylinder (diopters).
+
+  - name: rx_axis_od
+    sql: rx_axis_od
+    type: numeric
+    description: Right eye axis (degrees).
+
+  - name: rx_sphere_os
+    sql: rx_sphere_os
+    type: numeric
+    description: Left eye sphere (diopters).
+
+  - name: rx_cylinder_os
+    sql: rx_cylinder_os
+    type: numeric
+    description: Left eye cylinder (diopters).
+
+  - name: rx_axis_os
+    sql: rx_axis_os
+    type: numeric
+    description: Left eye axis (degrees).
+
+  - name: prescription
+    sql: prescription
+    type: text
+    description: Full Rx JSON snapshot as submitted at checkout (jsonb column).
+
+  - name: quantity
+    sql: quantity
+    type: numeric
+
+  - name: price
+    sql: price
+    type: numeric
+    description: Unit line price in dollars.
+
+joins:
+  - to: orders
+    on: "order_items.order_id = orders.id"
+    type: many_to_one
+
+example_questions:
+  - "What lens type did order 1001 include?"
+  - "Show the Rx for jane@example.com's latest order"

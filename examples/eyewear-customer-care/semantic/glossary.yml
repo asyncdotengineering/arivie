@@ -1,0 +1,23 @@
+terms:
+  - term: refund
+    status: ambiguous
+    definition: >
+      Could mean a cash refund posted to the original payment method (refunds table),
+      a store-credit voucher kept on the account, or a partial line-item adjustment.
+      Ask which the customer or agent means before querying.
+    entities: [orders, refunds]
+
+  - term: store credit
+    status: ambiguous
+    definition: >
+      Could mean an issued voucher not yet redeemed, a credit applied on a replacement order,
+      or language the customer uses for any non-cash return. Distinct from refunds.amount —
+      confirm whether they want cash refunds or account credit.
+    entities: [orders, refunds]
+
+  - term: net revenue
+    status: defined
+    definition: >
+      Order total minus tax and shipping for statuses other than pending, cancelled, or failed.
+      Returns are subtracted separately from refunds, bucketed by refund_date (ADR 0005).
+    entities: [orders, refunds]

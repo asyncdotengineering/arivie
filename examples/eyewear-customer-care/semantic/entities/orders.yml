@@ -1,0 +1,102 @@
+name: orders
+description: |
+  DTC eyewear order headers. One row per order.
+  Net revenue follows ADR 0005 / Lens & Luxe: total − tax − shipping for all statuses
+  except pending, cancelled, and failed. Refunds are tracked separately in refunds,
+  bucketed by refund_date — subtract them when reporting period net, not via order status alone.
+
+grain: one row per order
+primary_key: id
+
+measures:
+  - name: net_revenue
+    description: Sum of (total − tax − shipping) for included statuses. Excludes pending/cancelled/failed.
+    sql: "SUM(total - tax - shipping) FILTER (WHERE status NOT IN ('pending', 'cancelled', 'failed'))"
+
+  - name: order_count
+    description: Count of orders excluding pending, cancelled, and failed.
+    sql: "COUNT(*) FILTER (WHERE status NOT IN ('pending', 'cancelled', 'failed'))"
+
+  - name: gross_order_total
+    description: Raw order total including tax and shipping. Use only for top-line trends.
+    sql: "SUM(total)"
+
+  - name: refund_amount
+    description: Cash refunds linked to orders in scope. Source refunds.amount; bucket by refunds.refund_date for period reporting.
+    sql: "SUM((SELECT COALESCE(SUM(r.amount), 0) FROM refunds r WHERE r.order_id = orders.id))"
+
+dimensions:
+  - name: id
+    sql: id
+    type: numeric
+
+  - name: order_number
+    sql: order_number
+    type: text
+    description: Customer-facing order number (e.g. 1003).
+
+  - name: customer_id
+    sql: customer_id
+    type: numeric
+
+  - name: status
+    sql: status
+    values: [completed, processing, refunded, pending, cancelled, failed]
+    description: WooCommerce-aligned lifecycle. Refunded orders retain their row for audit.
+
+  - name: channel
+    sql: channel
+    values: [web, retail, phone, instagram]
+    description: Where the order originated.
+
+  - name: created_at
+    sql: created_at
+    type: timestamp
+    description: Order placement time (UTC). Bucket in America/Chicago for brand reporting.
+
+  - name: total
+    sql: total
+    type: numeric
+
+  - name: tax
+    sql: tax
+    type: numeric
+
+  - name: shipping
+    sql: shipping
+    type: numeric
+
+segments:
+  - name: included_statuses
+    sql: "status NOT IN ('pending', 'cancelled', 'failed')"
+    description: Orders that count toward net revenue per ADR 0005.
+
+  - name: refunded_orders
+    sql: "status = 'refunded'"
+    description: Orders marked refunded in the storefront.
+
+  - name: last_30_days
+    sql: "created_at >= CURRENT_DATE - INTERVAL '30 days'"
+
+joins:
+  - to: customers
+    on: "orders.customer_id = customers.id"
+    type: many_to_one
+  - to: order_items
+    on: "orders.id = order_items.order_id"
+    type: one_to_many
+  - to: refunds
+    on: "orders.id = refunds.order_id"
+    type: one_to_many
+  - to: remakes
+    on: "orders.id = remakes.order_id"
+    type: one_to_many
+
+hints:
+  - "Subtract refunds by refund_date from period net_revenue; do not rely on order status alone for returns dollars."
+  - "Join customers on email when the care agent provides jane@example.com instead of an order id."
+
+example_questions:
+  - "What is net revenue this month?"
+  - "Show order 1003 for jane@example.com"
+  - "How many web orders are still processing?"

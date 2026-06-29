@@ -1,0 +1,53 @@
+name: refunds
+description: |
+  Cash refunds posted against eyewear orders. Bucket by refund_date for period reporting
+  (ADR 0005). Distinct from store-credit vouchers — see glossary for refund vs store credit.
+
+grain: one row per refund
+primary_key: id
+
+measures:
+  - name: refund_amount
+    description: Sum of cash refund dollars in the result set.
+    sql: "SUM(amount)"
+
+  - name: refund_count
+    description: Number of refund transactions.
+    sql: "COUNT(*)"
+
+dimensions:
+  - name: id
+    sql: id
+    type: numeric
+
+  - name: order_id
+    sql: order_id
+    type: numeric
+
+  - name: amount
+    sql: amount
+    type: numeric
+    description: Refund amount in dollars (positive values).
+
+  - name: reason
+    sql: reason
+    values: [damaged_in_transit, wrong_frame, rx_not_tolerated, changed_mind, duplicate_charge]
+    description: Agent-selected or customer-stated refund reason.
+
+  - name: refund_date
+    sql: refund_date
+    type: date
+    description: Date the refund settled — use for period bucketing, not order created_at.
+
+joins:
+  - to: orders
+    on: "refunds.order_id = orders.id"
+    type: many_to_one
+
+hints:
+  - "Bucket refunds by refund_date when adjusting period net revenue."
+  - "Store-credit vouchers are not in this table — ask the agent if the customer means account credit."
+
+example_questions:
+  - "How much did we refund last week?"
+  - "Why was order 1003 refunded?"
