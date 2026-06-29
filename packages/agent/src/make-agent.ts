@@ -23,7 +23,7 @@ import { z } from "zod";
 import { getCurrentUserContext } from "@arivie/core/context";
 
 import { assertToolShape, type AssertToolShapeConfig } from "./contract-invariants.js";
-import { buildSystemPrompt, type ContextMode, type SkillsMode } from "./prompt.js";
+import { buildSystemPrompt, type SkillsMode } from "./prompt.js";
 import { compileMetricFor } from "./tools/compile-metric.js";
 import {
   finalizeReportStopWhen,
@@ -36,7 +36,6 @@ export interface MakeAgentOptions {
   ownerId: string;
   model: LanguageModel;
   semantic: SemanticLayer;
-  contextMode: ContextMode;
   sources: Record<string, SourceAdapter<unknown>>;
   /**
    * Per-source metadata (description + optional useWhen) rendered into

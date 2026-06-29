@@ -65,7 +65,7 @@ describe("execute_mock (MCP-backed execute_<source>)", () => {
       ownerId: "owner-1",
       model: stubModel,
       semantic: emptySemantic(),
-      contextMode: "preload",
+
       sources: { mock: adapter },
       workspace,
       limits: {},

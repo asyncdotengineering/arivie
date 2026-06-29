@@ -7,8 +7,6 @@ import type {
 
 export { temporalGrounding } from "@arivie/core";
 
-export type ContextMode = "preload" | "indexed";
-
 /**
  * How skills are presented to the agent:
  * - `"none"`: no skills attached.
