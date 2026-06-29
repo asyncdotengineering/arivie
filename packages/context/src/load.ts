@@ -61,6 +61,23 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
+function synthesizeCatalog(documents: readonly ContextDocument[]): string {
+  const lines = documents
+    .filter((document) => document.kind === "knowledge")
+    .sort((a, b) => a.id.localeCompare(b.id))
+    .map((document) => {
+      const type = document.type ?? "knowledge";
+      const description =
+        readStringField(document.frontmatter, "description") ??
+        readStringField(document.frontmatter, "title") ??
+        "";
+      return description.length > 0
+        ? `- [${type}] ${document.id} — ${description}`
+        : `- [${type}] ${document.id}`;
+    });
+  return lines.join("\n");
+}
+
 async function loadKnowledgeDocument(
   config: ContextLayerConfig,
   filePath: string,
@@ -201,11 +218,18 @@ export async function loadContextLayer(
   const documents: ContextDocument[] = [];
   const schemas = config.schemas ?? [];
   const filePaths = walkContextFiles(config.root);
+  let catalogFromIndex: string | undefined;
 
   for (const filePath of filePaths) {
     const absolutePath = join(config.root, filePath);
     const raw = readFileSync(absolutePath);
     const ext = extname(filePath).toLowerCase();
+
+    if (filePath === "index.md") {
+      const { body } = parseMarkdownFrontmatter(raw.toString("utf8"));
+      catalogFromIndex = body;
+      continue;
+    }
 
     let document: ContextDocument | undefined;
     if (ext === ".md" || ext === ".markdown") {
@@ -237,5 +261,7 @@ export async function loadContextLayer(
 
   issues.push(...validateOrphanedRefs(documents));
 
-  return { documents, issues };
+  const catalog = catalogFromIndex ?? synthesizeCatalog(documents);
+
+  return { documents, issues, catalog };
 }

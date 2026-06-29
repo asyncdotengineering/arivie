@@ -40,6 +40,7 @@ export interface ContextValidationIssue {
 export interface ContextLayerLoadResult {
   documents: ContextDocument[];
   issues: ContextValidationIssue[];
+  catalog: string;
 }
 
 export interface ContextLayer {
@@ -47,16 +48,19 @@ export interface ContextLayer {
   load(): Promise<ContextLayerLoadResult>;
   get(id: string): ContextDocument | undefined;
   all(): ContextDocument[];
+  index(): string;
 }
 
 export function defineContextLayer(config: ContextLayerConfig): ContextLayer {
   let loadedDocuments: ContextDocument[] = [];
+  let loadedCatalog = "";
 
   return {
     config,
     async load() {
       const result = await loadContextLayer(config);
       loadedDocuments = result.documents;
+      loadedCatalog = result.catalog;
       return result;
     },
     get(id: string) {
@@ -64,6 +68,9 @@ export function defineContextLayer(config: ContextLayerConfig): ContextLayer {
     },
     all() {
       return [...loadedDocuments];
+    },
+    index() {
+      return loadedCatalog;
     },
   };
 }

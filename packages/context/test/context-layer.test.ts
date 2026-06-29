@@ -203,6 +203,86 @@ schema: docs.page
     expect(layer.get("custom-type-doc")).toMatchObject({ type: "ontology" });
   });
 
+  it("uses index.md body as catalog when present and does not load it as a concept", async () => {
+    const root = mkdtempSync(join(tmpdir(), "arivie-context-"));
+    writeFixture(
+      root,
+      "index.md",
+      `---
+title: Knowledge catalog
+---
+# Catalog
+
+- [playbook] return-policy — Store return rules
+`,
+    );
+    writeFixture(
+      root,
+      "concepts/returns.md",
+      `---
+id: return-policy
+type: playbook
+schema: docs.page
+description: Store return rules
+---
+# Returns
+`,
+    );
+
+    const layer = defineContextLayer({
+      root,
+      schemas: [knowledgeSchema],
+    });
+
+    const result = await layer.load();
+
+    expect(result.issues.filter((issue) => issue.severity === "error")).toEqual([]);
+    expect(layer.all()).toHaveLength(1);
+    expect(layer.get("return-policy")).toBeDefined();
+    expect(layer.index()).toBe(`# Catalog
+
+- [playbook] return-policy — Store return rules
+`);
+    expect(result.catalog).toBe(layer.index());
+  });
+
+  it("synthesizes catalog from concepts when index.md is absent", async () => {
+    const root = mkdtempSync(join(tmpdir(), "arivie-context-"));
+    writeFixture(
+      root,
+      "concepts/beta.md",
+      `---
+id: beta-doc
+type: reference
+schema: docs.page
+description: Second concept
+---
+`,
+    );
+    writeFixture(
+      root,
+      "concepts/alpha.md",
+      `---
+id: alpha-doc
+type: playbook
+schema: docs.page
+title: Alpha title
+---
+`,
+    );
+
+    const layer = defineContextLayer({
+      root,
+      schemas: [knowledgeSchema],
+    });
+
+    await layer.load();
+
+    expect(layer.index()).toBe(
+      "- [playbook] alpha-doc — Alpha title\n- [reference] beta-doc — Second concept",
+    );
+  });
+
   it("reports orphaned references", async () => {
     const root = mkdtempSync(join(tmpdir(), "arivie-context-"));
     writeFixture(
