@@ -1,5 +1,8 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-import { describe, expect, it } from "vitest";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { describe, expect, it, vi } from "vitest";
 import { MockLanguageModelV3, simulateReadableStream } from "ai/test";
 import { InMemoryStore } from "@mastra/core/storage";
 import type { Processor } from "@mastra/core/processors";
@@ -266,5 +269,46 @@ describe("defineArivie — domain-neutral app builder", () => {
     const body = await res.text();
     expect(body).toContain("run.completed");
     await app.dispose();
+  });
+});
+
+describe("defineArivie — context delivery guard", () => {
+  async function appWithKnowledge(frontmatter: string): Promise<string[]> {
+    const dir = await mkdtemp(join(tmpdir(), "arivie-ctx-"));
+    await writeFile(join(dir, "policy.md"), `${frontmatter}\nPolicy body.\n`);
+    const warnings: string[] = [];
+    const warnSpy = vi
+      .spyOn(console, "warn")
+      .mockImplementation((msg: unknown) => {
+        warnings.push(String(msg));
+      });
+    const app = await defineArivie({
+      app: { id: "t", name: "T" },
+      model: stubModel("ok"),
+      storage: new InMemoryRuntimeStorage(),
+      memory: new InMemoryStore(),
+      context: { root: dir },
+      plugins: [demoPlugin()],
+      agents: { helper: defineAgent({ instructions: "Be brief.", capabilities: ["demo.help"] }) },
+      resolveUser: async () => ({ userId: "u1" }),
+    });
+    warnSpy.mockRestore();
+    await app.dispose();
+    await rm(dir, { recursive: true, force: true });
+    return warnings;
+  }
+
+  it("warns when knowledge is usage_mode auto but no retriever is configured", async () => {
+    const warnings = await appWithKnowledge("---\ntype: playbook\ntitle: P\ndescription: d\n---");
+    expect(
+      warnings.some((w) => w.includes('usage_mode "auto"') && w.includes("policy")),
+    ).toBe(true);
+  });
+
+  it("does not warn when knowledge is usage_mode always", async () => {
+    const warnings = await appWithKnowledge(
+      "---\ntype: playbook\nusage_mode: always\ntitle: P\ndescription: d\n---",
+    );
+    expect(warnings.some((w) => w.includes('usage_mode "auto"'))).toBe(false);
   });
 });

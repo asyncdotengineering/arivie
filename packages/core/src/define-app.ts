@@ -15,7 +15,11 @@ import type { RuntimeManifest } from "./manifest/types.js";
 import type { PluginInstance } from "./plugins/types.js";
 import type { Tool } from "@mastra/core/tools";
 import { assembleAgentContext } from "./runtime/assemble.js";
-import { loadAppContext, type LoadedContext } from "./runtime/context-layer.js";
+import {
+  loadAppContext,
+  usageModeOf,
+  type LoadedContext,
+} from "./runtime/context-layer.js";
 import type { ContextRetriever } from "./runtime/context-retriever.js";
 import { createMastraExecutor } from "./runtime/mastra-executor.js";
 import { wrapInstructionsForCache } from "./runtime/prompt-cache.js";
@@ -182,6 +186,27 @@ export async function defineArivie(config: ArivieAppConfig): Promise<ArivieApp> 
   if (retriever !== undefined && loadedContext !== undefined) {
     await retriever.index?.(loadedContext.documents);
     contextTools = retriever.tools();
+  }
+
+  // DX guard: knowledge concepts default to usage_mode "auto", which is ONLY
+  // reachable through a ContextRetriever. With no retriever configured, auto
+  // concepts load but never reach any agent — a silent no-op that surfaces as a
+  // wrong answer in production rather than a config error. Warn at build time.
+  if (retriever === undefined && loadedContext !== undefined) {
+    const undeliverable = loadedContext.documents.filter(
+      (doc) => doc.kind === "knowledge" && usageModeOf(doc) === "auto",
+    );
+    if (undeliverable.length > 0) {
+      const shown = undeliverable.slice(0, 5).map((doc) => doc.id).join(", ");
+      const more =
+        undeliverable.length > 5 ? `, +${undeliverable.length - 5} more` : "";
+      console.warn(
+        `[arivie] ${undeliverable.length} knowledge concept(s) have usage_mode "auto" ` +
+          `but no context.retriever is configured — they are loaded but will NOT reach any agent ` +
+          `(${shown}${more}). Fix: configure context.retriever, or set "usage_mode: always" in the ` +
+          `concept frontmatter to inject them into every agent.`,
+      );
+    }
   }
 
   const mastraAgents: Record<string, Agent> = {};
