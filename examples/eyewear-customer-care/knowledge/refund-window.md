@@ -2,6 +2,11 @@
 type: playbook
 title: Refund window and issuance
 description: Cash refund eligibility, store-credit alternative, and settlement timing for Lens & Luxe orders.
+refs:
+  - semantic:refunds
+  - semantic:orders.refund_amount
+  - semantic:refunds.refund_amount
+  - semantic:refunds.refund_date
 ---
 # Refund window and issuance
 

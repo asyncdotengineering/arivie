@@ -2,6 +2,12 @@
 type: reference
 title: Care definitions glossary
 description: Canonical Lens & Luxe definitions for refund, store credit, remake, defective, and buyer's remorse — resolves ambiguous glossary terms.
+refs:
+  - semantic:refunds
+  - semantic:refunds.amount
+  - semantic:remakes
+  - semantic:orders
+  - semantic:orders.net_revenue
 ---
 # Care definitions glossary
 

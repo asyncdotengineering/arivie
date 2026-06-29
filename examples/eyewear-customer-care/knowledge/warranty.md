@@ -2,6 +2,11 @@
 type: playbook
 title: Frame and lens warranty
 description: Lens & Luxe warranty coverage for frames and lenses, claim steps, and when to route to remakes instead.
+refs:
+  - semantic:order_items
+  - semantic:order_items.frame_sku
+  - semantic:order_items.lens_type
+  - semantic:remakes
 ---
 # Frame and lens warranty
 

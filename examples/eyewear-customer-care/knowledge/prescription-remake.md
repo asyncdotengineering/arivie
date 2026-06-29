@@ -2,6 +2,11 @@
 type: playbook
 title: Prescription remake policy
 description: Rx redo eligibility — wrong prescription, adaptation, breakage — and how to verify the order Rx before filing a remake.
+refs:
+  - semantic:remakes
+  - semantic:remakes.open_remake_count
+  - semantic:order_items.lens_type
+  - semantic:order_items.prescription
 ---
 # Prescription remake policy
 
