@@ -1,5 +1,5 @@
 {
-  "comment": "Measured from pre-refactor ref f0084fb in deterministic mock mode over all 12 golden probes.",
+  "comment": "Measured from pre-refactor ref f0084fb in deterministic mock mode over all 12 golden probes. Token estimator: ceil(promptText.length / 4) where promptText is the full system prompt including inline entity YAML (semanticLayerSection → formatEntity, available at f0084fb but removed in B1 refactor). To regenerate: git checkout f0084fb && npx tsx scripts/measure-preload-baseline.ts && git checkout -. Script documents the full reconstruction procedure.",
   "ref": "f0084fb",
   "mode": "preload",
   "model": "eval-mock",
