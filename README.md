@@ -11,6 +11,7 @@
 [![Status: alpha](https://img.shields.io/badge/status-alpha-fb923c)](#status)
 [![Node ≥20](https://img.shields.io/badge/node-%E2%89%A520-339933?logo=node.js&logoColor=white)](https://nodejs.org)
 [![Wraps Mastra 1.45](https://img.shields.io/badge/wraps-mastra%201.45-fb923c)](https://mastra.ai)
+[![MCP Badge](https://lobehub.com/badge/mcp/asyncdotengineering-arivie)](https://lobehub.com/mcp/asyncdotengineering-arivie)
 
 </div>
 
@@ -19,6 +20,16 @@
 Arivie wraps **Mastra** (agent runtime, memory, model, streaming, tools, MCP) and adds the **durable, pluggable application layer** a generic agent toolkit deliberately omits: a plugin SDK, durable sessions/runs/events, a webhook dispatch queue, a file-backed context layer, and first-class diagnostics. **Analytics** — text-to-SQL on a governed semantic layer — is the first-party flagship **plugin**, not the framework itself.
 
 > Not sure where Arivie ends and Mastra begins? See [docs/adr/0002 — Arivie vs Mastra ownership](./docs/adr/0002-arivie-vs-mastra-ownership.md). One rule: **never rebuild a Mastra leaf** (agents, memory, model, streaming, guardrails, workflows); spend Arivie's code only on the durable/plugin spine.
+
+## Run as an MCP server (zero-config)
+
+Arivie ships a Model Context Protocol server. Point any MCP client (Claude Desktop, Cursor, ChatGPT) at it, or run it standalone — no configuration required:
+
+```bash
+npx -y @arivie/mcp
+```
+
+It exposes the `ask`, `query`, `schema`, and `memory` tools plus analytics **prompts** and semantic-layer **resources**. Set `DATABASE_URL` to query a real database and `ARIVIE_SEMANTIC_PATH` to load your own semantic layer; without them it serves a built-in sample so the server is explorable immediately. Build a fully-wired server in code with `makeMcpServer({ agent, semantic, db })` from `@arivie/mcp`.
 
 ## Streamed answer in one command
 

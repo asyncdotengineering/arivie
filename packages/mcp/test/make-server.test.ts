@@ -294,3 +294,45 @@ describe("makeMcpServer", () => {
     expect(result.note).toContain("Sprint 5");
   });
 });
+
+describe("makeMcpServer — zero-config (npx @arivie/mcp / registry validation)", () => {
+  it("boots with no options and lists the four tools (no ask_arivie without an agent)", () => {
+    const server = makeMcpServer();
+    expect(server).toBeInstanceOf(MCPServer);
+    expect(Object.keys(server.tools()).sort()).toEqual(
+      ["ask", "memory", "query", "schema"].sort(),
+    );
+  });
+
+  it("schema returns the built-in sample semantic layer", async () => {
+    const server = makeMcpServer();
+    const result = await server.executeTool("schema", {});
+    expect(result.entities.map((e: { name: string }) => e.name).sort()).toEqual([
+      "customers",
+      "orders",
+    ]);
+  });
+
+  it("lists resources for the catalog and each entity", async () => {
+    const server = makeMcpServer();
+    const { resources } = await server.listResources();
+    const uris = resources.map((r) => r.uri);
+    expect(uris).toContain("arivie://semantic/catalog");
+    expect(uris).toContain("arivie://semantic/entity/orders");
+    expect(uris.length).toBeGreaterThanOrEqual(3);
+  });
+
+  it("query without a db returns an actionable not-configured error", async () => {
+    const server = makeMcpServer();
+    await expect(server.executeTool("query", { sql: "SELECT 1" })).rejects.toThrow(
+      /not configured|DATABASE_URL/,
+    );
+  });
+
+  it("ask without an agent returns an actionable not-configured error", async () => {
+    const server = makeMcpServer();
+    await expect(server.executeTool("ask", { prompt: "hi" })).rejects.toThrow(
+      /not configured|OPENAI_API_KEY/,
+    );
+  });
+});
