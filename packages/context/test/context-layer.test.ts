@@ -124,6 +124,85 @@ city: Austin
     });
   });
 
+  it("populates type from frontmatter with playbook and reference first-class", async () => {
+    const root = mkdtempSync(join(tmpdir(), "arivie-context-"));
+    writeFixture(
+      root,
+      "concepts/returns.md",
+      `---
+id: return-policy
+type: playbook
+schema: docs.page
+---
+# Return policy
+`,
+    );
+    writeFixture(
+      root,
+      "concepts/refund.md",
+      `---
+id: refund-window
+type: reference
+schema: docs.page
+---
+# Refund window
+`,
+    );
+    writeFixture(
+      root,
+      "concepts/default.md",
+      `---
+id: default-knowledge
+schema: docs.page
+---
+# Default type
+`,
+    );
+
+    const layer = defineContextLayer({
+      root,
+      schemas: [knowledgeSchema],
+    });
+
+    const result = await layer.load();
+
+    expect(result.issues.filter((issue) => issue.severity === "error")).toEqual([]);
+    expect(layer.get("return-policy")).toMatchObject({ type: "playbook" });
+    expect(layer.get("refund-window")).toMatchObject({ type: "reference" });
+    expect(layer.get("default-knowledge")).toMatchObject({ type: "knowledge" });
+  });
+
+  it("warns on unknown type without rejecting the document", async () => {
+    const root = mkdtempSync(join(tmpdir(), "arivie-context-"));
+    writeFixture(
+      root,
+      "concepts/custom.md",
+      `---
+id: custom-type-doc
+type: ontology
+schema: docs.page
+---
+# Custom
+`,
+    );
+
+    const layer = defineContextLayer({
+      root,
+      schemas: [knowledgeSchema],
+    });
+
+    const result = await layer.load();
+
+    expect(result.issues.filter((issue) => issue.severity === "error")).toEqual([]);
+    const warning = result.issues.find(
+      (issue) =>
+        issue.severity === "warning" &&
+        issue.message === 'unknown context type "ontology"',
+    );
+    expect(warning).toMatchObject({ path: "concepts/custom.md" });
+    expect(layer.get("custom-type-doc")).toMatchObject({ type: "ontology" });
+  });
+
   it("reports orphaned references", async () => {
     const root = mkdtempSync(join(tmpdir(), "arivie-context-"));
     writeFixture(

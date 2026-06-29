@@ -19,6 +19,7 @@ import {
 } from "./validate.js";
 
 const CONTEXT_EXTENSIONS = new Set([".md", ".markdown", ".yml", ".yaml"]);
+const KNOWN_CONTEXT_TYPES = new Set(["knowledge", "playbook", "reference"]);
 
 function normalizePath(path: string): string {
   return path.split("\\").join("/");
@@ -80,12 +81,22 @@ async function loadKnowledgeDocument(
   }
 
   const id = readStringField(frontmatter, "id") ?? pathWithoutExtension(filePath);
+  const type = readStringField(frontmatter, "type") ?? "knowledge";
   const refs = readStringArrayField(frontmatter, "refs");
   const validation: "passed" | "failed" = "passed";
+
+  if (!KNOWN_CONTEXT_TYPES.has(type)) {
+    issues.push({
+      severity: "warning",
+      message: `unknown context type "${type}"`,
+      path: filePath,
+    });
+  }
 
   const document: ContextDocument = {
     id,
     kind: "knowledge",
+    type,
     schema: schemaResolution.schemaId,
     path: filePath,
     frontmatter,

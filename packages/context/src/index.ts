@@ -20,6 +20,7 @@ export interface ContextLayerConfig {
 export interface ContextDocument {
   id: string;
   kind: "knowledge" | "executable";
+  type?: string;
   schema: string;
   path: string;
   frontmatter: Record<string, unknown>;
