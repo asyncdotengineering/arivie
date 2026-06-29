@@ -62,7 +62,7 @@ describe("makeAgent", () => {
       ownerId: "owner-1",
       model: stubModel,
       semantic: emptySemantic(),
-      contextMode: "preload",
+
       sources: { postgres: mockDb() },
       workspace,
       limits: {},
@@ -91,7 +91,7 @@ describe("makeAgent", () => {
       ownerId: "owner-1",
       model: stubModel,
       semantic: emptySemantic(),
-      contextMode: "preload",
+
       sources: { postgres: mockDb() },
       workspace,
       compileMetric: true,
@@ -117,7 +117,7 @@ describe("makeAgent", () => {
       ownerId: "owner-1",
       model: stubModel,
       semantic: emptySemantic(),
-      contextMode: "preload",
+
       sources: {
         postgres: mockDb("postgres:main"),
         foo: mockDb("postgres:foo"),
@@ -147,7 +147,7 @@ describe("makeAgent", () => {
       ownerId: "owner-1",
       model: stubModel,
       semantic: emptySemantic(),
-      contextMode: "preload",
+
       sources: { postgres: mockDb() },
       workspace,
       limits: {},
@@ -173,7 +173,7 @@ describe("makeAgent", () => {
       ownerId: "owner-1",
       model: stubModel,
       semantic: emptySemantic(),
-      contextMode: "preload",
+
       sources: { postgres: mockDb() },
       workspace,
       limits: {},
@@ -203,7 +203,7 @@ describe("makeAgent", () => {
       ownerId: "owner-1",
       model: stubModel,
       semantic: emptySemantic(),
-      contextMode: "preload",
+
       sources: { postgres: mockDb() },
       workspace,
       bashTool,
@@ -225,7 +225,7 @@ describe("makeAgent", () => {
       ownerId: "owner-1",
       model: stubModel,
       semantic: emptySemantic(),
-      contextMode: "preload",
+
       sources: { postgres: mockDb() },
       workspace,
       limits: {},
@@ -245,7 +245,7 @@ describe("makeAgent", () => {
       ownerId: "owner-1",
       model: stubModel,
       semantic: emptySemantic(),
-      contextMode: "preload",
+
       sources: { postgres: mockDb() },
       workspace,
       limits: {},
@@ -265,7 +265,7 @@ describe("makeAgent", () => {
       ownerId: "owner-1",
       model: stubModel,
       semantic: emptySemantic(),
-      contextMode: "preload",
+
       sources: { postgres: mockDb() },
       workspace,
       skillsProcessor,

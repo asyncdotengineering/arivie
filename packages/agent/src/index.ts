@@ -28,6 +28,7 @@ export type {
 export {
   buildSystemPrompt,
   buildSystemPromptIndexed,
+  temporalGrounding,
   WORKSPACE_NAVIGATION_RULE,
   ASSUMPTION_STATING_RULE,
   SELF_CORRECTION_RULES,
@@ -37,10 +38,8 @@ export {
 export type {
   BuildSystemPromptIndexedOptions,
   BuildSystemPromptOptions,
-  ContextMode,
   SkillsMode,
 } from "./prompt.js";
-export { autoDetectMode } from "./auto-detect.js";
 export { crossSourceHashJoin } from "./cross-source.js";
 export type {
   CrossSourceHashJoinOptions,

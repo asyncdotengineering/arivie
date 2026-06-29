@@ -2,7 +2,17 @@
 import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { SourceAdapter } from "@arivie/core";
+import { Agent } from "@mastra/core/agent";
+import { InMemoryStore } from "@mastra/core/storage";
+import {
+  assembleAgentContext,
+  defineAgent,
+  defineArivie,
+  InMemoryRuntimeStorage,
+  type SourceAdapter,
+  wrapInstructionsForCache,
+} from "@arivie/core";
+import { MockLanguageModelV3 } from "ai/test";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { analytics, type AnalyticsPluginConfig } from "../src/index.js";
 
@@ -40,6 +50,10 @@ async function makeSemanticRoot(): Promise<string> {
   return root;
 }
 
+function stubModel(): MockLanguageModelV3 {
+  return new MockLanguageModelV3({ provider: "mock", modelId: "mock" });
+}
+
 function fakePostgresSource(): FakePostgresSource {
   return {
     kind: "postgres",
@@ -68,13 +82,38 @@ afterEach(async () => {
 });
 
 describe("@arivie/plugin-analytics", () => {
+  it("contributes a workspace rooted at semanticPath so mastra_workspace_list_files resolves against the semantic directory", async () => {
+    const semanticPath = await makeSemanticRoot();
+    const config: AnalyticsPluginConfig = {
+      semanticPath,
+      sources: { warehouse: fakePostgresSource() },
+    };
+
+    const { definition } = analytics(config);
+    const contribution = await definition.setup?.({
+      config,
+      app: { id: "t", name: "t" },
+      permissions: new Set(["analytics.sql.read"]),
+    });
+
+    expect(contribution?.workspace).toBeDefined();
+
+    // The workspace filesystem is rooted at semanticPath: listing the entities
+    // sub-directory returns the seeded orders.yml file — confirming that
+    // mastra_workspace_list_files (which calls workspace.filesystem.readdir)
+    // resolves against the semantic directory.
+    const entries = await contribution?.workspace?.filesystem.readdir("entities");
+    expect(entries).toEqual(
+      expect.arrayContaining([expect.objectContaining({ name: "orders.yml", type: "file" })]),
+    );
+  });
+
   it("declares analytics metadata and contributes tools plus instructions", async () => {
     const semanticPath = await makeSemanticRoot();
     const config: AnalyticsPluginConfig = {
       semanticPath,
       sources: { warehouse: fakePostgresSource() },
       compileMetric: true,
-      mode: "preload",
     };
 
     const { definition } = analytics(config);
@@ -105,5 +144,62 @@ describe("@arivie/plugin-analytics", () => {
     expect(contribution?.tools).toHaveProperty("compile_metric");
     expect(contribution?.instructions).toEqual(expect.any(String));
     expect(contribution?.instructions).not.toHaveLength(0);
+    expect(contribution?.instructions).toContain("## Semantic catalog");
+    expect(contribution?.instructions).toContain("## WORKSPACE_NAVIGATION_RULE");
+    expect(contribution?.instructions).toContain("mastra_workspace_read_file");
+    expect(contribution?.instructions).not.toContain("### Entity: orders");
+    expect(contribution?.instructions).not.toContain("Total order revenue");
+  });
+
+  it("defineArivie wires analytics workspace so mastra_workspace_list_files lists entities/orders.yml", async () => {
+    const semanticPath = await makeSemanticRoot();
+    const config: AnalyticsPluginConfig = {
+      semanticPath,
+      sources: { warehouse: fakePostgresSource() },
+    };
+    const agentDef = defineAgent({
+      instructions: "Answer from the semantic layer.",
+      capabilities: ["analytics.query"],
+    });
+    const model = stubModel();
+
+    const app = await defineArivie({
+      app: { id: "t", name: "t" },
+      model,
+      storage: new InMemoryRuntimeStorage(),
+      memory: new InMemoryStore(),
+      plugins: [analytics(config)],
+      agents: { analyst: agentDef },
+      resolveUser: async () => ({ userId: "u1", permissions: ["analytics.sql.read"] }),
+    });
+
+    const assembled = assembleAgentContext("analyst", agentDef, app.manifest, []);
+    expect(assembled.workspace).toBeDefined();
+
+    const analyticsWorkspace = app.manifest.workspaces.find((ref) => ref.pluginId === "analytics");
+    expect(analyticsWorkspace?.value).toBeDefined();
+
+    const agent = new Agent({
+      id: "analyst",
+      name: "analyst",
+      model,
+      instructions: wrapInstructionsForCache(assembled.instructions, model),
+      tools: assembled.tools,
+      workspace: assembled.workspace,
+    });
+
+    const tools = await agent.getToolsForExecution({});
+    expect(tools).toHaveProperty("mastra_workspace_list_files");
+
+    const listFiles = tools.mastra_workspace_list_files;
+    expect(listFiles.execute).toBeTypeOf("function");
+    const listing = await listFiles.execute(
+      { path: "./entities" },
+      { agentId: "analyst", runId: "test-run" },
+    );
+    expect(typeof listing).toBe("string");
+    expect(listing).toContain("orders.yml");
+
+    await app.dispose();
   });
 });

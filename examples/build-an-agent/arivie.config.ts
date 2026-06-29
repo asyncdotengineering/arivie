@@ -33,7 +33,6 @@ export const config: ArivieAppConfig = {
     // semantic layer, and metric compilation.
     analytics({
       semanticPath,
-      mode: "preload",
       compileMetric: true,
       sources: {
         // The agent's SQL runs as `arivie_reader` — read-only by construction.

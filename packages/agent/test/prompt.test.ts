@@ -9,6 +9,8 @@ import {
   buildSystemPrompt,
   buildSystemPromptIndexed,
   FINALIZE_REPORT_RULE,
+  governanceCoreSection,
+  temporalGrounding,
   SELF_CORRECTION_RULES,
   SKILL_DISCIPLINE_EAGER,
   SKILL_DISCIPLINE_ONDEMAND,
@@ -33,6 +35,84 @@ async function loadFixture(): Promise<SemanticLayer> {
 
 beforeAll(() => { vi.useFakeTimers(); vi.setSystemTime(new Date("2026-06-15T12:00:00Z")); });
 afterAll(() => { vi.useRealTimers(); });
+
+describe("governanceCoreSection", () => {
+  it("renders a byte-stable catalog, join skeleton, and glossary without entity detail", () => {
+    const semantic: SemanticLayer = {
+      catalog: {
+        entities: [
+          { name: "orders", description: "Orders.", keywords: ["sales"] },
+          { name: "customers", description: "Customers.", keywords: ["buyers"] },
+        ],
+        glossary: [
+          { term: "revenue", status: "ambiguous", definition: "Gross or net sales." },
+          { term: "AOV", status: "defined", definition: "Average order value." },
+        ],
+        generated_at: "2026-06-29T12:34:56.000Z",
+        source_files: ["entities/orders.yml", "entities/customers.yml"],
+      },
+      entities: new Map([
+        [
+          "orders",
+          {
+            name: "orders",
+            description: "Orders.",
+            grain: "one row per order",
+            primary_key: "id",
+            measures: [{ name: "revenue", description: "Revenue.", sql: "SUM(total)" }],
+            dimensions: [{ name: "status", sql: "status", type: "text", sample_values: ["paid"] }],
+            joins: [
+              { to: "customers", on: "orders.customer_id = customers.id" },
+              { to: "customers", on: "orders.billing_customer_id = customers.id" },
+            ],
+          } as Entity,
+        ],
+        [
+          "customers",
+          {
+            name: "customers",
+            description: "Customers.",
+            grain: "one row per customer",
+            primary_key: "id",
+          },
+        ],
+      ]),
+    };
+
+    const first = governanceCoreSection(semantic);
+    const second = governanceCoreSection(semantic);
+
+    expect(first).toBe(second);
+    expect(first).toContain("## Semantic catalog");
+    expect(first.indexOf("**customers**:")).toBeLessThan(first.indexOf("**orders**:"));
+    expect(first).toContain("- **customers** joins: none");
+    expect(first).toContain("- **orders** joins: customers");
+    expect(first).toContain("## Glossary");
+    expect(first).toContain("**AOV** — Average order value.");
+    expect(first).toContain("**revenue** — Gross or net sales.");
+    expect(first).not.toContain("2026-06-29");
+    expect(first).not.toContain("Measures:");
+    expect(first).not.toContain("Dimensions:");
+    expect(first).not.toContain("sample_values");
+    expect(first).not.toContain("SUM(total)");
+    expect(first).not.toContain("orders.customer_id = customers.id");
+  });
+
+  it("renders an empty catalog without throwing", () => {
+    const semantic: SemanticLayer = {
+      catalog: {
+        entities: [],
+        generated_at: "2026-06-29T12:34:56.000Z",
+        source_files: [],
+      },
+      entities: new Map(),
+    };
+
+    expect(governanceCoreSection(semantic)).toBe(
+      "## Semantic catalog\n\n### Catalog",
+    );
+  });
+});
 
 describe("buildSystemPromptIndexed", () => {
   it("includes WORKSPACE_NAVIGATION_RULE and per-source execute tools", () => {
@@ -75,7 +155,6 @@ describe("buildSystemPrompt", () => {
   it("embeds REQ-11 self-correction and REQ-12 assumption rule verbatim", async () => {
     const semantic = await loadFixture();
     const prompt = buildSystemPrompt({
-      mode: "indexed",
       semantic,
       compileMetricEnabled: false,
     });
@@ -89,88 +168,31 @@ describe("buildSystemPrompt", () => {
     expect(prompt).not.toContain("### explore");
   });
 
-  it("preload mode snapshot includes flattened semantic layer", async () => {
+  it("renders the governance core and navigation without entity detail", async () => {
     const semantic = await loadFixture();
     const prompt = buildSystemPrompt({
-      mode: "preload",
       semantic,
       compileMetricEnabled: false,
     });
 
     expect(prompt).toMatch(/^You are Arivie, a single-tenant data analytics agent/);
     expect(prompt).toContain("### Catalog");
-    expect(prompt).toContain("### Entity: customers");
-    expect(prompt).toContain("### Entity: orders");
-    expect(prompt).toContain("revenue");
-    expect(prompt).toContain("current_quarter");
-    // v0.1.x: preload mode now also enumerates workspace tools so the
-    // agent knows it can read skill references / grep semantic dir /
-    // write scratch files. The semantic layer is still flattened into
-    // the prompt (no NAVIGATION_RULE required for entity discovery).
+    expect(prompt).toContain("- **orders** joins: customers");
     expect(prompt).toContain("mastra_workspace_list_files");
     expect(prompt).toContain("mastra_workspace_read_file");
-    expect(prompt).toContain("mastra_workspace_grep");
-    expect(prompt).not.toContain(WORKSPACE_NAVIGATION_RULE);
-    expect(prompt).toMatchSnapshot();
-  });
-
-  it("indexed mode snapshot omits entity bodies and teaches workspace tools", async () => {
-    const semantic = await loadFixture();
-    const prompt = buildSystemPrompt({
-      mode: "indexed",
-      semantic,
-      compileMetricEnabled: false,
-    });
-
-    expect(prompt).toContain("mastra_workspace_list_files");
     expect(prompt).toContain(WORKSPACE_NAVIGATION_RULE);
+    expect(prompt).not.toContain("Generated: 2026-05-19");
     expect(prompt).not.toContain("### Entity: orders");
-    expect(prompt).not.toContain("### Catalog");
-    expect(prompt).toMatchSnapshot();
-  });
-
-  it("preload mode renders entity hints under ### Hints (entityName)", () => {
-    const semantic: SemanticLayer = {
-      catalog: {
-        entities: [
-          {
-            name: "foo",
-            description: "Fixture entity with hints.",
-            keywords: ["foo"],
-          },
-        ],
-        generated_at: "2026-05-20T00:00:00.000Z",
-        source_files: ["entities/foo.yml"],
-      },
-      entities: new Map([
-        [
-          "foo",
-          {
-            name: "foo",
-            description: "Fixture entity with hints.",
-            grain: "one row per foo",
-            primary_key: "id",
-            hints: ["Use X for Y.", "Z is always Q."],
-          },
-        ],
-      ]),
-    };
-
-    const prompt = buildSystemPrompt({
-      mode: "preload",
-      semantic,
-      compileMetricEnabled: false,
-    });
-
-    expect(prompt).toContain("### Hints (foo)");
-    expect(prompt).toContain("- Use X for Y.");
+    expect(prompt).not.toContain("Measures:");
+    expect(prompt).not.toContain("Dimensions:");
+    expect(prompt).not.toContain("current_quarter");
+    expect(prompt).not.toContain("Total revenue from completed orders");
     expect(prompt).toMatchSnapshot();
   });
 
   it("includes compile_metric paragraph when enabled", async () => {
     const semantic = await loadFixture();
     const prompt = buildSystemPrompt({
-      mode: "preload",
       semantic,
       compileMetricEnabled: true,
     });
@@ -182,7 +204,6 @@ describe("buildSystemPrompt", () => {
   it("renders SKILL_DISCIPLINE_EAGER when skillsMode is eager", async () => {
     const semantic = await loadFixture();
     const prompt = buildSystemPrompt({
-      mode: "preload",
       semantic,
       compileMetricEnabled: false,
       skillsMode: "eager",
@@ -196,7 +217,6 @@ describe("buildSystemPrompt", () => {
   it("renders SKILL_DISCIPLINE_ONDEMAND when skillsMode is on-demand", async () => {
     const semantic = await loadFixture();
     const prompt = buildSystemPrompt({
-      mode: "preload",
       semantic,
       compileMetricEnabled: false,
       skillsMode: "on-demand",
@@ -212,7 +232,6 @@ describe("buildSystemPrompt", () => {
   it("omits skill discipline when skillsMode is none (default)", async () => {
     const semantic = await loadFixture();
     const prompt = buildSystemPrompt({
-      mode: "preload",
       semantic,
       compileMetricEnabled: false,
     });
@@ -225,7 +244,6 @@ describe("buildSystemPrompt", () => {
   it("renders skill discipline before Reasoning section", async () => {
     const semantic = await loadFixture();
     const prompt = buildSystemPrompt({
-      mode: "preload",
       semantic,
       compileMetricEnabled: false,
       skillsMode: "on-demand",
@@ -257,7 +275,6 @@ describe("buildSystemPrompt — glossary (ADR 0004)", () => {
 
   it("renders defined terms and a hard CLARIFY rule for ambiguous terms", () => {
     const prompt = buildSystemPrompt({
-      mode: "preload",
       semantic: layerWithGlossary(),
       compileMetricEnabled: true,
       sources: [],
@@ -278,86 +295,60 @@ describe("buildSystemPrompt — glossary (ADR 0004)", () => {
       entities: new Map(),
       catalog: { entities: [], generated_at: "x", source_files: [] },
     };
-    const prompt = buildSystemPrompt({ mode: "preload", semantic: layer, compileMetricEnabled: true, sources: [], skillsMode: "none" });
+    const prompt = buildSystemPrompt({ semantic: layer, compileMetricEnabled: true, sources: [], skillsMode: "none" });
     expect(prompt).not.toContain("## Glossary");
   });
 });
 
-describe("buildSystemPrompt — sample_values + canonical query patterns (ADR 0004)", () => {
-  it("renders dimension sample_values (grounds WHERE filters) distinct from values", () => {
+describe("buildSystemPrompt — on-demand entity detail", () => {
+  it("omits dimensions, sample values, example queries, and measure objectives", () => {
     const layer: SemanticLayer = {
       entities: new Map([
         ["customers", {
           name: "customers", description: "x", grain: "one row per customer", primary_key: "id",
+          measures: [
+            { name: "revenue", description: "rev", sql: "SUM(x)", objective: "maximize" },
+          ],
           dimensions: [
             { name: "name", sql: "name", type: "text", sample_values: ["Acme", "Globex"] },
             { name: "plan", sql: "plan", type: "text", values: ["free", "pro"] },
           ],
-        } as unknown as Entity],
-      ]),
-      catalog: { entities: [], generated_at: "x", source_files: [] },
-    };
-    const p = buildSystemPrompt({ mode: "preload", semantic: layer, compileMetricEnabled: true, sources: [], skillsMode: "none" });
-    expect(p).toMatch(/e\.g\. Acme, Globex/);   // sample_values
-    expect(p).toMatch(/values: free, pro/);      // enum still rendered
-  });
-
-  it("frames example_queries as canonical query patterns to reuse", () => {
-    const layer: SemanticLayer = {
-      entities: new Map([
-        ["orders", {
-          name: "orders", description: "x", grain: "one row per order", primary_key: "id",
           example_queries: [{ question: "revenue by month?", sql: "SELECT 1" }],
         } as unknown as Entity],
       ]),
       catalog: { entities: [], generated_at: "x", source_files: [] },
     };
-    const p = buildSystemPrompt({ mode: "preload", semantic: layer, compileMetricEnabled: true, sources: [], skillsMode: "none" });
-    expect(p).toMatch(/Canonical query patterns/);
+    const p = buildSystemPrompt({ semantic: layer, compileMetricEnabled: true, sources: [], skillsMode: "none" });
+    expect(p).not.toContain("Acme");
+    expect(p).not.toContain("values: free, pro");
+    expect(p).not.toContain("Canonical query patterns");
+    expect(p).not.toContain("objective: maximize");
+    expect(p).not.toContain("SUM(x)");
   });
 });
 
-describe("buildSystemPrompt — measure objective / ranking (ADR 0004)", () => {
-  function layerWithObjective(withObjective: boolean): SemanticLayer {
-    return {
-      entities: new Map([
-        ["orders", {
-          name: "orders", description: "x", grain: "one row per order", primary_key: "id",
-          measures: [
-            { name: "revenue", description: "rev", sql: "SUM(x)", ...(withObjective ? { objective: "maximize" as const } : {}) },
-            { name: "refunds", description: "ref", sql: "SUM(y)", ...(withObjective ? { objective: "minimize" as const } : {}) },
-          ],
-        } as unknown as Entity],
-      ]),
-      catalog: { entities: [], generated_at: "x", source_files: [] },
-    };
-  }
-  it("renders objective on the measure + the ranking rule when declared", () => {
-    const p = buildSystemPrompt({ mode: "preload", semantic: layerWithObjective(true), compileMetricEnabled: true, sources: [], skillsMode: "none" });
-    expect(p).toMatch(/objective: minimize/);
-    expect(p).toMatch(/## Ranking/);
-    expect(p).toMatch(/best = LOWEST/);
-  });
-  it("omits the ranking rule when no measure declares an objective", () => {
-    const p = buildSystemPrompt({ mode: "preload", semantic: layerWithObjective(false), compileMetricEnabled: true, sources: [], skillsMode: "none" });
-    expect(p).not.toMatch(/## Ranking/);
+describe("temporalGrounding", () => {
+  it("renders the current time so the agent can resolve relative dates", () => {
+    const text = temporalGrounding(new Date("2026-06-15T12:00:00Z"));
+    expect(text).toContain("## Current time");
+    expect(text).toMatch(/today is 2026-06-15/);
+    expect(text).toMatch(/relative dates/i);
   });
 });
 
 describe("buildSystemPrompt — temporal grounding", () => {
-  it("injects the current time so the agent can resolve relative dates", () => {
+  it("omits per-request time from the byte-stable system prompt", () => {
     const layer = { entities: new Map(), catalog: { entities: [], generated_at: "x", source_files: [] } } as unknown as SemanticLayer;
-    const p = buildSystemPrompt({ mode: "preload", semantic: layer, compileMetricEnabled: true, sources: [], skillsMode: "none" });
-    expect(p).toContain("## Current time");
-    expect(p).toMatch(/today is 2026-06-15/); // frozen clock
-    expect(p).toMatch(/relative dates/i);
+    const p = buildSystemPrompt({ semantic: layer, compileMetricEnabled: true, sources: [], skillsMode: "none" });
+    expect(p).not.toContain("## Current time");
+    expect(p).not.toMatch(/today is 2026-06-15/);
   });
 });
 
 describe("buildSystemPrompt — composition & exploration", () => {
   it("frames the semantic layer as building blocks and encourages composing over refusing", () => {
     const layer = { entities: new Map(), catalog: { entities: [], generated_at: "x", source_files: [] } } as unknown as SemanticLayer;
-    const p = buildSystemPrompt({ mode: "preload", semantic: layer, compileMetricEnabled: true, sources: [], skillsMode: "none" });
+    const p = buildSystemPrompt({ semantic: layer, compileMetricEnabled: true, sources: [], skillsMode: "none" });
     expect(p).toContain("## Composition & exploration");
     expect(p).toContain(COMPOSITION_DISCIPLINE);
     expect(p).toMatch(/BUILDING BLOCKS, not a menu/);

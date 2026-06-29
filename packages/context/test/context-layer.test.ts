@@ -124,6 +124,165 @@ city: Austin
     });
   });
 
+  it("populates type from frontmatter with playbook and reference first-class", async () => {
+    const root = mkdtempSync(join(tmpdir(), "arivie-context-"));
+    writeFixture(
+      root,
+      "concepts/returns.md",
+      `---
+id: return-policy
+type: playbook
+schema: docs.page
+---
+# Return policy
+`,
+    );
+    writeFixture(
+      root,
+      "concepts/refund.md",
+      `---
+id: refund-window
+type: reference
+schema: docs.page
+---
+# Refund window
+`,
+    );
+    writeFixture(
+      root,
+      "concepts/default.md",
+      `---
+id: default-knowledge
+schema: docs.page
+---
+# Default type
+`,
+    );
+
+    const layer = defineContextLayer({
+      root,
+      schemas: [knowledgeSchema],
+    });
+
+    const result = await layer.load();
+
+    expect(result.issues.filter((issue) => issue.severity === "error")).toEqual([]);
+    expect(layer.get("return-policy")).toMatchObject({ type: "playbook" });
+    expect(layer.get("refund-window")).toMatchObject({ type: "reference" });
+    expect(layer.get("default-knowledge")).toMatchObject({ type: "knowledge" });
+  });
+
+  it("warns on unknown type without rejecting the document", async () => {
+    const root = mkdtempSync(join(tmpdir(), "arivie-context-"));
+    writeFixture(
+      root,
+      "concepts/custom.md",
+      `---
+id: custom-type-doc
+type: ontology
+schema: docs.page
+---
+# Custom
+`,
+    );
+
+    const layer = defineContextLayer({
+      root,
+      schemas: [knowledgeSchema],
+    });
+
+    const result = await layer.load();
+
+    expect(result.issues.filter((issue) => issue.severity === "error")).toEqual([]);
+    const warning = result.issues.find(
+      (issue) =>
+        issue.severity === "warning" &&
+        issue.message === 'unknown context type "ontology"',
+    );
+    expect(warning).toMatchObject({ path: "concepts/custom.md" });
+    expect(layer.get("custom-type-doc")).toMatchObject({ type: "ontology" });
+  });
+
+  it("uses index.md body as catalog when present and does not load it as a concept", async () => {
+    const root = mkdtempSync(join(tmpdir(), "arivie-context-"));
+    writeFixture(
+      root,
+      "index.md",
+      `---
+title: Knowledge catalog
+---
+# Catalog
+
+- [playbook] return-policy — Store return rules
+`,
+    );
+    writeFixture(
+      root,
+      "concepts/returns.md",
+      `---
+id: return-policy
+type: playbook
+schema: docs.page
+description: Store return rules
+---
+# Returns
+`,
+    );
+
+    const layer = defineContextLayer({
+      root,
+      schemas: [knowledgeSchema],
+    });
+
+    const result = await layer.load();
+
+    expect(result.issues.filter((issue) => issue.severity === "error")).toEqual([]);
+    expect(layer.all()).toHaveLength(1);
+    expect(layer.get("return-policy")).toBeDefined();
+    expect(layer.index()).toBe(`# Catalog
+
+- [playbook] return-policy — Store return rules
+`);
+    expect(result.catalog).toBe(layer.index());
+  });
+
+  it("synthesizes catalog from concepts when index.md is absent", async () => {
+    const root = mkdtempSync(join(tmpdir(), "arivie-context-"));
+    writeFixture(
+      root,
+      "concepts/beta.md",
+      `---
+id: beta-doc
+type: reference
+schema: docs.page
+description: Second concept
+---
+`,
+    );
+    writeFixture(
+      root,
+      "concepts/alpha.md",
+      `---
+id: alpha-doc
+type: playbook
+schema: docs.page
+title: Alpha title
+---
+`,
+    );
+
+    const layer = defineContextLayer({
+      root,
+      schemas: [knowledgeSchema],
+    });
+
+    await layer.load();
+
+    expect(layer.index()).toBe(
+      "- [playbook] alpha-doc — Alpha title\n- [reference] beta-doc — Second concept",
+    );
+  });
+
   it("reports orphaned references", async () => {
     const root = mkdtempSync(join(tmpdir(), "arivie-context-"));
     writeFixture(
@@ -154,5 +313,110 @@ refs:
     expect(orphanIssue).toMatchObject({
       path: "docs/missing-ref.md",
     });
+  });
+
+  it("recognizes semantic refs without orphan-flagging when resolved", async () => {
+    const root = mkdtempSync(join(tmpdir(), "arivie-context-"));
+    writeFixture(
+      root,
+      "concepts/revenue.md",
+      `---
+id: net-revenue-playbook
+type: playbook
+schema: docs.page
+refs:
+  - semantic:orders
+  - semantic:orders.net_revenue
+---
+# Revenue playbook
+`,
+    );
+
+    const layer = defineContextLayer({
+      root,
+      schemas: [knowledgeSchema],
+      knownSemanticIds: ["orders", "orders.net_revenue"],
+    });
+
+    const result = await layer.load();
+
+    expect(result.issues.filter((issue) => issue.severity === "error")).toEqual([]);
+    expect(
+      result.issues.filter((issue) => issue.message.includes("semantic:")),
+    ).toEqual([]);
+    expect(layer.get("net-revenue-playbook")?.refs).toEqual([
+      "semantic:orders",
+      "semantic:orders.net_revenue",
+    ]);
+  });
+
+  it("warns on malformed semantic refs", async () => {
+    const root = mkdtempSync(join(tmpdir(), "arivie-context-"));
+    writeFixture(
+      root,
+      "concepts/bad-ref.md",
+      `---
+id: bad-semantic-ref
+schema: docs.page
+refs:
+  - semantic:orders..net_revenue
+---
+# Bad ref
+`,
+    );
+
+    const layer = defineContextLayer({
+      root,
+      schemas: [knowledgeSchema],
+    });
+
+    const result = await layer.load();
+    const warning = result.issues.find(
+      (issue) =>
+        issue.severity === "warning" &&
+        issue.message.includes('Malformed semantic reference "semantic:orders..net_revenue"'),
+    );
+
+    expect(warning).toMatchObject({ path: "concepts/bad-ref.md" });
+    expect(result.issues.filter((issue) => issue.severity === "error")).toEqual([]);
+  });
+
+  it("warns on unresolved semantic refs against knownSemanticIds", async () => {
+    const root = mkdtempSync(join(tmpdir(), "arivie-context-"));
+    writeFixture(
+      root,
+      "concepts/missing-entity.md",
+      `---
+id: missing-entity-ref
+schema: docs.page
+refs:
+  - semantic:unknown_entity
+  - semantic:orders.missing_measure
+---
+# Missing semantic targets
+`,
+    );
+
+    const layer = defineContextLayer({
+      root,
+      schemas: [knowledgeSchema],
+      knownSemanticIds: ["orders", "orders.net_revenue"],
+    });
+
+    const result = await layer.load();
+    const warnings = result.issues.filter(
+      (issue) =>
+        issue.severity === "warning" &&
+        issue.message.includes("Unresolved semantic reference"),
+    );
+
+    expect(warnings).toHaveLength(2);
+    expect(warnings.map((issue) => issue.message)).toEqual(
+      expect.arrayContaining([
+        'Unresolved semantic reference "semantic:unknown_entity" from document "missing-entity-ref"',
+        'Unresolved semantic reference "semantic:orders.missing_measure" from document "missing-entity-ref"',
+      ]),
+    );
+    expect(result.issues.filter((issue) => issue.severity === "error")).toEqual([]);
   });
 });

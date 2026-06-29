@@ -91,7 +91,11 @@ export {
   defineAgent,
   encodeContinuation,
   executeRun,
+  governanceCoreCacheProviderOptions,
+  isAnthropicModel,
+  wrapInstructionsForCache,
   streamEvents,
+  temporalGrounding,
 } from "./runtime/index.js";
 export type {
   AgentDefinition,

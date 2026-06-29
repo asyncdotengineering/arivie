@@ -1,16 +1,11 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 import type {
   Catalog,
-  Dimension,
   Entity,
-  ExampleQuery,
-  Join,
-  Measure,
-  Segment,
   SemanticLayer,
 } from "@arivie/semantic";
 
-export type ContextMode = "preload" | "indexed";
+export { temporalGrounding } from "@arivie/core";
 
 /**
  * How skills are presented to the agent:
@@ -41,7 +36,6 @@ export interface BuildSystemPromptIndexedOptions {
 }
 
 export interface BuildSystemPromptOptions {
-  mode: ContextMode;
   semantic: SemanticLayer;
   compileMetricEnabled: boolean;
   sources?: readonly SourceDescriptor[];
@@ -193,7 +187,7 @@ export const MARKUP_TOKENS_RULE = [
   "and retry once. After at most one revision, surface the final answer or the error.",
 ].join("\n");
 
-/** RFC-003 v2 §6.15 — indexed mode workspace navigation (Sprint 2 C53). */
+/** RFC-003 v2 §6.15 — workspace navigation (Sprint 2 C53). */
 export const WORKSPACE_NAVIGATION_RULE = [
   "Discover the semantic layer via Mastra Workspace tools before writing SQL:",
   '  1. `mastra_workspace_list_files("./entities")` — list entity YAML files.',
@@ -217,8 +211,8 @@ export function buildSystemPromptIndexed({
   hasFinalizeReport,
 }: BuildSystemPromptIndexedOptions): string {
   const sections: string[] = [
-    "## Semantic layer (indexed mode)",
-    "The full semantic layer is NOT preloaded. Discover entities via Mastra Workspace tools before composing SQL.",
+    "## Semantic layer navigation",
+    "Entity detail is fetched on demand. Discover entities via Mastra Workspace tools before composing SQL.",
     "",
     "## WORKSPACE_NAVIGATION_RULE",
     WORKSPACE_NAVIGATION_RULE,
@@ -259,8 +253,12 @@ export function buildSystemPromptIndexed({
 function glossarySection(semantic: SemanticLayer): string {
   const glossary = semantic.catalog.glossary ?? [];
   if (glossary.length === 0) return "";
-  const defined = glossary.filter((t) => t.status !== "ambiguous");
-  const ambiguous = glossary.filter((t) => t.status === "ambiguous");
+  const defined = glossary
+    .filter((t) => t.status !== "ambiguous")
+    .sort((a, b) => a.term.localeCompare(b.term));
+  const ambiguous = glossary
+    .filter((t) => t.status === "ambiguous")
+    .sort((a, b) => a.term.localeCompare(b.term));
   const lines = ["## Glossary"];
   for (const t of defined) {
     lines.push(`- **${t.term}** — ${t.definition}`);
@@ -285,27 +283,33 @@ function glossarySection(semantic: SemanticLayer): string {
   return lines.join("\n");
 }
 
-/**
- * Temporal grounding (researched best practice): LLMs have no internal clock and
- * otherwise guess "today" from stale training data, breaking relative-date
- * reasoning ("this month", "last month", YTD). Inject the current time so the
- * agent resolves relative dates against a real "now". Captured at agent
- * construction — fresh on every serverless cold start; on a long-lived server
- * crossing a date boundary, rebuild the agent (or add a per-turn temporal
- * input processor) to refresh it.
- */
-function temporalSection(): string {
-  const iso = new Date().toISOString();
-  return (
-    `## Current time\nNow is ${iso} (UTC); today is ${iso.slice(0, 10)}. ` +
-    "Use this as \"now\" for ALL relative dates (today, yesterday, this/last week, " +
-    "this/last month, this/last year, year-to-date) — never assume a date from training data. " +
-    "When the data declares a store timezone, convert to it for date boundaries."
-  );
+function joinSkeletonSection(semantic: SemanticLayer): string {
+  const entities = entitiesAlphabetical(semantic);
+  if (entities.length === 0) return "";
+
+  return [
+    "## Join graph",
+    ...entities.map((entity) => {
+      const joinedEntities = [
+        ...new Set((entity.joins ?? []).map((join) => join.to)),
+      ].sort((a, b) => a.localeCompare(b));
+      return `- **${entity.name}** joins: ${joinedEntities.join(", ") || "none"}`;
+    }),
+  ].join("\n");
+}
+
+export function governanceCoreSection(semantic: SemanticLayer): string {
+  return [
+    "## Semantic catalog",
+    formatCatalog(semantic.catalog),
+    joinSkeletonSection(semantic),
+    glossarySection(semantic),
+  ]
+    .filter((section) => section.length > 0)
+    .join("\n\n");
 }
 
 export function buildSystemPrompt({
-  mode,
   semantic,
   compileMetricEnabled,
   sources = [],
@@ -315,34 +319,16 @@ export function buildSystemPrompt({
   const sections: string[] = [
     PREAMBLE,
     "",
-    temporalSection(),
+    toolsSection(sources),
     "",
-    toolsSection(mode, sources),
+    governanceCoreSection(semantic),
+    "",
+    buildSystemPromptIndexed({
+      compileMetricEnabled,
+      sources,
+      hasFinalizeReport,
+    }),
   ];
-
-  const glossarySectionText = glossarySection(semantic);
-  if (glossarySectionText.length > 0) sections.push("", glossarySectionText);
-
-  if (mode === "preload") {
-    sections.push("", semanticLayerSection(semantic));
-    if (semanticHasObjective(semantic)) {
-      sections.push("", `## Ranking\n${MEASURE_OBJECTIVE_RULE}`);
-    }
-    for (const entity of entitiesAlphabetical(semantic)) {
-      if (entity.hints != null && entity.hints.length > 0) {
-        sections.push("", formatHintsSubsection(entity));
-      }
-    }
-  } else {
-    sections.push(
-      "",
-      buildSystemPromptIndexed({
-        compileMetricEnabled,
-        sources,
-        hasFinalizeReport,
-      }),
-    );
-  }
 
   // Skill discipline fires BEFORE reasoning so the agent considers the
   // playbook before deciding how to answer. Eager and on-demand modes
@@ -395,31 +381,10 @@ export function buildSystemPrompt({
     TRUNCATION_RULE,
   );
 
-  if (compileMetricEnabled && mode === "preload") {
-    sections.push("", compileMetricSection());
-  }
-
   return sections.join("\n");
 }
 
-function toolsSection(
-  mode: ContextMode,
-  sources: readonly SourceDescriptor[],
-): string {
-  if (mode === "preload") {
-    return [
-      "## Tools",
-      "",
-      "### execute_<sourceName>",
-      "Run a read-only SQL query (SELECT or WITH only) against a declared source. Results are row-limited and time-bounded.",
-      "Use execute_<sourceName> (e.g. execute_postgres) after you know what to query from the Catalog below.",
-      "",
-      "### Mastra Workspace",
-      "mastra_workspace_list_files, mastra_workspace_read_file, mastra_workspace_grep — navigate the workspace (read skill references at ./skills/<name>/references/, grep the semantic dir for a column name).",
-      "mastra_workspace_write_file, mastra_workspace_edit_file, mastra_workspace_mkdir — persist intermediate scratch state. Do NOT use these to do math the SQL should do.",
-    ].join("\n");
-  }
-
+function toolsSection(sources: readonly SourceDescriptor[]): string {
   const executeLines =
     sources.length > 0
       ? sources
@@ -434,7 +399,7 @@ function toolsSection(
   return [
     "## Tools",
     "",
-    "### Mastra Workspace (indexed mode)",
+    "### Mastra Workspace",
     "mastra_workspace_list_files, mastra_workspace_read_file, mastra_workspace_search — navigate the semantic layer on disk.",
     "",
     "### Execute tools",
@@ -461,131 +426,14 @@ function entitiesAlphabetical(semantic: SemanticLayer): Entity[] {
   );
 }
 
-function semanticLayerSection(semantic: SemanticLayer): string {
-  return [
-    "## Semantic layer",
-    formatCatalog(semantic.catalog),
-    "",
-    ...entitiesAlphabetical(semantic).map((entity) =>
-      formatEntity(entity, { omitHints: true }),
-    ),
-  ].join("\n");
-}
-
-function formatHintsSubsection(entity: Entity): string {
-  return [
-    `### Hints (${entity.name})`,
-    ...entity.hints!.map((hint) => `- ${hint}`),
-  ].join("\n");
-}
-
 function formatCatalog(catalog: Catalog): string {
-  const lines = ["### Catalog", `Generated: ${catalog.generated_at}`];
-  for (const entry of catalog.entities) {
+  const lines = ["### Catalog"];
+  for (const entry of [...catalog.entities].sort((a, b) =>
+    a.name.localeCompare(b.name),
+  )) {
     lines.push(
       `- **${entry.name}**: ${entry.description.trim()} (keywords: ${entry.keywords.join(", ")})`,
     );
   }
   return lines.join("\n");
-}
-
-export function formatEntity(
-  entity: Entity,
-  options?: { omitHints?: boolean },
-): string {
-  const lines = [
-    `### Entity: ${entity.name}`,
-    entity.description.trim(),
-    `Grain: ${entity.grain}`,
-    `Primary key: ${entity.primary_key}`,
-  ];
-
-  if (entity.measures?.length) {
-    lines.push("", "Measures:");
-    for (const measure of entity.measures) {
-      lines.push(formatMeasure(measure));
-    }
-  }
-
-  if (entity.dimensions?.length) {
-    lines.push("", "Dimensions:");
-    for (const dimension of entity.dimensions) {
-      lines.push(formatDimension(dimension));
-    }
-  }
-
-  if (entity.segments?.length) {
-    lines.push("", "Segments:");
-    for (const segment of entity.segments) {
-      lines.push(formatSegment(segment));
-    }
-  }
-
-  if (entity.joins?.length) {
-    lines.push("", "Joins:");
-    for (const join of entity.joins) {
-      lines.push(formatJoin(join));
-    }
-  }
-
-  if (entity.example_queries?.length) {
-    // Canonical query patterns: reuse these join/SQL shapes for similar
-    // questions rather than inventing a structure.
-    lines.push("", "Canonical query patterns (reuse these join/SQL shapes):");
-    for (const example of entity.example_queries) {
-      lines.push(formatExampleQuery(example));
-    }
-  }
-
-  if (
-    !options?.omitHints &&
-    entity.hints != null &&
-    entity.hints.length > 0
-  ) {
-    lines.push("", formatHintsSubsection(entity));
-  }
-
-  return lines.join("\n");
-}
-
-/** True when any measure declares an `objective` (gate the ranking rule). */
-function semanticHasObjective(semantic: SemanticLayer): boolean {
-  for (const entity of semantic.entities.values()) {
-    if (entity.measures?.some((m) => m.objective != null)) return true;
-  }
-  return false;
-}
-
-function formatMeasure(measure: Measure): string {
-  const objective =
-    measure.objective != null ? ` | objective: ${measure.objective} (lower is better if minimize)` : "";
-  return `- **${measure.name}**: ${measure.description} | SQL: ${measure.sql}${objective}`;
-}
-
-function formatDimension(dimension: Dimension): string {
-  const values =
-    dimension.values != null && dimension.values.length > 0
-      ? ` | values: ${dimension.values.join(", ")}`
-      : "";
-  // Real sample values ground WHERE filters on high-cardinality columns.
-  const samples =
-    dimension.sample_values != null && dimension.sample_values.length > 0
-      ? ` | e.g. ${dimension.sample_values.join(", ")}`
-      : "";
-  const desc = dimension.description ? ` — ${dimension.description}` : "";
-  return `- **${dimension.name}**: sql=${dimension.sql}${values}${samples}${desc}`;
-}
-
-function formatSegment(segment: Segment): string {
-  const desc = segment.description ? ` — ${segment.description}` : "";
-  return `- **${segment.name}**: ${segment.sql}${desc}`;
-}
-
-function formatJoin(join: Join): string {
-  const type = join.type ?? "many_to_one";
-  return `- **${join.to}** (${type}): ${join.on}`;
-}
-
-function formatExampleQuery(example: ExampleQuery): string {
-  return `- Q: ${example.question}\n  SQL: ${example.sql.trim()}`;
 }

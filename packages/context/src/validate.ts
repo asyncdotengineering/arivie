@@ -141,10 +141,17 @@ export function readStringArrayField(
   return items.length > 0 ? items : undefined;
 }
 
+const SEMANTIC_REF_PATTERN = /^semantic:[A-Za-z0-9_]+(\.[A-Za-z0-9_]+)?$/;
+
 export function validateOrphanedRefs(
   documents: readonly { id: string; refs?: string[]; path: string }[],
+  options?: { knownSemanticIds?: readonly string[] },
 ): ContextValidationIssue[] {
   const ids = new Set(documents.map((doc) => doc.id));
+  const knownSemantic =
+    options?.knownSemanticIds !== undefined
+      ? new Set(options.knownSemanticIds)
+      : undefined;
   const issues: ContextValidationIssue[] = [];
 
   for (const doc of documents) {
@@ -152,6 +159,29 @@ export function validateOrphanedRefs(
       continue;
     }
     for (const ref of doc.refs) {
+      if (ref.startsWith("semantic:")) {
+        if (!SEMANTIC_REF_PATTERN.test(ref)) {
+          issues.push({
+            severity: "warning",
+            message: `Malformed semantic reference "${ref}"`,
+            path: doc.path,
+            detail: { ref, documentId: doc.id },
+          });
+          continue;
+        }
+        if (knownSemantic !== undefined) {
+          const target = ref.slice("semantic:".length);
+          if (!knownSemantic.has(target)) {
+            issues.push({
+              severity: "warning",
+              message: `Unresolved semantic reference "${ref}" from document "${doc.id}"`,
+              path: doc.path,
+              detail: { ref, documentId: doc.id },
+            });
+          }
+        }
+        continue;
+      }
       if (!ids.has(ref)) {
         issues.push({
           severity: "error",

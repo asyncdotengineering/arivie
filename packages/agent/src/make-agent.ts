@@ -21,9 +21,10 @@ import { createTool, type Tool } from "@mastra/core/tools";
 import type { RequireToolApproval } from "@mastra/core/tools";
 import { z } from "zod";
 import { getCurrentUserContext } from "@arivie/core/context";
+import { wrapInstructionsForCache } from "@arivie/core";
 
 import { assertToolShape, type AssertToolShapeConfig } from "./contract-invariants.js";
-import { buildSystemPrompt, type ContextMode, type SkillsMode } from "./prompt.js";
+import { buildSystemPrompt, type SkillsMode } from "./prompt.js";
 import { compileMetricFor } from "./tools/compile-metric.js";
 import {
   finalizeReportStopWhen,
@@ -36,7 +37,6 @@ export interface MakeAgentOptions {
   ownerId: string;
   model: LanguageModel;
   semantic: SemanticLayer;
-  contextMode: ContextMode;
   sources: Record<string, SourceAdapter<unknown>>;
   /**
    * Per-source metadata (description + optional useWhen) rendered into
@@ -358,19 +358,21 @@ export function makeAgent(opts: MakeAgentOptions): Agent {
       "into read-only SQL against a semantic layer; writes file artifacts " +
       "(reports, CSVs) directly through workspace tools.",
     model: opts.model as ConstructorParameters<typeof Agent>[0]["model"],
-    instructions: buildSystemPrompt({
-      mode: opts.contextMode,
-      semantic: opts.semantic,
-      compileMetricEnabled: compileMetric,
-      sources:
-        opts.sourceMetadata ??
-        sourceNames.map((name) => ({
-          name,
-          description: `${name} source`,
-        })),
-      hasFinalizeReport: registerFinalizeReport,
-      skillsMode: opts.skillsMode ?? "none",
-    }),
+    instructions: wrapInstructionsForCache(
+      buildSystemPrompt({
+        semantic: opts.semantic,
+        compileMetricEnabled: compileMetric,
+        sources:
+          opts.sourceMetadata ??
+          sourceNames.map((name) => ({
+            name,
+            description: `${name} source`,
+          })),
+        hasFinalizeReport: registerFinalizeReport,
+        skillsMode: opts.skillsMode ?? "none",
+      }),
+      opts.model,
+    ) as ConstructorParameters<typeof Agent>[0]["instructions"],
     tools: tools as NonNullable<
       ConstructorParameters<typeof Agent>[0]["tools"]
     >,

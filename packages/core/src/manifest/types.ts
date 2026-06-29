@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 import type { Tool } from "@mastra/core/tools";
+import type { Workspace } from "@mastra/core/workspace";
 import type { ContextSchemaDefinition } from "@arivie/context";
 import type { CapabilityDefinition } from "../capabilities/types.js";
 import type { ChannelDefinition } from "../triggers/channel.js";
@@ -52,6 +53,8 @@ export interface RuntimeManifest {
   evals: OwnedRef<EvalPackDefinition>[];
   /** System-prompt fragments contributed by plugins, tagged by owner. */
   instructions: OwnedRef<string>[];
+  /** Workspaces contributed by plugins, tagged by owner plugin id. */
+  workspaces: OwnedRef<Workspace>[];
   /** Plugin resource-release hooks, called by `app.dispose()`. */
   disposers: Array<() => Promise<void> | void>;
   diagnostics: DiagnosticResult[];

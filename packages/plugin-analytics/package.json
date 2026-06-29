@@ -29,13 +29,16 @@
     "@arivie/agent": "workspace:*",
     "@arivie/context": "workspace:*",
     "@arivie/core": "workspace:*",
-    "@arivie/semantic": "workspace:*"
+    "@arivie/semantic": "workspace:*",
+    "@arivie/workspace": "workspace:*"
   },
   "peerDependencies": {
     "zod": "^4.4.0"
   },
   "devDependencies": {
+    "@mastra/core": "^1.45.0",
     "@types/node": "^22.0.0",
+    "ai": "^6.0.0",
     "tsup": "^8.5.1",
     "typescript": "^6.0.0",
     "vitest": "^4.1.0",

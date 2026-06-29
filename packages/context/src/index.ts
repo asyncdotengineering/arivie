@@ -11,6 +11,7 @@ export { ContextError, ContextLoadError } from "./errors.js";
 export interface ContextLayerConfig {
   root: string;
   schemas?: ContextSchemaDefinition[];
+  knownSemanticIds?: string[];
   indexing?: {
     mode: "none" | "lexical" | "hybrid";
     embeddings?: unknown;
@@ -20,6 +21,7 @@ export interface ContextLayerConfig {
 export interface ContextDocument {
   id: string;
   kind: "knowledge" | "executable";
+  type?: string;
   schema: string;
   path: string;
   frontmatter: Record<string, unknown>;
@@ -39,6 +41,7 @@ export interface ContextValidationIssue {
 export interface ContextLayerLoadResult {
   documents: ContextDocument[];
   issues: ContextValidationIssue[];
+  catalog: string;
 }
 
 export interface ContextLayer {
@@ -46,16 +49,19 @@ export interface ContextLayer {
   load(): Promise<ContextLayerLoadResult>;
   get(id: string): ContextDocument | undefined;
   all(): ContextDocument[];
+  index(): string;
 }
 
 export function defineContextLayer(config: ContextLayerConfig): ContextLayer {
   let loadedDocuments: ContextDocument[] = [];
+  let loadedCatalog = "";
 
   return {
     config,
     async load() {
       const result = await loadContextLayer(config);
       loadedDocuments = result.documents;
+      loadedCatalog = result.catalog;
       return result;
     },
     get(id: string) {
@@ -63,6 +69,9 @@ export function defineContextLayer(config: ContextLayerConfig): ContextLayer {
     },
     all() {
       return [...loadedDocuments];
+    },
+    index() {
+      return loadedCatalog;
     },
   };
 }

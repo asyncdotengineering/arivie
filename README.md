@@ -46,7 +46,6 @@ export const arivie = await defineArivie({
   plugins: [
     analytics({
       semanticPath: "./semantic",
-      mode: "preload",
       compileMetric: true,
       sources: {
         postgres: postgresSource({ url: process.env.DATABASE_URL!, readOnlyRole: "arivie_reader" }),
@@ -77,6 +76,12 @@ const text = await arivie.prompt({
 ```
 
 For streaming or full control use `arivie.sessions.create(...)` (durable, cursor-replayable events). For an ephemeral, non-durable call drop to Mastra's `agent.generate()`. The boundary is documented in [ADR 0002](./docs/adr/0002-arivie-vs-mastra-ownership.md).
+
+### Knowledge delivery (navigation-by-default)
+
+Analytics uses **navigation-by-default**: a small, byte-stable **governance core** (entity catalog, join skeleton, glossary) is cached in the system prompt; entity measures/dimensions/joins and knowledge concepts are **fetched on demand** via tools — not preloaded every request. See [ADR 0006](./docs/adr/0006-knowledge-delivery-navigation-default-okf.md).
+
+The **knowledge layer** (`@arivie/context`, rooted at `./knowledge` or your `context.root`) is OKF-shaped: markdown concepts with `type: playbook | reference | term`, an `index.md` catalog, and `semantic:` cross-links back to the typed executable layer in `./semantic`.
 
 ## What the framework gives you
 
@@ -113,7 +118,7 @@ See [ADR 0001 — adopt Mastra durable execution](./docs/adr/0001-adopt-mastra-d
 
 | | |
 |---|---|
-| Version | **`2.0.0`** — domain-neutral agent framework; analytics demoted to a first-party plugin |
+| Version | **`3.0.0`** — navigation-by-default knowledge delivery; OKF-shaped context layer ([ADR 0006](./docs/adr/0006-knowledge-delivery-navigation-default-okf.md)) |
 | Packages | **17** published `@arivie/*` packages |
 | Tests | full suite green via `pnpm -r test` |
 | Maturity | **alpha** — APIs may shift; semver discipline applies |
