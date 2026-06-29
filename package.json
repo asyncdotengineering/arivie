@@ -8,7 +8,7 @@
   },
   "scripts": {
     "build": "pnpm -r --filter '@arivie/semantic' --filter '@arivie/workspace' --filter '@arivie/embeddings' --filter '@arivie/registry' --filter '@arivie/skills' --filter '@arivie/context' run build && pnpm --filter '@arivie/core' run build:esm && pnpm --filter '@arivie/agent' run build:esm && pnpm --filter '@arivie/core' run build:dts:shared && pnpm -r --filter '@arivie/db-postgres' --filter '@arivie/source-mcp' --filter '@arivie/source-mixpanel' run build && pnpm --filter '@arivie/agent' run build:dts && pnpm --filter '@arivie/core' run build:dts && pnpm --filter '@arivie/github' run build && pnpm -r --filter '@arivie/plugin-postgres' --filter '@arivie/plugin-analytics' --filter '@arivie/plugin-github' run build && pnpm -r --filter '@arivie/cli' --filter '@arivie/mcp' --filter '@arivie/react' --filter '@arivie/deploy' --filter '@arivie/eval' run build",
-    "eval": "tsx scripts/run-eval.ts",
+    "eval": "NODE_NO_WARNINGS=1 tsx scripts/run-eval.ts",
     "eval:surface": "vitest --config vitest.e2e.config.ts run tests/e2e/surface-eval.test.ts",
     "test": "pnpm -r --filter './packages/*' test",
     "test:parity": "vitest --config vitest.parity.config.ts run",

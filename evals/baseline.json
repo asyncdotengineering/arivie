@@ -1,0 +1,97 @@
+{
+  "comment": "Measured from pre-refactor ref f0084fb in deterministic mock mode over all 12 golden probes.",
+  "ref": "f0084fb",
+  "mode": "preload",
+  "model": "eval-mock",
+  "token_estimator": "ceil(chars/4)",
+  "passed": 12,
+  "total": 12,
+  "accuracy": 1,
+  "mean_input_tokens": 3073.58,
+  "per_probe": [
+    {
+      "id": "total-revenue",
+      "category": "normal",
+      "pass": true,
+      "input_tokens": 3073,
+      "agent_sql": "SELECT COALESCE(SUM(total_amount), 0) AS revenue\nFROM orders\nWHERE status = 'completed'"
+    },
+    {
+      "id": "order-count",
+      "category": "normal",
+      "pass": true,
+      "input_tokens": 3070,
+      "agent_sql": "SELECT COUNT(*)::bigint AS order_count\nFROM orders"
+    },
+    {
+      "id": "average-order-value",
+      "category": "normal",
+      "pass": true,
+      "input_tokens": 3074,
+      "agent_sql": "SELECT AVG(total_amount) AS average_order_value\nFROM orders\nWHERE status = 'completed'"
+    },
+    {
+      "id": "revenue-by-month",
+      "category": "normal",
+      "pass": true,
+      "input_tokens": 3072,
+      "agent_sql": "SELECT date_trunc('month', created_at) AS month,\n       SUM(total_amount) AS revenue\nFROM orders\nWHERE status = 'completed'\nGROUP BY 1\nORDER BY 1"
+    },
+    {
+      "id": "count-by-status",
+      "category": "normal",
+      "pass": true,
+      "input_tokens": 3072,
+      "agent_sql": "SELECT status, COUNT(*)::bigint AS order_count\nFROM orders\nGROUP BY status\nORDER BY status"
+    },
+    {
+      "id": "top-customers-revenue",
+      "category": "normal",
+      "pass": true,
+      "input_tokens": 3076,
+      "agent_sql": "SELECT customer_id, SUM(total_amount) AS revenue\nFROM orders\nWHERE status = 'completed'\nGROUP BY customer_id\nORDER BY revenue DESC\nLIMIT 5"
+    },
+    {
+      "id": "top-overdue",
+      "category": "normal",
+      "pass": true,
+      "input_tokens": 3077,
+      "agent_sql": "SELECT customer_id,\n       SUM(total_amount - amount_paid) AS overdue_amount\nFROM orders\nWHERE status IN ('pending', 'processing')\n  AND due_date < CURRENT_DATE\nGROUP BY customer_id\nORDER BY overdue_amount DESC\nLIMIT 3"
+    },
+    {
+      "id": "orders-in-march",
+      "category": "normal",
+      "pass": true,
+      "input_tokens": 3073,
+      "agent_sql": "SELECT COUNT(*)::bigint AS order_count\nFROM orders\nWHERE created_at >= date_trunc('month', make_date(EXTRACT(YEAR FROM CURRENT_DATE)::int, 3, 1))\n  AND created_at < date_trunc('month', make_date(EXTRACT(YEAR FROM CURRENT_DATE)::int, 4, 1))"
+    },
+    {
+      "id": "refunded-last-quarter",
+      "category": "normal",
+      "pass": true,
+      "input_tokens": 3078,
+      "agent_sql": "SELECT COALESCE(SUM(total_amount), 0) AS refunded_amount\nFROM orders\nWHERE status = 'refunded'\n  AND created_at >= date_trunc('quarter', CURRENT_DATE) - interval '3 months'\n  AND created_at < date_trunc('quarter', CURRENT_DATE)"
+    },
+    {
+      "id": "refund-rate",
+      "category": "normal",
+      "pass": true,
+      "input_tokens": 3076,
+      "agent_sql": "SELECT\n  COUNT(*) FILTER (WHERE status = 'refunded')::numeric\n  / NULLIF(COUNT(*) FILTER (WHERE status IN ('completed', 'refunded')), 0) AS refund_rate\nFROM orders"
+    },
+    {
+      "id": "revenue-ambiguous",
+      "category": "ambiguous",
+      "pass": true,
+      "input_tokens": 3068,
+      "agent_sql": "SELECT COALESCE(SUM(total_amount), 0) AS revenue\nFROM orders\nWHERE status = 'completed'"
+    },
+    {
+      "id": "zero-row-trap",
+      "category": "zero-row",
+      "pass": true,
+      "input_tokens": 3074,
+      "agent_sql": "SELECT status, COUNT(*)::bigint AS order_count FROM orders GROUP BY status ORDER BY status"
+    }
+  ]
+}
